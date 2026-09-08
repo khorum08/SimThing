@@ -2965,3 +2965,12 @@ date	role	query	anchors_served	hit
 2026-09-08T21:03:59Z	da	--grep simthing-0087	simthing-0087-binding-laws,simthing-0087-pillars	hit
 2026-09-08T21:04:30Z	da	--grep simthing-0087-binding-laws	simthing-0087-binding-laws	hit
 2026-09-08T21:04:38Z	da	--grep simthing-0087-pillars	simthing-0087-pillars	hit
+2026-09-08T21:11:25Z	da	--grep default-off	eml-extension-ladder	hit
+2026-09-08T21:11:42Z	da	--grep eml-extension-ladder	eml-extension-ladder	hit
+2026-09-08T21:11:43Z	da	--grep field-sweep-preservation	eml-triad-integration,field-sweep-preservation	hit
+2026-09-08T21:11:44Z	da	--grep stemthing-binding-laws	stemthing-binding-laws	hit
+2026-09-08T21:13:16Z	da	--grep simthing-0087-pillars	simthing-0087-pillars	hit
+2026-09-08T21:14:17Z	da	--grep simthing-0087-binding-laws	simthing-0087-binding-laws	hit
+2026-09-08T21:31:36Z	coding	--domain core-0087	accumulator-op-v2-invariants,actionband-8x-sequencing,actionband-binding-laws,actionband-executive,actionband-target-forms,eml-admission-shapes,eml-integration-plan,eml-triad-integration,evaluation-identity-invariants,intrinsic-constrained-clearing,movement-front-adjudications,overlay-closure-thesis,overlay-promoted-laws,rf-arena-allocation-invariants,rf-arena-substrate,simthing-0087-binding-laws,simthing-0087-pillars,stead-rejected-shapes,stead-shared-surface-ledger,stemthing-binding-laws,stemthing-lane-not-leg,stemthing-slot-identity-ruling	hit
+2026-09-08T21:31:36Z	coding	--domain kernel-eml	accumulator-exact-vs-soft-semantics,accumulator-op-v2-invariants,actionband-crossing-surface,actionband-eml-payload-purity,actionband-native-authority-table,actionband-target-forms,eml-admission-shapes,eml-extension-ladder,eml-integration-plan,eml-triad-integration	hit
+2026-09-08T21:31:36Z	coding	--domain field-sweep-preservation	eml-triad-integration,field-sweep-preservation	hit

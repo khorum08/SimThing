@@ -152,8 +152,11 @@ contracts (RF-2A) exist.
   generation), giving orders their responsive feel by construction.
 - **P3 — Specialization protocol.** Specialized SimThings (spatial, owner, session, …) get a
   protocol **richer than a kind enumeration** — but it **must not break existing kind code**.
-  Promotion, not rewrite; every rung keeps the existing corpus green (compatibility falsifier:
-  full existing test suite passes unmodified at every rung).
+  Promotion, not rewrite; every rung preserves existing BEHAVIOR and invariants (compatibility
+  law: the surviving corpus stays green; the Necessity Test governs what survives, superseded
+  referees are corrected to the ruled law at equal-or-greater strength through explicit
+  adjudication, and frozen-referee exceptions are always explicit — never a blanket
+  "unmodified suite" rule).
 - **P4 — GPU-residency intrinsic to the object.** SimThings ARE dense-matrix rows: the
   row/column setup is as intrinsic as RF flow, property-value emission bands, and thresholds.
   **A SimThing knows how to slot into a parent, and how child rows are allocated relative to
@@ -161,29 +164,35 @@ contracts (RF-2A) exist.
   minted beside it (consumes the Phase 0 column admission-gate; the Phase 9 sweep then
   migrates legacy sites onto the object-semantic doors this phase defines).
 - **P5 — Intrinsic field influence: the Field Triad (Owner PALMA + Gu-Yang elevations,
-  2026-07-26).** Field propagation over the lattice is ONE sweep mechanism parameterized by
-  semiring — three canonical instances spanning the conservation classes: **STEAD**
+  2026-07-26).** Field propagation over the lattice is ONE sweep mechanism whose algebra is
+  AUTHORED map/fold/post DATA — never a semiring tag, field-kind enum, or operator-identity
+  dispatch (the landed `field-sweep-preservation` law governs; this pillar's earlier tag
+  phrasing is superseded) — three canonical instances spanning the conservation classes: **STEAD**
   (non-conserved signal, superposition/accumulate — the heatmaps), **PALMA** (selection,
   `(min,+)` relaxation — potential field `D` from impedance `W`; lineage: the PALMA
   tropical-algebra paper, algebra borrowed, ARM implementation explicitly not), and **Gu-Yang**
   (conserved **saturating flux** — per `stead_spatial_contract.md` §7 a conservative-flux
   stencil, never a border/frontline semantic service). Boolean reachability (`(OR,AND)`) rides
-  the P0(e) domain rider; future domains = a fourth semiring tag at library speed.
+  the P0(e) domain rider; future domains = a new authored map/fold/post program at library speed.
   Resource accumulation on spatial SimThings emits influence falloff as *object behavior* (not
   authored emitters); `W` is a **sealed EML cost projection over observables** (STEAD bands,
   overlay-modified values, RF pressure) — "arbitrary value pathing" = new projection stack +
-  semiring tag, zero kernel change. All field outputs are ORDINARY property columns
+  authored algebra data, zero kernel change. All field outputs are ORDINARY property columns
   (homogeneous lanes) and therefore **born STEAD anchors** per P0(e) — triad outputs are STEAD
   inputs, recursively; STEAD commitments bind to their bands like any emission band (this IS
   the guaranteed STEAD access — no separate access mechanism exists or is needed).
   **Border/chokepoint semantics are DERIVED OBSERVABLES, never services (the Gu-Yang border
-  door — positive complement to the withdrawn doctrine):** Gu-Yang's saturation IS the border
-  mechanism — opposing conservative fluxes meet and stall, and the stall locus is the front.
+  door — positive complement to the withdrawn doctrine):** Gu-Yang's SPATIAL CANCELLATION is the
+  border mechanism — opposed conservative fluxes cancel where they meet, and that locus is the
+  front. Saturation is one admitted flux regime, not the definition: a non-saturating opposed-flux
+  front is equally a Gu-Yang front (the restored lineage, core §7).
   The sanctioned derivations are sealed EML comparative projections over co-located field
-  columns: **dominance** (argmax over competing emitter classes + margin top1−top2 — 2-3
-  columns regardless of N owners; deterministic authored tie-break), **border** (sign-flip
-  band of the margin), **contest/border-pressure** (flux-stall magnitude; both-strong at small
-  margin), **chokepoint** (band conjunction: contested border ∧ PALMA low-`D` corridor). Each
+  columns: **dominance** (argmax over competing emitter classes + margin top1−top2, which is
+  NON-NEGATIVE by construction — 2-3 columns regardless of N owners; deterministic authored
+  tie-break), **border** (WINNER-IDENTITY CHANGE across canonical adjacency — the graduated
+  spatial-contract law; the old "sign flip of the margin" rule is superseded, it misses equal-margin
+  winner swaps such as A9/B8 → A8/B9), **contest/border-pressure** (flux-stall magnitude;
+  both-strong at small margin), **chokepoint** (band conjunction: contested border ∧ PALMA low-`D` corridor). Each
   is an anchored column — front-formed/hardened/chokepoint-emerged arrive as sealed band
   crossings for free. Border/contour/frontline SERVICES (tracers, polyline engines, border
   objects) are constitutional violations — polyline extraction is presentation-side
@@ -681,11 +690,14 @@ Phase 7 is the intrinsic ActionBand facility (`multi-axis-ActionBand-STEAD.md`, 
 `actionband-*`), and movement is a born-mortal spatial vendorization at 7.4 whose readback is an
 ordinary projection of ActionBand state at 7.5, never a peer seam. Anything new of that shape
 fails admission.
-**Emergence-first (the prize law).** Every phase carries a 12.10-style emergence falsifier:
-authored-parameter changes must produce qualitatively different, UNSCRIPTED macro outcomes; a
-phase that leaves the mechanism sound but the dynamics inert — over-quantized bands, over-
-constrained admission, scripted outcomes, dead attractors — FAILS its exit-proof regardless of
-green checks. P1 bounded-horizon and P2 one-shared-rule are preserved as the conditions under
+**Emergence-first (the prize law — final disposition, engineering-converged 2026-09-08).** Three
+things are distinct and all three are true: (a) the closed invariant set is the generic substrate
+CORRECTNESS proof surface; (b) an emergence check is a DEMONSTRATION — it never mints a new generic
+invariant or a reusable scenario-shaped referee; (c) an Owner/DA-authored EXPLICIT
+product-acceptance criterion may require demonstrated emergence for a NAMED rung or phase, and
+where such a criterion is authored, a phase that leaves the mechanism sound but the dynamics inert
+— over-quantized bands, over-constrained admission, scripted outcomes, dead attractors — FAILS
+that named exit-proof regardless of green checks. P1 bounded-horizon and P2 one-shared-rule are preserved as the conditions under
 which Wei’s emergence generalizes (per the paper); band ladders quantize the READING never the
 FIELD, so the continuous dynamics that carry the emergence are never discretized away.
 Promotion, not rewrite — existing code keeps working at every rung. Intrinsic ≠ implicit:

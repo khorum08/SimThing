@@ -1,9 +1,13 @@
 # SimThing — Design 0.0.8.3 Constitution (unified; ClauseThing vertical closed)
 
 > **Status: ACTIVE constitution (promoted 2026-06-15, executive design authority).** Supersedes
-> [`design_0_0_8_1.md`](design_0_0_8_1.md) (now SUPERSEDED-but-cited). It sits *beneath*
-> [`simthing_core_design.md`](simthing_core_design.md) — the permanent paradigm — and *above* the
-> production tracks. This version **carries §0 (the transient constitution) forward verbatim** per §0's
+> [`design_0_0_8_1.md`](design_0_0_8_1.md) (now SUPERSEDED-but-cited). **Doctrinal precedence
+> (unified law, Owner-ruled 2026-09-08): [`simthing_core_design.md`](simthing_core_design.md) — the
+> living paradigm/Core — is the HIGHEST doctrinal tier; this versioned constitution is below it;
+> track/rung law is below that; records are non-binding. The latest unified SimThing laws supersede
+> all older laws: a graduated change may alter the paradigm only by amending Core atomically in that
+> same change, and any unamended conflict is a STOP.** ("Beneath"/"above" elsewhere in this corpus
+> describe this precedence order, never the reverse.) This version **carries §0 (the transient constitution) forward verbatim** per §0's
 > own propagation mandate, **ratifies the closed ClauseThing / MapThing / MapGeneratorCLI vertical**
 > (§A), and **incorporates the predecessor's still-binding mechanics by explicit reference** (§B) — no
 > binding doctrine is silently dropped (§0.6).
@@ -168,8 +172,11 @@ fix is a **fixed, small, citable base harness on every production PR track**:
    `Threshold` + `EmitEvent` → `BoundaryRequest`.
 5. **`simthing-sim` is semantic-free; exact claims carry CPU-oracle bit-exact parity** (§2.6). Semantics
    compile away to flat `AccumulatorOp` / overlay / threshold registrations.
-6. **Proven only through a real reduction** (`invariants.md` "Scenario Proof"); **opt-in / default-off**,
-   no default wiring without a gate. A CPU math module is an oracle, never the proof.
+6. **Proven only through a real reduction** (`invariants.md` "Scenario Proof"). Core-mechanism
+   participation is DERIVED at admission from admitted data (typed, bounded, explicit opt-out;
+   sparse/inert when no admitted datum exists — the graduated P1/P5 law superseding the old
+   blanket default-off rule); diagnostic previews and explicitly optional facilities may remain
+   default-off behind their gates. A CPU math module is an oracle, never the proof.
 
 If a change cannot be expressed within 1–6, that is the signal to **escalate to design authority** — not
 to add a special case. The checklist is six lines on purpose: a low-context agent will hold six lines and

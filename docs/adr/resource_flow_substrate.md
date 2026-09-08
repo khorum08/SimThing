@@ -1,6 +1,12 @@
 # ADR: Resource Flow Substrate
 
-**Status:** Accepted  
+**Status:** Accepted — SUPERSEDED IN PART (2026-09-08 retrieval-convergence): the latest
+unified SimThing laws supersede all older statements herein (Owner-ruled). In particular,
+"participation requires a selector" is superseded by the graduated P1 law — participation
+DERIVES at admission from admitted resource properties + the parent edge, typed, bounded,
+inspectable, with ambiguity refusing; and `ResidentRequired` is the ordinary market posture
+(canon `simthing_core_design.md` §8.3–§8.4 governs). Bounded caps, explicit-refusal, and
+channel-identity law herein remain live.  
 **Date:** 2026-05-26  
 **Authors:** Opus 4.7 (synthesis), with critique from Gemini and ChatGPT, and design picks by project owner  
 **Extends:** `docs/adr_accumulator_op_v2.md` (the AccumulatorOp v2 primitive is the substrate this ADR builds on)  
@@ -180,7 +186,10 @@ total OrderBand depth used, and any rejected-risk diagnostics.
 
 ```
 Capability is universal       — any SimThing CAN participate.
-Participation is explicit     — admission requires a selector.
+Participation is derived      — typed, bounded, inspectable derivation at admission
+                                from resource properties + parent edge; ambiguity
+                                refuses (graduated P1 law; supersedes the original
+                                "requires a selector" rule).
 Expansion is bounded          — every arena declares hard caps.
 Unsafe content is rejected    — at import / session build, not at runtime.
 ```

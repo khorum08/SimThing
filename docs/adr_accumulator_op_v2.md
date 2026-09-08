@@ -165,9 +165,11 @@ discipline. See `docs/workshop/c8_eml_transfer_intensity_design.md` §1–§2
 for the full framework. Summary:
 
 - **C-8 production baseline:** the `ExactDeterministic` class — no
-  transcendentals, ≤16 nodes, deterministic IEEE-754 ops only, bit-exact
-  CPU↔GPU. This is the only class admitted by production consumers at
-  C-8 landing.
+  UNADMITTED transcendentals (the separately admitted exact primitives
+  `EXP`/`LN` — core §4.1 `ExactPrimitiveAdmission`, sealed domain/guard +
+  qualified arithmetic — participate exactly), ≤16 nodes, deterministic
+  IEEE-754 ops only, bit-exact CPU↔GPU. This was the only class admitted
+  by production consumers at C-8 landing.
 - **Future-prepped classes:** the registry, node buffer, and validator
   structurally support `SoftDeterministic` (deterministic approximations
   with documented `max_abs_error`), `FastApproximate` (vendor-native
