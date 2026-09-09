@@ -2998,3 +2998,8 @@ date	role	query	anchors_served	hit
 2026-09-08T23:48:58Z	da	--grep orientation-harness-core	orientation-harness-core	hit
 2026-09-09T02:06:08Z	coding	--domain rehearsal-0088	rehearsal-0088-acceptances,rehearsal-0088-binding-laws,rehearsal-0088-combat-contract,rehearsal-0088-construction-contract,rehearsal-0088-exposure-matrix,rehearsal-0088-growth,rehearsal-0088-ladder,rehearsal-0088-legacy-census,rehearsal-0088-measurement,rehearsal-0088-mission,rehearsal-0088-movement-contract,rehearsal-0088-pillars,rehearsal-0088-routing	hit
 2026-09-09T02:13:23Z	coding	--domain rehearsal-0088	rehearsal-0088-acceptances,rehearsal-0088-binding-laws,rehearsal-0088-combat-contract,rehearsal-0088-construction-contract,rehearsal-0088-exposure-matrix,rehearsal-0088-growth,rehearsal-0088-ladder,rehearsal-0088-legacy-census,rehearsal-0088-measurement,rehearsal-0088-mission,rehearsal-0088-movement-contract,rehearsal-0088-pillars,rehearsal-0088-routing	hit
+2026-09-09T11:08:37Z	coding	--domain rehearsal-0088	rehearsal-0088-acceptances,rehearsal-0088-binding-laws,rehearsal-0088-charter,rehearsal-0088-combat-contract,rehearsal-0088-construction-contract,rehearsal-0088-exposure-matrix,rehearsal-0088-growth,rehearsal-0088-ladder,rehearsal-0088-legacy-census,rehearsal-0088-measurement,rehearsal-0088-mission,rehearsal-0088-movement-contract,rehearsal-0088-pillars,rehearsal-0088-routing	hit
+2026-09-09T11:09:02Z	coding	--grep orientation-harness-core|scanner-selftest-delta-gate	none	none
+2026-09-09T11:09:17Z	coding	--grep orientation-harness-core	orientation-harness-core	hit
+2026-09-09T11:09:17Z	coding	--grep scanner-selftest-delta-gate	scanner-selftest-delta-gate	hit
+2026-09-09T11:09:17Z	coding	--grep rehearsal-0088-ladder	rehearsal-0088-ladder	hit
