@@ -1,0 +1,6 @@
+crates/simthing-clausething/src/rehearsal_ingress_fidelity_0.rs
+crates/simthing-clausething/src/hydrate_scenario.rs
+crates/simthing-clausething/src/lib.rs
+crates/simthing-clausething/tests/rehearsal_ingress_fidelity_0.rs
+docs/tests/rehearsal_ingress_fidelity_0_results.md
+scripts/ci/test_inventory.tsv

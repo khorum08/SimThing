@@ -1,0 +1,3 @@
+docs/0_0_8_8_Integrated_SimThing_Rehearsal.md
+docs/orchestrator_orientation.md
+scripts/ci/doctrine_anchors.tsv

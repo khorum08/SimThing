@@ -1,4 +1,10 @@
 class_id	scope_globs	envelope	requirements	status	promotion_blocker
+rehearsal-authored-scenario	scenarios/**|docs/tests/rehearsal_scenario_*_results.md	0.0.8.8-integrated-rehearsal	tested_code_sha|coverage_basis|ci_green	active	0088-CHARTER-ROUTING-0
+rehearsal-ingress-mapping	crates/simthing-clausething/src/rehearsal_*|crates/simthing-clausething/tests/rehearsal_*|crates/simthing-mapeditor/tests/rehearsal_ingress_*	0.0.8.8-integrated-rehearsal	tested_code_sha|coverage_basis|ci_green	active	0088-CHARTER-ROUTING-0
+rehearsal-studio-presentation	crates/simthing-mapeditor/src/rehearsal_*|crates/simthing-mapeditor/tests/rehearsal_studio_*|docs/tests/rehearsal_studio_*_results.md	0.0.8.8-integrated-rehearsal	tested_code_sha|coverage_basis|ci_green	active	0088-CHARTER-ROUTING-0
+rehearsal-measurement	crates/simthing-workshop/src/rehearsal_*|crates/simthing-workshop/tests/rehearsal_perf_*|docs/tests/rehearsal_perf_*_results.md	0.0.8.8-integrated-rehearsal	tested_code_sha|coverage_basis|ci_green	active	0088-CHARTER-ROUTING-0
+rehearsal-lifecycle-integration	crates/simthing-driver/tests/rehearsal_*|crates/simthing-sim/tests/rehearsal_*|crates/simthing-core/tests/rehearsal_*|crates/simthing-spec/tests/rehearsal_*|crates/simthing-workshop/tests/rehearsal_lifecycle_*	0.0.8.8-integrated-rehearsal	tested_code_sha|coverage_basis|ci_green	active	0088-CHARTER-ROUTING-0
+rehearsal-doc-graduation	docs/0_0_8_8_Integrated_SimThing_Rehearsal.md	0.0.8.8-integrated-rehearsal	tested_code_sha|coverage_basis|ci_green	active	0088-CHARTER-ROUTING-0
 corpus-baseline	docs/tests/cc_baseline_0_results.md|scripts/ci/test_inventory.tsv	0.0.8.4.8-corpus-clearance	tested_code_sha|coverage_basis	retired	CC-BASELINE-0
 corpus-sweep	crates/*/tests/*.rs|crates/*/tests/**/*.rs|scripts/ci/test_inventory.tsv|docs/tests/cc_sweep_*_results.md	0.0.8.4.8-corpus-clearance	tested_code_sha|coverage_basis|ci_green|no_engine_src	active	CC-SWEEP-PREFLIGHT-0
 corpus-module-marker-sweep	scripts/ci/test_inventory.tsv|docs/tests/cc_sweep_*_module_markers_results.md	0.0.8.4.8-corpus-clearance	tested_code_sha|coverage_basis|ci_green|no_engine_src	active	CC-SWEEP-MODULE-MARKER-PREFLIGHT-0

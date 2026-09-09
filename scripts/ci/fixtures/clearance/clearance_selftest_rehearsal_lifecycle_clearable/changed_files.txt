@@ -1,0 +1,3 @@
+crates/simthing-driver/tests/rehearsal_lifecycle_fleet_birth_0.rs
+docs/tests/rehearsal_lifecycle_fleet_birth_0_results.md
+scripts/ci/test_inventory.tsv

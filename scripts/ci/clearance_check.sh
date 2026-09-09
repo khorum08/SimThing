@@ -1826,6 +1826,16 @@ run_selftest() {
     clearance_selftest_actionband_full_vendor_rejects_engine_src
     clearance_selftest_actionband_full_vendor_rejects_gate_wiring
     clearance_selftest_actionband_full_vendor_rejects_anchor_reach_log
+    clearance_selftest_rehearsal_scenario_clearable
+    clearance_selftest_rehearsal_scenario_rejects_engine_src
+    clearance_selftest_rehearsal_ingress_clearable
+    clearance_selftest_rehearsal_ingress_rejects_census
+    clearance_selftest_rehearsal_studio_clearable
+    clearance_selftest_rehearsal_studio_rejects_lockfile
+    clearance_selftest_rehearsal_measurement_clearable
+    clearance_selftest_rehearsal_lifecycle_clearable
+    clearance_selftest_rehearsal_docgrad_stamp_clearable
+    clearance_selftest_rehearsal_docgrad_rejects_anchor_table
     clearance_selftest_tp_closed_track_no_longer_clearable
     clearance_selftest_triage_ancestor_evidence_tail_ok
     clearance_selftest_triage_ancestor_code_delta_missing
