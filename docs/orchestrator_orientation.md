@@ -44,9 +44,10 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | precedented_classes.tsv | 19105ec83b268a5e48a1e14bc5befd389139f100fc10cdbe8e9285a7cd773032 |
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
-| active_track.txt | 17fb2e1e3b331fb68580e486431596c9f111b99f4b9de9699d57bf604f37a20c |
+| active_track.txt | c8af5e3de55f93ee23dce220a71f9c71435e56fdd131d55ab1ca7a6e07da9a58 |
+| 0_0_8_8_Integrated_SimThing_Rehearsal.md | 961e6d9ef783abe275847297dbc75afe58bf5294620c472eb87fab79910a01d8 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 8b82f0c4387504bd6f8fc35b3eec97706cd5ffd6a1bd0d7a279d80eb4b83971f |
+| doctrine_anchors.tsv | 9a2ccba1b8ab541e08400c4396a1363b923e3502e26304ddf0bd3ac74371feb2 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -63,21 +64,32 @@ Specialization citizens: spatial=2 owner-seat=2 session-root=1 (SpecSessionState
 Property admission: anchored=1 unobserved=1 total=2 (SpecSessionState.property_admission; source `property_admission_inventory.tsv`).
 Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admission_inventory.tsv`).
 
-## Active Track / Rung Summary
+## Active Track / Rung Summary (`0_0_8_8_Integrated_SimThing_Rehearsal.md`)
 
-No active production track is set.
+Track state: `open`
 
-Run:
-
-```bash
-bash scripts/ci/gen_orientation.sh --open docs/<track>.md
-```
-
-to open or create a production track before assigning coding work.
+| # | rung | deliverable | exit proof |
+| --- | --- | --- | --- |
+| 0.1 | 0088-CHARTER-ROUTING-0 | Admit the StemThing-first mission and precedence; complete 0.0.8.7 exposure matr | PROPOSED |
+| 0.2 | 0088-BASELINE-0 | Consume the performance leases; restore the stale Gu-Yang gather-vs-tiled measur | PROPOSED |
+| 1.1 | 0088-INGRESS-FIDELITY-0 | Full paradigm convergence of ClauseThing lowering, projection/hydration, the Stu | PROPOSED |
+| 1.2 | 0088-STUDIO-SLICE-0 | First `stellaristhing_base.clause`: two factions, a live source/sink resource pa | PROPOSED |
+| 1.3 | 0088-UI-PROTOTYPE-0 | Early native-UI prototype: one real pane + live observation through the same con | PROPOSED |
+| 2.1 | 0088-CONSTRUCTION-LIFECYCLE-0 | Execute the §5.3 contract: Model 1 (ordinary settled work-in-progress inventory) | PROPOSED |
+| 2.2 | 0088-ECONOMY-FLEET-0 | Resource chain, storage, upkeep, finite capacity, scarcity/recovery, and genuine | PROPOSED |
+| 2.3 | 0088-POLICY-CONTINUATION-0 | Authored policy/reuse variants; cancellation, membership, and checkpoint continu | PROPOSED |
+| 2.4 | 0088-MOVEMENT-0 | Execute the §5.4 contract: paid local transitions under bound partial-work ident | PROPOSED |
+| 2.5 | 0088-COMBAT-0 | Execute the §5.5 contract: sealed-Current eligibility, funded finite output, ord | PROPOSED |
+| 2.6 | 0088-INTEGRATED-ACCEPTANCE-0 | Compose the full cycle — economy → birth → movement → combat → capacity release  | PROPOSED |
+| 3.1 | 0088-APPLICATION-PERFORMANCE-0 | Execute current-path measurements for EVERY load-bearing exposure-matrix row on  | PROPOSED |
+| 3.2 | 0088-CONTINUATION-RELIABILITY-0 | Deepen full-system save/restore/fork, remap, repeated load, observer pressure, a | PROPOSED |
+| 3.3 | 0088-SCALE-SOAK-0 | Execute the full frozen matrix and long-run growing/churning natural profiles; m | PROPOSED |
+| 4.1 | 0088-CONVERGENCE-0 | Complete all pre-authorized converge-or-retire census actions; exposure reconcil | PROPOSED |
+| 4.2 | 0088-CLOSEOUT-0 | Final substrate engineering review, representative workload demonstration, resea | PROPOSED |
 
 ## Next Rung Pointer
 
-Active pointer: `none`
+Active pointer: `0088-CHARTER-ROUTING-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
