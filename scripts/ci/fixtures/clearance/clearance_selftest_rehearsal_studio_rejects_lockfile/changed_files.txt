@@ -1,0 +1,4 @@
+crates/simthing-mapeditor/src/rehearsal_studio_slice_0.rs
+crates/simthing-mapeditor/tests/rehearsal_studio_slice_0.rs
+docs/tests/rehearsal_studio_slice_0_results.md
+Cargo.lock
