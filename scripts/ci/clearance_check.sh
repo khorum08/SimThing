@@ -1836,6 +1836,9 @@ run_selftest() {
     clearance_selftest_rehearsal_lifecycle_clearable
     clearance_selftest_rehearsal_docgrad_stamp_clearable
     clearance_selftest_rehearsal_docgrad_rejects_anchor_table
+    clearance_selftest_rehearsal_measurement_reachlog_clearable
+    clearance_selftest_rehearsal_measurement_rejects_anchor_tables
+    clearance_selftest_rehearsal_docgrad_rejects_reach_log
     clearance_selftest_tp_closed_track_no_longer_clearable
     clearance_selftest_triage_ancestor_evidence_tail_ok
     clearance_selftest_triage_ancestor_code_delta_missing

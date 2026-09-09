@@ -1,0 +1,7 @@
+crates/simthing-workshop/src/rehearsal_perf_guyang_gather_0.rs
+crates/simthing-workshop/src/lib.rs
+crates/simthing-workshop/tests/rehearsal_perf_guyang_gather_0.rs
+docs/tests/rehearsal_perf_guyang_gather_0_results.md
+scripts/ci/closeout_artifacts.tsv
+scripts/ci/test_inventory.tsv
+scripts/ci/anchor_reach_log.tsv

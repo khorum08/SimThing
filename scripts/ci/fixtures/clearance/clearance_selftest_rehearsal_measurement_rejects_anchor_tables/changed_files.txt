@@ -1,0 +1,4 @@
+crates/simthing-workshop/src/rehearsal_perf_guyang_gather_0.rs
+crates/simthing-workshop/tests/rehearsal_perf_guyang_gather_0.rs
+docs/tests/rehearsal_perf_guyang_gather_0_results.md
+scripts/ci/doctrine_anchors.tsv

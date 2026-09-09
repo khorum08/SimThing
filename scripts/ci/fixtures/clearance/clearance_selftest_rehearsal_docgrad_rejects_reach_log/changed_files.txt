@@ -1,0 +1,4 @@
+docs/0_0_8_8_Integrated_SimThing_Rehearsal.md
+docs/orchestrator_orientation.md
+scripts/ci/active_track.txt
+scripts/ci/anchor_reach_log.tsv
