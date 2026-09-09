@@ -12,6 +12,8 @@ pub mod persistent_bench;
 mod persistent_bench_report;
 mod report;
 pub mod resident_clearing_plan;
+pub mod rehearsal_perf_guyang_gather_0;
+pub mod rehearsal_perf_tr_composite_0;
 pub mod transfer_contention;
 mod transfer_contention_report;
 pub mod typeface;
