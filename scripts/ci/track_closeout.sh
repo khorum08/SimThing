@@ -3367,6 +3367,48 @@ def cmd_prove():
             "rungclose-duplicate-exact-ladder-identity-fails-closed",
             len(exact_ladder_rows(duplicate_fixture, "EXACT-RUNG-0")) == 2,
         )
+
+        # 6. Chartered graduation-shape predicate (0.0.8.8 O* ladders; DA gate
+        # repair per orchestrator relay 5603258040). Self-contained fixture
+        # rows — never the live pointer (banked #2008 lesson).
+        ostar_row = (
+            "| 0.2 | `OSTAR-RUNG-0` | scope | exit prose | O\\* within the "
+            "Measurement class; D otherwise — lane | ORCHESTRATOR-GRADUATED / "
+            "merged #2020 @ 901a82e6 |"
+        )
+        check("rungclose-ostar-status-stamp-passes",
+              not graduation_stamp_failures(ostar_row))
+        d_row_ostamp = (
+            "| 1.1 | `D-RUNG-0` | scope | exit prose | D — Fable | "
+            "ORCHESTRATOR-GRADUATED / merged #9 @ abcdef0 |"
+        )
+        check("rungclose-d-row-rejects-orchestrator-stamp",
+              any("does not authorize" in f
+                  for f in graduation_stamp_failures(d_row_ostamp)))
+        d_row_single = (
+            "| 0.1 | `D-RUNG-0` | scope | exit prose | D — Fable | "
+            "DA-GRADUATED / merged #2017 @ f6deb94a |"
+        )
+        check("rungclose-six-column-da-single-stamp-passes",
+              not graduation_stamp_failures(d_row_single))
+        legacy_row = (
+            "| 2 | `EXACT-RUNG-0` | exact | DA-GRADUATED merged #2 @ feedbee "
+            "| DA-GRADUATED |"
+        )
+        check("rungclose-legacy-two-cell-da-passes",
+              not graduation_stamp_failures(legacy_row))
+        unstamped_row = (
+            "| 3 | `OPEN-RUNG-0` | scope | exit prose | O\\* — lane | PROPOSED |"
+        )
+        check("rungclose-missing-stamp-fails",
+              any("no graduation stamp" in f
+                  for f in graduation_stamp_failures(unstamped_row)))
+        mixed_row = (
+            "| 4 | `MIX-RUNG-0` | scope | exit prose | O\\* — lane | "
+            "DA-GRADUATED ORCHESTRATOR-GRADUATED merged #5 @ abcdef0 |"
+        )
+        check("rungclose-mixed-stamps-fail",
+              any("mixed" in f for f in graduation_stamp_failures(mixed_row)))
     finally:
         ACTIVE_TRACK = saved_active_track
         shutil.rmtree(rungclose_dir, ignore_errors=True)
@@ -3435,6 +3477,41 @@ def exact_ladder_rows(text: str, rung: str) -> list[str]:
     return rows
 
 
+def graduation_stamp_failures(row: str) -> list[str]:
+    """Chartered graduation-shape predicate (0.0.8.8 flattening; DA gate
+    repair per orchestrator relay 5603258040). Graduation authority lives in
+    the row's Graduation column (cells[-3]): a cell admitting O* accepts
+    ORCHESTRATOR-GRADUATED in the Status cell; a D-only cell requires
+    DA-GRADUATED. Legacy two-cell DA ladders (0.0.8.7 shape) and the
+    six-column single-Status-stamp shape are both lawful for DA rows. Mixed
+    stamps in one row are corrupt. Conditional-authority prose (e.g. "D if
+    capability; O* otherwise") is admitted at this tier: which route actually
+    ran is enforced upstream by clearance routing and the graduator's ritual;
+    this gate is the backstop for stamp shape, not a re-adjudication."""
+    out: list[str] = []
+    cells = [c.strip() for c in row.split("|")]
+    authority_cell = cells[-3] if len(cells) >= 4 else ""
+    da_stamped = [c for c in cells if "DA-GRADUATED" in c]
+    orch_stamped = [c for c in cells if "ORCHESTRATOR-GRADUATED" in c]
+    authorizes_orch = ("O\\*" in authority_cell) or ("O*" in authority_cell)
+    if orch_stamped:
+        if not authorizes_orch:
+            out.append(
+                "status reads ORCHESTRATOR-GRADUATED but the row's Graduation "
+                "column does not authorize O*; D-reserved rows require "
+                "DA-GRADUATED"
+            )
+        if da_stamped:
+            out.append("mixed DA/ORCHESTRATOR graduation stamps in one row")
+    elif not da_stamped:
+        out.append(
+            "no graduation stamp: the Status cell must read DA-GRADUATED "
+            "(D rows) or ORCHESTRATOR-GRADUATED (O* rows); stamp-at-merge is "
+            "machine truth"
+        )
+    return out
+
+
 def cmd_rungclose() -> int:
     """DA-facing rung graduation gate (Owner mandate 2026-07-30).
 
@@ -3472,13 +3549,7 @@ def cmd_rungclose() -> int:
             f"duplicate exact rung rows in {workplan.name}: {len(matching_rows)}"
         )
     else:
-        cells = [c.strip() for c in row.split("|")]
-        stamped = [c for c in cells if "DA-GRADUATED" in c]
-        if len(stamped) < 2:
-            failures.append(
-                "exit-proof and status cells must BOTH read DA-GRADUATED "
-                f"(found {len(stamped)}); stamp-at-merge is machine truth"
-            )
+        failures.extend(graduation_stamp_failures(row))
         if not re.search(r"merged #\d+ @ [0-9a-f]{7,}", row):
             failures.append("graduation stamp lacks 'merged #<PR> @ <sha>'")
         if "PROBATION" in row:
