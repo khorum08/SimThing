@@ -26,3 +26,5 @@ crates/simthing-sim/src/grant_disbursement.rs	rf-market-core,constrained-clearin
 crates/simthing-core/src/grant_lifecycle.rs	rf-market-core,constrained-clearing
 crates/simthing-spec/src/spec/flow_market.rs	rf-market-core,constrained-clearing
 crates/simthing-kernel/src/clearing_weight_projection.rs	rf-market-core,constrained-clearing
+scenarios/**	rehearsal-0088,scenario-candidate-home
+docs/0_0_8_8_Integrated_SimThing_Rehearsal.md	rehearsal-0088,orientation
