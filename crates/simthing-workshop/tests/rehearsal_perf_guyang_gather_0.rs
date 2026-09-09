@@ -162,7 +162,7 @@ fn current_gather_and_retained_tiled_have_exact_field_parity_and_paired_samples(
             "seed": 0, "source_policy": "deterministic inherited sparse pulse; no RNG",
             "simulation_buffer_inventory_bytes": {
                 "tiled_persistent": 2*input.len()*4 + (width*width) as usize*4 + tiled_params_bytes,
-                "gather_persistent_source_derived": 2*input.len()*4 + (width*width) as usize*(4+8+4) + (4*width*(width-1)) as usize*std::mem::size_of::<simthing_core::AccumulatorInputGpu>() + 3*regs[0].resource_class().max_tree_nodes() as usize*std::mem::size_of::<simthing_core::EmlNodeGpu>(),
+                "gather_persistent_source_derived": 2*input.len()*4 + (width*width) as usize*(4+8+4) + (4*width*(width-1)) as usize*std::mem::size_of::<simthing_gpu::AccumulatorInputGpu>() + 3*regs[0].resource_class().max_tree_nodes() as usize*std::mem::size_of::<simthing_core::EmlNodeGpu>(),
                 "per_arm_proof_readback": input.len()*4, "timestamp_resolve_and_readback": 32,
                 "presentation": 0
             },
