@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | c8af5e3de55f93ee23dce220a71f9c71435e56fdd131d55ab1ca7a6e07da9a58 |
-| 0_0_8_8_Integrated_SimThing_Rehearsal.md | c07fe678449e881cf5e4cdd795b39cdce8cd4c0327e9f4626bfaa07cad6b044b |
+| 0_0_8_8_Integrated_SimThing_Rehearsal.md | 5a4d8aa38a058d5c0e5562c68d687c05cec4923574e482ade0e90a7e41611400 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | 12a6c6b7517e2930d22c791b15aee579626106690ab6182575c2887d0c907ab0 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -70,7 +70,7 @@ Track state: `open`
 
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 0.1 | 0088-CHARTER-ROUTING-0 | Admit the StemThing-first mission and precedence; complete 0.0.8.7 exposure matr | PROPOSED |
+| 0.1 | 0088-CHARTER-ROUTING-0 | Admit the StemThing-first mission and precedence; complete 0.0.8.7 exposure matr | **DA-GRADUATED / merged #2017 @ `f6deb94a`** (routing companion #2016 @ `98d6887c`) |
 | 0.2 | 0088-BASELINE-0 | Consume the performance leases; restore the stale Gu-Yang gather-vs-tiled measur | PROPOSED |
 | 1.1 | 0088-INGRESS-FIDELITY-0 | Full paradigm convergence of ClauseThing lowering, projection/hydration, the Stu | PROPOSED |
 | 1.2 | 0088-STUDIO-SLICE-0 | First `stellaristhing_base.clause`: two factions, a live source/sink resource pa | PROPOSED |
@@ -89,7 +89,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `0088-CHARTER-ROUTING-0`
+Active pointer: `0088-BASELINE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
