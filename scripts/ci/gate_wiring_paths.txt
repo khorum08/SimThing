@@ -20,7 +20,6 @@ scripts/ci/binding_conditions.tsv
 scripts/ci/clearance_ledger.tsv
 scripts/ci/doctrine_anchors.tsv
 scripts/ci/anchor_triggers.tsv
-scripts/ci/anchor_reach_log.tsv
 scripts/ci/anchor_query.sh
 scripts/ci/anchor_check.sh
 scripts/ci/scans.tsv
