@@ -1,11 +1,11 @@
 # 0.0.8.8 — Integrated SimThing Rehearsal
 
-> **Status: AUTHORED / UNOPENED (DA authoring pass, Owner-authorized 2026-09-08).** This is the
-> committed workplan document for the 0.0.8.8 track. The track is **not yet open**: every rung
-> below is PROPOSED, the active pointer is NOT on this doc, and no handoff is dispatched. The
-> Owner opens the track explicitly; Fable (DA) then sets the pointer via the standing
-> orientation machinery. `docs/design_0_0_8_8_*.md` is the SUBSEQUENT constitutional update,
-> authored only AFTER this rehearsal completes — doctrine codifies what the rehearsal proved.
+> **Status: COMMITTED / OPEN (Owner opening order 2026-09-09; authored 2026-09-08).** The
+> active pointer is on this doc; rung ladder = §3b (dispatch from §3b ONLY; §5 contracts carry
+> the design detail each rung references). Next-Rung pointer governs; ONE production rung in
+> flight at a time. Rung 0.1 `0088-CHARTER-ROUTING-0` is in flight DA-side (Fable authors the
+> charter). `docs/design_0_0_8_8_*.md` is the SUBSEQUENT constitutional update, authored only
+> AFTER this rehearsal completes — doctrine codifies what the rehearsal proved.
 >
 > **Controlling sources (binding, in order):** the SimThing Core Design (highest);
 > the 0.0.8.7 Unification ADR (landed API contract); then this workplan. Ruling chain:
@@ -110,9 +110,9 @@ performance findings for that same implementation.
 - **Conditional branches:** UI migration (§8, after the prototype decision); kernel
   optimization (§9, Owner-released only); decision-space horizon (§10, unminted).
 
-## 3b. Committed PR ladder (authored 2026-09-08; UNOPENED)
+## 3b. Committed PR ladder (Owner opening, 2026-09-09)
 
-**Cadence and protocol (binding at opening):** ONE production rung in flight at a time.
+**Cadence and protocol (binding):** ONE production rung in flight at a time.
 Handoffs via `handoff_dispatch.sh`. Graduation authority is the **Graduation column below**,
 independent of coder assignment. **O\*** = Orchestrator graduation: valid only after the named
 class exists at CHARTER, no reserve condition fires, and clearance + the row's exit-proof
@@ -441,10 +441,9 @@ sealed kernel/adapter change follows the full DA + E8 process.
 
 ## 10. Open conditions and closeout predicate
 
-**Open conditions:** (1) the track itself — Owner opens; DA sets the pointer; the opening PR
-also wires the `rehearsal-0088` trigger domain onto the engine-crate globs and cross-lists the
-rehearsal anchors into their neighbor domains (deferred from authoring so unopened-track
-relays are unaffected); (2) the §6.3
+**Open conditions:** (1) ~~the track itself~~ — DISCHARGED 2026-09-09: Owner opened the
+track; the opening PR set the pointer, wired the `rehearsal-0088` trigger domain onto the
+engine-crate globs, and cross-listed the rehearsal anchors into their neighbor domains; (2) the §6.3
 discriminator decision at CHARTER; (3) the 1.3 UI decision; (4) the §9 optimization release;
 (5) the decision-space horizon (`0088-DECISION-SPACE-DESIGN-0` → `-PROBE-0`, unminted,
 opened only by Owner election per proposal §3.8 — never gating movement/combat delivery);

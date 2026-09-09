@@ -24,6 +24,8 @@ role: coding
 orientation_rule_stamp: 180916564d4455a2
 ANCHOR-ACK: orientation-harness-core@8a365d1c0864
 ANCHOR-ACK: scanner-selftest-delta-gate@34fb2662baae
+ANCHOR-ACK: rehearsal-0088-ladder@da89db77f75b
+ANCHOR-ACK: rehearsal-0088-routing@ac4e7d2c5a61
 
 ## Scope Ledger
 
