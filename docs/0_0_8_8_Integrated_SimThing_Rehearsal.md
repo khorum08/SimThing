@@ -110,9 +110,9 @@ performance findings for that same implementation.
 - **Conditional branches:** UI migration (§8, after the prototype decision); kernel
   optimization (§9, Owner-released only); decision-space horizon (§10, unminted).
 
-## 3b. Committed PR ladder (Owner opening, 2026-09-09)
+## 3a. Cadence and graduation protocol (binding)
 
-**Cadence and protocol (binding):** ONE production rung in flight at a time.
+ONE production rung in flight at a time.
 Handoffs via `handoff_dispatch.sh`. Graduation authority is the **Graduation column below**,
 independent of coder assignment. **O\*** = Orchestrator graduation: valid only after the named
 class exists at CHARTER, no reserve condition fires, and clearance + the row's exit-proof
@@ -124,6 +124,18 @@ census/anchor/gate companion edit makes the affected PR D (conservative route; �
 novelty discovered mid-rung reserves. Growth PRs under P4 ride the active rung through their
 class envelopes. Scenario-born candidate code homes in `simthing-workshop`; default-delete at
 closeout stands. NEVER merge on red. Gate repairs are separate DA PRs landed between rungs.
+
+The six classes are REGISTERED (rung 0.1 companion #2016 @ `98d6887c`): `rehearsal-authored-scenario`,
+`rehearsal-ingress-mapping`, `rehearsal-studio-presentation`, `rehearsal-measurement`,
+`rehearsal-lifecycle-integration`, `rehearsal-doc-graduation` — in
+`scripts/ci/precedented_classes.tsv` (status active, retired at closeout) with envelopes in
+`scripts/ci/class_predicates.tsv` and ten routing demonstrations in the clearance selftest.
+**Trigger convention:** a rehearsal PR carries at least one `rehearsal_`-prefixed owning
+test/results file (or `scenarios/**` content, or the ladder doc for stamps) — that fires the
+class; already-existing files ride within the class envelope. The O\* stamp shape is exactly:
+this doc + `docs/orchestrator_orientation.md` + `scripts/ci/active_track.txt` — nothing else.
+
+## 3b. Committed PR ladder (Owner opening, 2026-09-09)
 
 | Rung | ID | Scope (contracts in §5) | Exit proof | Graduation — Coder | Status |
 |---|---|---|---|---|---|
@@ -344,6 +356,103 @@ machine. Cardinalities to record include distinct destination fields and admitte
 target eligibility edges, recipe lanes, pending structural products, retained work-in-progress,
 active vs reserved instance rows, selection/subscription count, and separately measured
 simulation vs presentation GPU memory.
+
+## 5.8 CHARTER rulings (rung 0.1, frozen 2026-09-09)
+
+The rung-0.1 products. Machine artifacts: the exposure matrix at
+`scripts/ci/rehearsal_exposure_matrix.tsv` (36 systems, every 0.0.8.7-landed law group traced
+to planned exposure; 20 load-bearing rows carrying instrument/baseline/candidate
+obligations); the pre-authorized conformance worklist at
+`scripts/ci/rehearsal_census_worklist.tsv` (every pre-StemThing live surface: converge /
+retire / conform-in-place, with its exact census transition ruled in advance, batched B1 at
+1.1, B2 at 4.1, B3 at closeout); the six graduation classes registered in
+`scripts/ci/class_predicates.tsv` + `scripts/ci/precedented_classes.tsv` with ten
+positive/negative routing fixtures in the clearance selftest. **File-prefix convention:** a
+rehearsal PR carries at least one `rehearsal_`-prefixed owning test or results file — that is
+the class trigger; existing files ride within the class envelope.
+
+### 5.8.1 The frozen specimen — "Meridian Arm"
+
+Two factions on one uneven seven-system arm. THREE relations, written separately:
+
+- **Spatial containment:** systems A–G; hyperlane spine A–B–C–D–E with branches E–F and E–G;
+  system C is empty transit — THE spatial bottleneck (its two spine edges carry authored
+  impedance 7 against 3–5 elsewhere). Sites: A1 (mine ×2, generator, refinery, shipyard),
+  A2 (mine), B1 (refinery + fleet host), D1 (mine, contested frontier), E1 (mine, generator,
+  refinery, shipyard), E2 (fleet host), F1 (mine), G1 (zero-production claim outpost — the
+  zero-valued PRESENT participant). Depth is uneven by construction: Terran industry reaches
+  galaxy→system→planet→facility→fleet→cohort (6); Pirate reaches 5.
+- **RF scope/transport:** every site's facilities are RF children of their site; sites of
+  their system; systems of the faction economy scope. >3 parent-child RF edges per faction;
+  hyperlanes are the admitted transport couplings; C's edges are the capacity bottleneck.
+- **Ownership/policy:** Terran Directorate owns A,B + claims D; Pirate Compact owns E,F,G +
+  contests D. Owner seats are policy/identity relations, never spatial containers. Policies:
+  TD "industrial consolidation" (persistence-weighted allocation, slow expiry); PC "raider
+  opportunism" (fleet-upkeep priority, fast expiry). Distinct authored policies ✓; two
+  owners ✓; >3 participating children each ✓.
+
+**Viable initial economy (frozen):** resources energy/minerals/alloys. Mine → 3 minerals/gen;
+generator → 2 energy/gen; refinery: 2 minerals + 1 energy → 1 alloy/gen; corvette recipe:
+6 alloys + 4 energy-work + 1 residency slot; upkeep 1 energy + 0.2 alloys/gen per corvette;
+repair 1 alloy → 1 HP/gen. Endowments: TD 20 minerals / 10 energy / 4 alloys; PC 14/8/3.
+Declared completion horizon: each faction completes ≥1 new corvette within 40 generations.
+Movement: propulsion 2 work/gen per fleet. Combat: corvette = 2 damage/gen output, 6 HP.
+**Time convention:** the generation is the atomic tick; Studio speed scales wall-clock
+scheduling only and never generation-stamped economics. Scaling variants multiply systems,
+site distributions, and endowments while preserving structure and distributions.
+
+### 5.8.2 Interchange and topology ruling
+
+The native `.clause` file plus an explicit declared dependency manifest is the authoring
+source of truth (self-contained preferred; a bundle uses relative paths + content
+identities). Canonical JSON remains a reproducible interchange/cache product with a stated
+contract — never an independently edited economic source; the Studio path adapter converges
+on the admitted loader (worklist row AUTHORING-INGRESS-CANONICAL-JSON). The projection's
+embedded-lattice rebind requirement becomes an explicit declared dependency or is converged
+away at 1.1. The blocked literal-install ingress is pre-ruled DELETED (worklist row). The
+programmatic-spec driver door stays canonical. No second IR.
+
+### 5.8.3 Discriminator decision — DECLINED at opening
+
+The mechanically checkable census-transition discriminator is NOT built now. Reasoning: the
+pre-authorized worklist plus B1/B2/B3 batching already concentrates protected edits into
+three DA increments, and every other ordinary increment routes O\* through the six classes —
+majority-O\* is achieved without touching the clearance self-application guard, whose blast
+radius on a false accept is the whole routing tier. **Revisit trigger (measured, not vibes):**
+if more than two rungs sit queued behind protected-edit batching (clearance ledger evidence),
+the DA may re-open this as its own gate-change rung with exact contracts and selftests.
+
+### 5.8.4 Measurement manifest (finite, owned)
+
+Reference tuple: the Owner's Windows 11 reference machine; exact adapter/driver/compiler
+recorded by `0088-BASELINE-0` and pinned for the track. Global stop conditions: ≥3
+repetitions, paired samplewise residuals (negatives retained), raw samples + exact command in
+the committed `docs/tests/rehearsal_perf_*_results.md` packet.
+
+| Run | What executes | Owner rung | Stop condition |
+|---|---|---|---|
+| M1 | Gu-Yang gather-vs-tiled restored in a contained current harness (A1 FIRST-RUNG PRECONDITION) | 0.2 | comparable packet produced; inherited ≤1.25×/1.5× gate applied or explicitly unresolved |
+| M2 | Frozen Phase-14.1 comparator rerun | 0.2 | byte-frozen contract respected; current numbers recorded as context |
+| M3 | Composite `T_R` defined + first capture (permit/barrier separate) | 0.2 | components reported without overlapping-interval sums |
+| M4–M14 | The eleven inherited research families (§5.7 of the review's §6.2 table: locality, materialization, settlement scale, E9a/E9b, identities, elision, carry, TreeVertical, multi-tree, workshop pivots, ClauseThing/Studio cost) — current-path only, on the integrated application + matched synthetic isolation | 3.1 (soak legs 3.3) | per-family constraint curve with first failure/service crossing attributed to its typed cause |
+| M15 | Source-to-ready, first display, frame/input tails, observation freshness on the growing scenario | 1.2→3.1 | service reference lines evaluated (p95 frame ≤16.7 ms, p95 input ≤100 ms, release, reference machine) — misses recorded honestly |
+| M16 | UI prototype comparison (paused/running, tails, input latency, memory) egui vs candidate | 1.3 | decision-grade packet; migration decision recorded |
+
+Every load-bearing exposure-matrix row maps to one of M1–M15; the matrix's
+`evidence_owner` column is binding. Growth that adds workload re-pins the profile digest
+before any comparison (P6).
+
+### 5.8.5 Named unresolved generic gaps (tracked, not deferred)
+
+- **G1 construction model:** Model 1 vs Model 2 resolves at 2.1 by the two-project/two-input
+  contention falsifier (§5.3). If Model 2, the capability lands with its first consumer in
+  the same window.
+- **G2 fractional movement progress binding:** existence verified when 2.4 executes §5.4; if
+  absent, one D row lands before 2.4's consumer.
+- **G3 per-target depletion bound in the ordinary transfer composition:** verified at 2.5
+  against §5.5 step 3; a genuine gap gets its admitted amendment before the consumer.
+- **G4 portable dependency manifest for `.clause` bundles:** shape settled at 1.1 with the
+  interchange ruling (§5.8.2).
 
 ## 6. Routing and graduation (flattened conservative route)
 
