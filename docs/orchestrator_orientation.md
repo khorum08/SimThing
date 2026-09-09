@@ -46,7 +46,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | 17fb2e1e3b331fb68580e486431596c9f111b99f4b9de9699d57bf604f37a20c |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 98ee31abfda7d138030e0682e8ccfe3e23df353214405ab7f3abcf36b605a408 |
+| doctrine_anchors.tsv | 8b82f0c4387504bd6f8fc35b3eec97706cd5ffd6a1bd0d7a279d80eb4b83971f |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |

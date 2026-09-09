@@ -441,7 +441,10 @@ sealed kernel/adapter change follows the full DA + E8 process.
 
 ## 10. Open conditions and closeout predicate
 
-**Open conditions:** (1) the track itself — Owner opens; DA sets the pointer; (2) the §6.3
+**Open conditions:** (1) the track itself — Owner opens; DA sets the pointer; the opening PR
+also wires the `rehearsal-0088` trigger domain onto the engine-crate globs and cross-lists the
+rehearsal anchors into their neighbor domains (deferred from authoring so unopened-track
+relays are unaffected); (2) the §6.3
 discriminator decision at CHARTER; (3) the 1.3 UI decision; (4) the §9 optimization release;
 (5) the decision-space horizon (`0088-DECISION-SPACE-DESIGN-0` → `-PROBE-0`, unminted,
 opened only by Owner election per proposal §3.8 — never gating movement/combat delivery);
