@@ -41,7 +41,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 
 | source | sha256 |
 | --- | --- |
-| precedented_classes.tsv | 19105ec83b268a5e48a1e14bc5befd389139f100fc10cdbe8e9285a7cd773032 |
+| precedented_classes.tsv | c8890246915d1847377e3b605bd8fd9bbc5fa7d0a55f4c2b95a9ed72d9324ab5 |
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | c8af5e3de55f93ee23dce220a71f9c71435e56fdd131d55ab1ca7a6e07da9a58 |
@@ -140,6 +140,12 @@ Without `novelty_basis`, clearance fails. Empty-class diffs with a valid admitte
 
 | class_id | envelope | requirements | status | promotion_blocker |
 | --- | --- | --- | --- | --- |
+| rehearsal-authored-scenario | scenarios/**\|docs/tests/rehearsal_scenario_*_results.md | 0.0.8.8-integrated-rehearsal | tested_code_sha\|coverage_basis\|ci_green | active |
+| rehearsal-ingress-mapping | crates/simthing-clausething/src/rehearsal_*\|crates/simthing-clausething/tests/rehearsal_*\|crates/simthing-mapeditor/tests/rehearsal_ingress_* | 0.0.8.8-integrated-rehearsal | tested_code_sha\|coverage_basis\|ci_green | active |
+| rehearsal-studio-presentation | crates/simthing-mapeditor/src/rehearsal_*\|crates/simthing-mapeditor/tests/rehearsal_studio_*\|docs/tests/rehearsal_studio_*_results.md | 0.0.8.8-integrated-rehearsal | tested_code_sha\|coverage_basis\|ci_green | active |
+| rehearsal-measurement | crates/simthing-workshop/src/rehearsal_*\|crates/simthing-workshop/tests/rehearsal_perf_*\|docs/tests/rehearsal_perf_*_results.md | 0.0.8.8-integrated-rehearsal | tested_code_sha\|coverage_basis\|ci_green | active |
+| rehearsal-lifecycle-integration | crates/simthing-driver/tests/rehearsal_*\|crates/simthing-sim/tests/rehearsal_*\|crates/simthing-core/tests/rehearsal_*\|crates/simthing-spec/tests/rehearsal_*\|crates/simthing-workshop/tests/rehearsal_lifecycle_* | 0.0.8.8-integrated-rehearsal | tested_code_sha\|coverage_basis\|ci_green | active |
+| rehearsal-doc-graduation | docs/0_0_8_8_Integrated_SimThing_Rehearsal.md | 0.0.8.8-integrated-rehearsal | tested_code_sha\|coverage_basis\|ci_green | active |
 | corpus-sweep | crates/*/tests/*.rs\|crates/*/tests/**/*.rs\|scripts/ci/test_inventory.tsv\|docs/tests/cc_sweep_*_results.md | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis\|ci_green\|no_engine_src | active |
 | corpus-module-marker-sweep | scripts/ci/test_inventory.tsv\|docs/tests/cc_sweep_*_module_markers_results.md | 0.0.8.4.8-corpus-clearance | tested_code_sha\|coverage_basis\|ci_green\|no_engine_src | active |
 | tp-suspended-demo | crates/simthing-workshop/src/suspended_demo.rs\|docs/tests/suspended_demo_results.md | 0.0.8.5-terran-pirate | tested_code_sha\|coverage_basis\|gpu_proof\|ci_green\|workshop_only\|no_engine_crate | suspended |
