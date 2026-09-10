@@ -61,3 +61,4 @@ TEST-BUDGET | codex/resident-session-integration-conformance-0 | green | 15.8 no
 TEST-BUDGET | codex/neutral-stream-termination-0 | green | NEUTRAL-STREAM-TERMINATION-0 | 1065654ee376636c5fd8453aa654b8efec977451
 TEST-BUDGET | codex/departing-stream-disposal-0 | green | DEPARTING-STREAM-DISPOSAL-0 | d86bc175e9fa01ecd5cbc10a1aff6360c7576f7a
 TEST-BUDGET | codex/0088-ingress-fidelity-0 | green | 0088-INGRESS-FIDELITY-0 bridge/UI leaf | 64524a81fc5eb5bce1c9688c36dc1a4048335242
+SPEC-LOWERER-KIND-READ | codex/0088-ingress-native-rf-0 | green | 0088-INGRESS-FIDELITY-0 native RF leaf | 66c36cf9523346757da099d2d202d507e0d51258
