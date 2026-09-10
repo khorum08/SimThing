@@ -1,8 +1,23 @@
 # 0088-INGRESS-FIDELITY-0: bridge convergence and post-RF publication reserve
 
-Status: **RESERVE return / incomplete / unmerged**. This packet does not close rung 1.1 or
-claim a green implementation leaf. The final tested checkpoint and command results are
-recorded in the Board return accompanying this committed packet.
+Status: **PROBATION / proof-present / clearance-pending / OPEN / UNMERGED** bridge/UI leaf.
+This packet does not close rung 1.1. The exact tested checkpoint and final check results are
+recorded in the PR and Board return accompanying this committed packet.
+
+Resume dispatch **5619313604**, ACK **5619921257**, HD-RECEIPT **`70df16e1babd`**.
+Live base **`b4452211a20162d31d2364df13dee62d1fe5edc8`**. DA repair #2031 discharged
+the publication and UI-caller reserves recorded below. After rebase, the retained publication
+test passed unchanged: all canonical observations equal completed RF producer output, including
+the formerly unselected child perturbation. Original reserve details remain historical evidence.
+
+The UI now uses `StudioAppState::try_adopt_loaded_scenario_session` to admit a live candidate
+before committing the document/settings. Its async loader keeps new geometry hidden and cancels
+it if admission fails, preserving the previous scene. Manual JSON load, picker load, candidate
+reopen and blank creation use the same transaction. Successful adoption clears the pending reset
+so the next bridge system cannot detach the replacement it just admitted. The owning UI test
+calls this actual transaction against a running session: rejection preserves the serialized
+document/settings, nonempty canonical observation, execution identity and tick progression;
+success changes the document and executes without a detach/reset. No `app/mod.rs` edit was needed.
 
 Dispatch: Board 5612687963. Resume ACK: 5612810803. HD-RECEIPT: `5926d344a075`.
 Coding ORIENT-RECEIPT: `28f56884d309`; all 48 anchor ACKs carried from Board 5612017867.
@@ -56,7 +71,7 @@ child to its actual owner. The running safety variant authors its Balance with t
 primary `Amount` role and requires nonempty observation rows. The original F1 input has only
 named roles and is retained unchanged in the preserved RED commit.
 
-## Confirmed reserve: canonical post-RF observation is stale
+## Historical reserve, discharged by #2031: canonical post-RF observation was stale
 
 Owning first consumer:
 `rehearsal_ingress_post_rf_observation_matches_born_allocations` in
@@ -78,9 +93,9 @@ Observed diagnostic values:
 | beta_3, formerly unselected | -4.1272726 | 7.8727274 | 0 |
 
 RF is active. The child perturbation reaches the actual producer output; the canonical
-observation remains stale. The retained test requires the canonical read to equal that
-completed output and then expose the child change. It remains **RED**, deliberately not
-ignored, inverted or replaced by a raw-read acceptance.
+observation remained stale before #2031. The retained test requires the canonical read to equal
+that completed output and then expose the child change. It is now **GREEN** solely from the
+substrate repair, without changing, ignoring, inverting or replacing its assertions.
 
 Code trace at the base engine implementation:
 
@@ -102,7 +117,7 @@ An exploratory second-owner multiplier change did not change producer allocation
 particular specimen. Only policy installation/preservation is proven here. The final
 policy-sensitive application stimulus remains open; no additional engine-policy gap is claimed.
 
-## Remaining ingress work and UI scope gap
+## Remaining ingress work and historical UI scope gap
 
 Native `.clause` / supported canonical-JSON convergence, G4 portable dependency identities,
 source file/span refusal provenance, full second-owner policy sensitivity, historical-stage
@@ -116,9 +131,10 @@ admission attempt. The async loader and manual/native open call sites are in
 admission to stage the live candidate before document/scene adoption and to avoid detaching
 an already admitted replacement. No edit to that surface was made. Orchestration should
 resolve this narrow scope gap with the engine reserve; it must not infer complete UI safety
-from the passing bridge test.
+from the passing bridge test. This caller gap is now discharged by the admitted UI transaction
+and its owning test described at the top of this packet.
 
-No pen renewals were performed: the three new owning tests have behavior-regression /
+No pen renewals were performed: the four new owning tests have behavior-regression /
 AUDIT / ledger-only rows under `0.0.8.8-integrated-rehearsal`, DSU 0. They reproduce concrete
 ingress and publication faults; no permanent-proof classification is claimed. No historical
 test was weakened or deleted.

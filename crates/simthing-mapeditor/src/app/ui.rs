@@ -76,6 +76,30 @@ use std::time::{Duration, Instant};
 pub(super) struct StudioUiPresentationParams<'w> {
     perf: ResMut<'w, StudioPerformanceTelemetryState>,
     frosted: ResMut<'w, crate::FrostedGlassPanelRegistry>,
+    bridge: NonSendMut<'w, crate::StudioLiveSessionBridge>,
+}
+
+impl StudioAppState {
+    /// Admit the complete live candidate before committing the document or presentation state.
+    /// The caller may reveal its prepared scene only after this transaction succeeds.
+    pub fn try_adopt_loaded_scenario_session(
+        &mut self,
+        session: StudioSession,
+        settings: &mut crate::settings::EditorSettings,
+        bridge: &mut crate::StudioLiveSessionBridge,
+        message: String,
+    ) -> Result<(), crate::studio_live_session_bridge::StudioLiveSessionBridgeError> {
+        bridge.open_from_loaded_studio_session(&session)?;
+        adopt_loaded_scenario_session(session, settings, self, message);
+        self.live_bridge_reset_requested = false;
+        self.live_bridge_readout = bridge.readout();
+        Ok(())
+    }
+
+    fn report_scenario_admission_failure(&mut self, error: impl std::fmt::Display) {
+        self.last_scenario_io_status = format!("Scenario admission failed: {error}");
+        self.status_message = self.last_scenario_io_status.clone();
+    }
 }
 
 enum ClauseLoaderWorkerMessage {
@@ -418,11 +442,31 @@ fn poll_clause_loader_jobs(
                 // Final batch complete: swap resource + adopt while parent stays Hidden.
                 let elapsed = adoption.elapsed_before_batches + adoption.batch_started.elapsed();
                 let build = adoption.build.take().expect("build present after complete");
+                let session = adoption.session.take().expect("session present for commit");
+                if let Err(error) = state.try_adopt_loaded_scenario_session(
+                    session,
+                    settings,
+                    &mut presentation.bridge,
+                    adoption.message.clone(),
+                ) {
+                    state
+                        .clause_scene_cleanup
+                        .push(cancel_batched_galaxy_scene(build));
+                    state.report_scenario_admission_failure(&error);
+                    state.scenario_library.observe_load_attempt(
+                        adoption.token,
+                        StudioLoaderStageEvent::Failed {
+                            stage: StudioLoaderStage::SceneAdopt,
+                            elapsed,
+                            message: error.to_string(),
+                        },
+                    );
+                    state.scenario_library.finish_load_attempt(adoption.token);
+                    state.loading_cover_active = false;
+                    return;
+                }
                 let (old_cleanup, pending_parent) = finish_batched_galaxy_scene(scene_root, build);
                 state.clause_scene_cleanup.push(old_cleanup);
-                let session = adoption.session.take().expect("session present for commit");
-                adopt_loaded_scenario_session(session, settings, state, adoption.message.clone());
-                request_live_bridge_reset_after_session_replacement(state);
                 if let Some(status) = adoption.runtime_status.take() {
                     state
                         .apply_refreshed_runtime_saveload_status(status, Some(elapsed.as_millis()));
@@ -676,13 +720,15 @@ pub fn studio_ui_system(
         ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_reopen_candidate")));
         if let Some(adoption) = execute_reopen_candidate_action(&mut state) {
             if let (Some(session), Some(status)) = (adoption.session, adoption.status) {
-                adopt_loaded_scenario_session(
+                if let Err(error) = state.try_adopt_loaded_scenario_session(
                     session,
                     &mut settings,
-                    &mut state,
+                    &mut presentation.bridge,
                     adoption.message.clone(),
-                );
-                request_live_bridge_reset_after_session_replacement(&mut state);
+                ) {
+                    state.report_scenario_admission_failure(error);
+                    return;
+                }
                 state.apply_refreshed_runtime_saveload_status(status, None);
                 state.last_runtime_saveload_status = adoption.message;
                 super::rebuild_session_scene(
@@ -707,8 +753,15 @@ pub fn studio_ui_system(
         ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_load_scenario_manual")));
         match load_scenario_manual_path_action(&mut state) {
             ScenarioActionResult::Loaded { session, message } => {
-                adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
-                request_live_bridge_reset_after_session_replacement(&mut state);
+                if let Err(error) = state.try_adopt_loaded_scenario_session(
+                    session,
+                    &mut settings,
+                    &mut presentation.bridge,
+                    message,
+                ) {
+                    state.report_scenario_admission_failure(error);
+                    return;
+                }
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
                     &mut commands,
@@ -733,8 +786,15 @@ pub fn studio_ui_system(
         ctx.data_mut(|d| d.remove::<bool>(egui::Id::new("do_load_scenario_picker")));
         match open_native_scenario_load_picker(&mut state) {
             ScenarioPickerActionResult::Loaded { session, message } => {
-                adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
-                request_live_bridge_reset_after_session_replacement(&mut state);
+                if let Err(error) = state.try_adopt_loaded_scenario_session(
+                    session,
+                    &mut settings,
+                    &mut presentation.bridge,
+                    message,
+                ) {
+                    state.report_scenario_admission_failure(error);
+                    return;
+                }
                 state.refresh_runtime_saveload_status_if_needed(false);
                 super::rebuild_session_scene(
                     &mut commands,
@@ -778,8 +838,15 @@ pub fn studio_ui_system(
             Ok(session) => {
                 let save_path = session.scenario_path.clone();
                 let message = format!("Created blank scenario: {}", session.galaxy_name());
-                adopt_loaded_scenario_session(session, &mut settings, &mut state, message);
-                request_live_bridge_reset_after_session_replacement(&mut state);
+                if let Err(error) = state.try_adopt_loaded_scenario_session(
+                    session,
+                    &mut settings,
+                    &mut presentation.bridge,
+                    message,
+                ) {
+                    state.report_scenario_admission_failure(error);
+                    return;
+                }
                 if let Some(path) = save_path {
                     state.scenario_path_text = path.display().to_string();
                 }
@@ -2572,12 +2639,6 @@ fn cancel_scenario_library(state: &mut StudioAppState) {
     // Cover clears once the poller sees the invalidated token and despawns pending geometry.
     // Keep true until that cleanup runs so a partial tree cannot flash.
     let _ = loading_cover_active;
-}
-
-fn request_live_bridge_reset_after_session_replacement(state: &mut StudioAppState) {
-    crate::request_live_bridge_reset_after_session_replacement(
-        &mut state.live_bridge_reset_requested,
-    );
 }
 
 fn execute_save_candidate_action(state: &mut StudioAppState) {

@@ -544,3 +544,87 @@ fn rehearsal_ingress_post_rf_observation_matches_born_allocations() {
         "formerly unselected child contribution reaches born output"
     );
 }
+
+#[cfg(windows)]
+#[test]
+fn rehearsal_ingress_ui_admission_preserves_document_and_running_session() {
+    use simthing_mapeditor::app::StudioAppState;
+    use simthing_mapeditor::settings::EditorSettings;
+
+    let (mut pack, scenario, _) = specimen();
+    pack.game_mode.properties[0].sub_fields[4].role = SubFieldRole::Amount;
+    let studio = StudioSession::from_loaded_scenario(scenario, "ui-first.json".into(), None)
+        .unwrap()
+        .with_authored_live_profile(authored_live_profile_from_pack(&pack).unwrap());
+    let mut state = StudioAppState::default();
+    let mut settings = EditorSettings::default();
+    let mut bridge = StudioLiveSessionBridge::default();
+    state
+        .try_adopt_loaded_scenario_session(
+            studio.clone(),
+            &mut settings,
+            &mut bridge,
+            "first".into(),
+        )
+        .unwrap();
+    bridge.consume_scheduled_ticks(1).unwrap();
+    let identity = bridge.sim_session().unwrap().persisted_execution_identity();
+    let observed = AnchorTableSnapshot::from_session(bridge.sim_session().unwrap());
+    assert!(!observed.rows().is_empty());
+    let document =
+        serde_json::to_value(&state.session.as_ref().unwrap().scenario_authority).unwrap();
+    let settings_before = serde_json::to_value(&settings).unwrap();
+    let mut rejected = studio.clone();
+    rejected.scenario_authority.scenario_id = "must-not-be-adopted".into();
+    rejected
+        .authored_live_profile
+        .as_mut()
+        .unwrap()
+        .game_mode
+        .domain_packs[0]
+        .overlays[0]
+        .targets_property = "missing::resource".into();
+    state
+        .try_adopt_loaded_scenario_session(rejected, &mut settings, &mut bridge, "rejected".into())
+        .expect_err("UI transaction must admit before committing document and settings");
+    assert_eq!(
+        serde_json::to_value(&state.session.as_ref().unwrap().scenario_authority).unwrap(),
+        document
+    );
+    assert_eq!(serde_json::to_value(&settings).unwrap(), settings_before);
+    assert_eq!(state.status_message, "first");
+    assert_eq!(
+        bridge.sim_session().unwrap().persisted_execution_identity(),
+        identity
+    );
+    assert_eq!(
+        AnchorTableSnapshot::from_session(bridge.sim_session().unwrap()).rows(),
+        observed.rows()
+    );
+    assert_eq!(bridge.executed_ticks(), 1);
+    bridge.consume_scheduled_ticks(1).unwrap();
+    assert_eq!(bridge.executed_ticks(), 2);
+
+    let mut replacement = studio;
+    replacement.scenario_authority.scenario_id = "accepted-replacement".into();
+    state.live_bridge_reset_requested = true;
+    state
+        .try_adopt_loaded_scenario_session(
+            replacement,
+            &mut settings,
+            &mut bridge,
+            "replacement".into(),
+        )
+        .unwrap();
+    assert_eq!(
+        state.session.as_ref().unwrap().galaxy_name(),
+        "accepted-replacement"
+    );
+    assert!(!state.live_bridge_reset_requested);
+    assert!(!simthing_mapeditor::apply_live_bridge_reset_before_tick(
+        &mut state.live_bridge_reset_requested,
+        &mut bridge,
+    ));
+    assert_eq!(bridge.executed_ticks(), 0);
+    assert_eq!(bridge.consume_scheduled_ticks(1).unwrap(), 1);
+}
