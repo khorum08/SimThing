@@ -240,7 +240,10 @@ pub fn load_clause_studio_session_from_path(
     let ingest = ingest_clause_scenario_path(clause_path, options)?;
     save_clause_scenario_authority_to_path(scenario_json_path, &ingest.scenario)?;
     let mut session = load_studio_session_from_scenario_path(scenario_json_path, profile_hint)?;
-    session.set_authored_live_profile(Some(authored_live_profile_from_pack(&ingest.pack)));
+    session.set_authored_live_profile(Some(
+        authored_live_profile_from_pack(&ingest.pack)
+            .map_err(ClauseScenarioIngestError::SourceResolution)?,
+    ));
     Ok((ingest, session))
 }
 
@@ -258,7 +261,10 @@ pub fn load_studio_session_from_clause_ingest_result(
         profile_hint,
     )
     .map_err(ScenarioIoError::from)?
-    .with_authored_live_profile(authored_live_profile_from_pack(&result.pack)))
+    .with_authored_live_profile(
+        authored_live_profile_from_pack(&result.pack)
+            .map_err(ClauseScenarioIngestError::SourceResolution)?,
+    ))
 }
 
 fn apply_source_resolver(

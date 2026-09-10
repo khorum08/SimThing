@@ -14,9 +14,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
-    OverlayKind, PropertyAdmissionDisposition, SimProperty, SimThing, SimThingId, SubFieldRole,
-    SubFieldSpec,
+    DimensionRegistry, PropertyAdmissionDisposition, SimProperty, SimThing, SimThingId,
+    SubFieldRole,
 };
 use simthing_driver::{
     resolve_node_columns_for_property, system_id_by_host_raw_from_structural_authority,
@@ -26,9 +25,8 @@ use simthing_driver::{
 use simthing_gpu::encode_column;
 use simthing_spec::{
     compile_property, disruption_readout_snapshot_with_readback, game_session_child,
-    game_session_owners, owner_entity_id, planet_child_rf_participant_inputs,
-    validate_scenario_links, validate_stead_mapping_consistency, GameModeSpec, PropertyKey,
-    PropertySpec, SimThingScenarioSpec,
+    game_session_owners, owner_entity_id, validate_scenario_links,
+    validate_stead_mapping_consistency, GameModeSpec, PropertyKey, SimThingScenarioSpec,
 };
 
 use crate::session::{StudioScenarioSummary, StudioSession};
@@ -132,11 +130,10 @@ impl StudioLiveSessionPathPreference {
 pub struct StudioAuthoredLiveProfile {
     pub game_mode: GameModeSpec,
     pub install_targets: HashMap<String, Vec<SimThingId>>,
-    /// Runtime tree shell matching `install_targets` (hydrate pack root).
+    /// Canonical runtime tree matching `install_targets`, including intrinsic ownership.
     pub session_root: SimThing,
     pub field_economy_present: bool,
-    /// Canonical recursive Arena RF projection, when the authority tree exposes
-    /// an admitted Owner plus at least three authored producer children.
+    /// Optional observation locus supplied by an explicit caller; never an economic selector.
     pub recursive_rf: Option<StudioRecursiveRfProfile>,
     /// Authored location id → generated system id from STEAD (row,col) join to
     /// the embedded lattice / rebound Spec placements.
@@ -187,7 +184,15 @@ impl StudioAuthoredLiveProfile {
 
     /// True when the authored profile carries field-economy/resource-economy content.
     pub fn supports_field_bearing(&self) -> bool {
-        if self.field_economy_present {
+        if self.field_economy_present
+            || !self.game_mode.properties.is_empty()
+            || !self.game_mode.domain_packs.is_empty()
+            || self.game_mode.resource_flow.is_some()
+            || !self.game_mode.region_fields.is_empty()
+            || !self.game_mode.overlays.is_empty()
+            || !self.game_mode.events.is_empty()
+            || !self.game_mode.capability_trees.is_empty()
+        {
             return true;
         }
         self.game_mode
@@ -308,6 +313,8 @@ pub enum StudioLiveSessionBridgeError {
     DisruptionReadback(String),
     #[error("field-bearing path requires an authored live profile")]
     FieldBearingProfileMissing,
+    #[error("structural-shell execution would discard the authored economy; select Auto or Field-bearing")]
+    AuthoredEconomyRequiresFieldBearing,
     #[error("field-bearing open_from_spec failed: {0}")]
     FieldBearingOpenFailed(String),
     #[error("threshold event readback failed after {executed} executed ticks: {message}")]
@@ -472,6 +479,9 @@ impl StudioLiveSessionBridge {
     ) -> Result<StudioLiveSessionPath, StudioLiveSessionBridgeError> {
         match preference {
             StudioLiveSessionPathPreference::StructuralShell => {
+                if profile.is_some_and(StudioAuthoredLiveProfile::supports_field_bearing) {
+                    return Err(StudioLiveSessionBridgeError::AuthoredEconomyRequiresFieldBearing);
+                }
                 Ok(StudioLiveSessionPath::StructuralShell)
             }
             StudioLiveSessionPathPreference::FieldBearing => {
@@ -496,22 +506,27 @@ impl StudioLiveSessionBridge {
         &mut self,
         studio: &StudioSession,
     ) -> Result<(), StudioLiveSessionBridgeError> {
-        self.sim = None;
-        self.executed_ticks = 0;
-        self.last_scheduled_batch = 0;
-        self.open_failed = false;
-        self.field_accretion_samples.clear();
-        self.last_decision_event_count = 0;
-        self.cumulative_decision_events = 0;
-        self.cumulative_construction_crossings = 0;
-        self.sample_loci.clear();
-        self.recursive_rf_locus = None;
-        self.recursive_rf_readout = StudioRecursiveRfReadout::default();
-        self.readout_authority = None;
-        self.location_system_ids.clear();
-        self.disruption_observation_loci.clear();
-        self.disruption_readout = StudioDisruptionReadoutMap::default();
+        let mut candidate = Self::default();
+        candidate.path_preference = self.path_preference;
+        match candidate.prepare_loaded_studio_session(studio) {
+            Ok(()) => {
+                *self = candidate;
+                Ok(())
+            }
+            Err(error) => {
+                if self.sim.is_none() {
+                    *self = candidate;
+                }
+                Err(error)
+            }
+        }
+    }
 
+    /// Prepare all admission and observation state before replacing an existing session.
+    fn prepare_loaded_studio_session(
+        &mut self,
+        studio: &StudioSession,
+    ) -> Result<(), StudioLiveSessionBridgeError> {
         let path = Self::resolve_session_path(
             self.path_preference,
             studio.authored_live_profile.as_ref(),
@@ -534,9 +549,6 @@ impl StudioLiveSessionBridge {
                     .ok_or(StudioLiveSessionBridgeError::FieldBearingProfileMissing)?;
                 let scenario = driver_scenario_field_bearing_from_profile(profile)
                     .map_err(StudioLiveSessionBridgeError::ScenarioConversion)?;
-                // Field-bearing open installs RF/resource-economy + property surfaces only.
-                // Combat/event/capability trees remain out of this path (they re-root install
-                // and are not required for 12.8 field accretion under live ticks).
                 let field_mode = field_bearing_game_mode(&profile.game_mode);
                 match SimSession::open_from_spec(scenario, &field_mode) {
                     Ok(sim) => {
@@ -551,7 +563,12 @@ impl StudioLiveSessionBridge {
                             &self.sample_loci,
                             0,
                         );
-                        if let Some(rf_profile) = profile.recursive_rf.as_ref() {
+                        let observed_rf = recursive_rf_observation_profile(&sim);
+                        self.recursive_rf_readout.active =
+                            sim.state.accumulator_resource_flow_active;
+                        if let Some(rf_profile) =
+                            profile.recursive_rf.as_ref().or(observed_rf.as_ref())
+                        {
                             let (locus, readout) = recursive_rf_locus_from_session(
                                 &sim, rf_profile,
                             )
@@ -944,104 +961,36 @@ pub fn driver_scenario_from_authority(spec: &SimThingScenarioSpec) -> Result<Sce
     })
 }
 
-/// Project a GameModeSpec onto the field-bearing install surface (RF/economy only).
-///
-/// Drops combat/event/capability trees that re-root install. ResourceFlow is retained:
-/// the field-bearing path executes its admitted recursive Arena through ordinary `step_once`.
+/// Pair the complete authored programs with the scenario's compiled property registry.
+/// Envelope overlays enter the same existing DomainPack installation door as authored packs.
 pub fn field_bearing_game_mode(mode: &GameModeSpec) -> GameModeSpec {
     let mut field = mode.clone();
-    let has_resource_property = field
-        .properties
-        .iter()
-        .chain(
-            field
-                .domain_packs
-                .iter()
-                .flat_map(|pack| pack.properties.iter()),
-        )
-        .any(|property| {
-            property.sub_fields.iter().any(|sub_field| {
-                sub_field
-                    .accumulator_spec
-                    .as_ref()
-                    .is_some_and(|accumulator| {
-                        matches!(
-                            &accumulator.role,
-                            AccumulatorRole::AllocatedFlow { .. }
-                                | AccumulatorRole::AllocatorWeight { .. }
-                        )
-                    })
-            })
-        });
-    let _ = has_resource_property;
-    let is_rf_property = |property: &PropertySpec| {
-        property.sub_fields.iter().any(|sub_field| {
-            sub_field
-                .accumulator_spec
-                .as_ref()
-                .is_some_and(|accumulator| {
-                    matches!(
-                        &accumulator.role,
-                        AccumulatorRole::AllocatedFlow { .. }
-                            | AccumulatorRole::AllocatorWeight { .. }
-                    )
-                })
-        })
-    };
-    // The recursive RF planner consumes property-local columns. The paired
-    // scenario builder pre-registers these properties first, so omit their
-    // duplicate envelope definitions during generic spec installation.
-    field
-        .properties
-        .retain(|property| !is_rf_property(property));
+    field.properties.clear();
     for pack in &mut field.domain_packs {
-        pack.properties.retain(|property| !is_rf_property(property));
+        pack.properties.clear();
     }
-    field.events.clear();
-    field.capability_trees.clear();
-    // Drop non-field domain packs (combat/etc.). Field-economy overlays live on
-    // game_mode.overlays, but install only applies DomainPackSpec::overlays
-    // (envelope overlays are ADR-deferred). Elevate only field-economy overlay
-    // kinds (Policy/Crisis/Infrastructure) so payload/combat overlays with
-    // non-namespace targets stay out of the field-bearing install path.
-    let field_overlays: Vec<_> = std::mem::take(&mut field.overlays)
-        .into_iter()
-        .filter(|o| {
-            // Field-economy overlays always use `namespace::name` targets and the
-            // Policy/Crisis/Infrastructure kinds from the 12.6 lowerer.
-            o.targets_property.contains("::")
-                && matches!(
-                    o.kind,
-                    OverlayKind::Policy | OverlayKind::Crisis | OverlayKind::Infrastructure
-                )
-        })
-        .collect();
-    field.domain_packs.clear();
-    if !field_overlays.is_empty() {
+    if !field.overlays.is_empty() {
         field.domain_packs.push(simthing_spec::DomainPackSpec {
-            id: "field_bearing_overlays".into(),
-            display_name: "Field-bearing overlays".into(),
+            id: format!("{}::envelope_overlays", mode.id),
+            display_name: mode.display_name.clone(),
             metadata: Default::default(),
             properties: Vec::new(),
-            overlays: field_overlays,
+            overlays: std::mem::take(&mut field.overlays),
             capability_trees: Vec::new(),
             events: Vec::new(),
         });
     }
-    field.region_fields.clear();
     field
 }
 
 /// Build a field-bearing driver [`Scenario`] from the authored live profile.
 ///
-/// Uses the hydrate pack session root + install targets so RF/overlay ScenarioListed
-/// targets resolve. Property maps on the root are stripped; `open_from_spec` reinstalls
-/// authored properties/overlays from GameModeSpec through the generic install path.
+/// Compiles the full property vocabulary once and retains authored values, parentage and
+/// host identities. The paired GameMode carries all executable programs through generic install.
 pub fn driver_scenario_field_bearing_from_profile(
     profile: &StudioAuthoredLiveProfile,
 ) -> Result<Scenario, String> {
     let mut registry = DimensionRegistry::new();
-    let mut registered_rf_property = false;
     let authored_properties = profile.game_mode.properties.iter().chain(
         profile
             .game_mode
@@ -1049,35 +998,31 @@ pub fn driver_scenario_field_bearing_from_profile(
             .iter()
             .flat_map(|pack| pack.properties.iter()),
     );
+    let mut registered = false;
     for property in authored_properties {
-        let is_resource_property = property.sub_fields.iter().any(|sub_field| {
-            sub_field
-                .accumulator_spec
-                .as_ref()
-                .is_some_and(|accumulator| {
-                    matches!(
-                        accumulator.role,
-                        AccumulatorRole::AllocatedFlow { .. }
-                            | AccumulatorRole::AllocatorWeight { .. }
-                    )
-                })
-        });
-        if is_resource_property
-            && registry
-                .id_of(&property.namespace, &property.name)
-                .is_none()
+        if registry
+            .id_of(&property.namespace, &property.name)
+            .is_some()
         {
-            compile_property(property, &mut registry)
-                .map_err(|e| format!("pre-register field-bearing RF property: {e}"))?;
-            registered_rf_property = true;
+            return Err(format!(
+                "duplicate authored property {}::{}",
+                property.namespace, property.name
+            ));
         }
+        compile_property(property, &mut registry).map_err(|e| {
+            format!(
+                "compile authored property {}::{}: {e}",
+                property.namespace, property.name
+            )
+        })?;
+        registered = true;
     }
-    if !registered_rf_property {
+    if !registered {
         register_bridge_column_shape_placeholder(&mut registry);
     }
-
-    let mut root = profile.session_root.clone();
-    strip_unregistered_property_maps(&mut root, &registry);
+    // Registry-backed economic values and intrinsic ownership remain on their authored hosts.
+    // Structural metadata is not a column and ordinary installation already distinguishes it.
+    let root = profile.session_root.clone();
 
     let mut n_slots = 0u32;
     count_tree_nodes(&root, &mut n_slots);
@@ -1188,6 +1133,47 @@ fn collect_field_accretion_sample_from_snapshot(
         });
     }
     samples
+}
+
+/// Choose a display locus from the admitted graph after installation. This never selects
+/// participants for execution, authors a budget, or modifies a property/program/parent edge.
+fn recursive_rf_observation_profile(sim: &SimSession) -> Option<StudioRecursiveRfProfile> {
+    for arena in &sim.spec_state.resource_flow_derivation.arenas {
+        let property_id = sim
+            .proto
+            .registry
+            .id_of(&arena.property.namespace, &arena.property.name)?;
+        let columns =
+            resolve_node_columns_for_property(&sim.proto.registry, property_id, &arena.arena)
+                .ok()?;
+        if columns.balance_col.is_none() {
+            continue;
+        }
+        let root = arena
+            .participants
+            .iter()
+            .find(|participant| participant.parent.is_none())?;
+        let children: Vec<_> = arena
+            .participants
+            .iter()
+            .filter(|participant| participant.parent == Some(root.simthing_id))
+            .collect();
+        let Some(child) = children.first() else {
+            continue;
+        };
+        return Some(StudioRecursiveRfProfile {
+            arena: arena.arena.clone(),
+            property_namespace: arena.property.namespace.clone(),
+            property_name: arena.property.name.clone(),
+            named_child_label: format!("SIM-{:06}", child.simthing_id.raw()),
+            named_child_id: child.simthing_id,
+            ancestor_label: format!("SIM-{:06}", root.simthing_id.raw()),
+            ancestor_id: root.simthing_id,
+            session_root_id: root.simthing_id,
+            sibling_count: children.len() as u32,
+        });
+    }
+    None
 }
 
 fn recursive_rf_locus_from_session(
@@ -1311,86 +1297,24 @@ fn fill_need_binding_readout(
     });
 }
 
-fn tree_contains_simthing_id(node: &SimThing, id: SimThingId) -> bool {
-    if node.id == id {
-        return true;
-    }
-    node.children
-        .iter()
-        .any(|child| tree_contains_simthing_id(child, id))
-}
-
-fn find_simthing_in_tree(node: &SimThing, id: SimThingId) -> Option<&SimThing> {
-    if node.id == id {
-        return Some(node);
-    }
-    for child in &node.children {
-        if let Some(found) = find_simthing_in_tree(child, id) {
-            return Some(found);
-        }
-    }
-    None
-}
-
-fn find_simthing_in_tree_mut(node: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
-    if node.id == id {
-        return Some(node);
-    }
-    for child in &mut node.children {
-        if let Some(found) = find_simthing_in_tree_mut(child, id) {
-            return Some(found);
-        }
-    }
-    None
-}
-
 fn graft_authored_location_hosts(
-    scenario: &mut simthing_spec::SimThingScenarioSpec,
+    scenario: &mut SimThingScenarioSpec,
     pack: &simthing_clausething::HydratedScenarioPack,
-) -> Option<()> {
-    use simthing_core::SimThingKind;
-    let owner_keys: std::collections::HashSet<&str> = pack
-        .owners
-        .iter()
-        .map(|owner| owner.owner_key.as_str())
-        .collect();
-    let mut to_graft = Vec::new();
-    for (key, ids) in &pack.install_targets {
-        if owner_keys.contains(key.as_str()) || key == &pack.scenario_id {
-            continue;
-        }
-        let Some(host_id) = ids.first().copied() else {
-            continue;
-        };
-        if tree_contains_simthing_id(&scenario.root, host_id) {
-            continue;
-        }
-        let host = find_simthing_in_tree(&pack.root, host_id)?;
-        if host.kind != SimThingKind::Location {
-            continue;
-        }
-        to_graft.push(host.clone());
-    }
+) -> Result<(), String> {
     let session = scenario
         .root
         .children
         .iter_mut()
-        .find(|child| child.kind == SimThingKind::GameSession)?;
-    for host in to_graft {
-        session.add_child(host);
+        .find(|child| child.kind == simthing_core::SimThingKind::GameSession)
+        .ok_or_else(|| "authored scenario has no GameSession".to_string())?;
+    // The existing hydrated node tree owns complete authored Location subtrees.
+    // Attach each top-level subtree once, never each flattened install-target entry.
+    for host in &pack.root.children {
+        if !session.children.iter().any(|child| child.id == host.id) {
+            session.add_child(host.clone());
+        }
     }
-    Some(())
-}
-
-fn strip_unregistered_property_maps(
-    node: &mut simthing_core::SimThing,
-    registry: &DimensionRegistry,
-) {
-    node.properties
-        .retain(|property_id, _| registry.try_property(*property_id).is_some());
-    for child in &mut node.children {
-        strip_unregistered_property_maps(child, registry);
-    }
+    Ok(())
 }
 
 fn strip_all_property_maps(node: &mut simthing_core::SimThing) {
@@ -1452,280 +1376,33 @@ pub fn bridge_module_source_forbids_workshop_residue() -> bool {
     true
 }
 
-const STUDIO_RF_ARENA: &str = "studio_recursive_owner_flow";
-const STUDIO_RF_NAMESPACE: &str = "studio_live_rf";
-const STUDIO_RF_PROPERTY: &str = "owner_flow";
-// This f32 budget deliberately leaves a bounded, deterministic allocator
-// residual at the real Owner when its three equal-weight children disburse.
-// The governed Balance path must integrate that non-zero residue.
-const STUDIO_RF_ROOT_BUDGET: f32 = 12.1;
-
-fn rf_subfield(name: &str, role: AccumulatorRole, default: f32) -> SubFieldSpec {
-    SubFieldSpec {
-        role: SubFieldRole::Named(name.into()),
-        width: 1,
-        clamp: ClampBehavior::Unbounded,
-        velocity_max: None,
-        default,
-        display_name: name.into(),
-        display_range: None,
-        governed_by: None,
-        reduction_override: None,
-        soft_aggregate_guard: None,
-        accumulator_spec: Some(AccumulatorSpec {
-            role,
-            log_tier: LogTier::Summary,
-        }),
-    }
-}
-
-fn rf_balance_rate_subfield() -> SubFieldSpec {
-    SubFieldSpec {
-        role: SubFieldRole::Named("balance_rate".into()),
-        width: 1,
-        clamp: ClampBehavior::Unbounded,
-        velocity_max: None,
-        default: 0.0,
-        display_name: "balance_rate".into(),
-        display_range: None,
-        governed_by: None,
-        reduction_override: None,
-        soft_aggregate_guard: None,
-        accumulator_spec: None,
-    }
-}
-
-fn rf_balance_subfield() -> SubFieldSpec {
-    SubFieldSpec {
-        role: SubFieldRole::Named("balance".into()),
-        width: 1,
-        clamp: ClampBehavior::Unbounded,
-        velocity_max: None,
-        default: 0.0,
-        display_name: "balance".into(),
-        display_range: None,
-        governed_by: Some(SubFieldRole::Named("balance_rate".into())),
-        reduction_override: None,
-        soft_aggregate_guard: None,
-        accumulator_spec: Some(AccumulatorSpec {
-            role: AccumulatorRole::Balance(BalanceSpec::default()),
-            log_tier: LogTier::Summary,
-        }),
-    }
-}
-
-fn studio_recursive_rf_property() -> PropertySpec {
-    PropertySpec {
-        admission_disposition: Default::default(),
-        id: STUDIO_RF_PROPERTY.into(),
-        namespace: STUDIO_RF_NAMESPACE.into(),
-        name: STUDIO_RF_PROPERTY.into(),
-        display_name: "Studio live owner flow".into(),
-        description: "Canonical Owner sibling aggregate for Studio live RF telemetry".into(),
-        sub_fields: vec![
-            rf_subfield("flow", AccumulatorRole::IntrinsicFlow, 0.0),
-            rf_subfield(
-                "allocated",
-                AccumulatorRole::AllocatedFlow {
-                    arena: STUDIO_RF_ARENA.into(),
-                },
-                0.0,
-            ),
-            rf_subfield(
-                "weight",
-                AccumulatorRole::AllocatorWeight {
-                    arena: STUDIO_RF_ARENA.into(),
-                },
-                1.0,
-            ),
-            rf_balance_rate_subfield(),
-            rf_balance_subfield(),
-        ],
-    }
-}
-
-fn populate_recursive_rf_participant(
-    root: &mut SimThing,
-    registry: &DimensionRegistry,
-    property_id: simthing_core::SimPropertyId,
-    participant_id: SimThingId,
-    parent_id: Option<SimThingId>,
-    intrinsic_flow: f32,
-) -> Option<()> {
-    let property = registry.property(property_id);
-    let mut value = property.default_value();
-    value.set_role(
-        &SubFieldRole::Named("flow".into()),
-        &property.layout,
-        intrinsic_flow,
-    );
-    let participant = find_simthing_in_tree_mut(root, participant_id)?;
-    participant.add_property(property_id, value);
-    if let Some(parent_id) = parent_id {
-        participant.add_resource_parent_edge(
-            STUDIO_RF_NAMESPACE,
-            STUDIO_RF_PROPERTY,
-            parent_id,
-            None,
-        );
-    }
-    Some(())
-}
-
-fn compose_recursive_rf_profile(
-    pack: &simthing_clausething::HydratedScenarioPack,
-) -> Option<(
-    SimThing,
-    HashMap<String, Vec<SimThingId>>,
-    GameModeSpec,
-    StudioRecursiveRfProfile,
-)> {
-    let mut scenario = simthing_clausething::project_pack_to_authority_tree_candidate(pack).ok()?;
-    // Authored Location hosts declared by the loaded scenario live on the hydrate
-    // World tree (`pack.root`), not the GalaxyMap authority tree. Graft them under
-    // GameSession so local-flow couplings keep distinct source/pressure/sink identity
-    // without collapsing onto the session root.
-    graft_authored_location_hosts(&mut scenario, pack)?;
-    let session_root_id = game_session_child(&scenario).ok()?.id;
-    let owners = game_session_owners(&scenario).ok()?;
-    let participant_inputs = planet_child_rf_participant_inputs(&scenario).ok()?;
-
-    let mut selected_owner = None;
-    let mut selected_children = Vec::new();
-    for owner in owners {
-        let Some(owner_ref) = owner_entity_id(owner) else {
-            continue;
-        };
-        let candidates: Vec<_> = participant_inputs
-            .iter()
-            .filter(|row| row.owner_ref.as_str() == owner_ref && row.surplus > 0)
-            .take(3)
-            .cloned()
-            .collect();
-        if candidates.len() == 3 {
-            selected_owner = Some((owner_ref, owner.id));
-            selected_children = candidates;
-            break;
-        }
-    }
-    let (owner_ref, owner_id) = selected_owner?;
-
-    let mut install_targets: HashMap<String, Vec<SimThingId>> = pack
-        .install_targets
-        .iter()
-        .map(|(key, ids)| (key.clone(), ids.clone()))
-        .collect();
-    // Owner keys retain their exact Owner host from the projected authority tree.
-    for owner in game_session_owners(&scenario).ok()? {
-        if let Some(key) = owner_entity_id(owner) {
-            install_targets.insert(key, vec![owner.id]);
-        }
-    }
-
-    let mut game_mode = pack.game_mode.clone();
-    let resource_property = studio_recursive_rf_property();
-    let mut resource_registry = DimensionRegistry::new();
-    let (resource_property_id, _) =
-        compile_property(&resource_property, &mut resource_registry).ok()?;
-    // Authority-tree property IDs were minted by a different registry. Clear
-    // them before installing the profile-local property so an equal raw ID
-    // cannot masquerade as Resource Flow participation.
-    strip_all_property_maps(&mut scenario.root);
-    populate_recursive_rf_participant(
-        &mut scenario.root,
-        &resource_registry,
-        resource_property_id,
-        session_root_id,
-        None,
-        STUDIO_RF_ROOT_BUDGET,
-    )?;
-    populate_recursive_rf_participant(
-        &mut scenario.root,
-        &resource_registry,
-        resource_property_id,
-        owner_id,
-        Some(session_root_id),
-        0.0,
-    )?;
-    for row in &selected_children {
-        populate_recursive_rf_participant(
-            &mut scenario.root,
-            &resource_registry,
-            resource_property_id,
-            SimThingId::from_session_raw(row.simthing_id_raw),
-            Some(owner_id),
-            row.surplus as f32,
-        )?;
-    }
-    game_mode.properties.push(resource_property);
-
-    let named = &selected_children[0];
-    Some((
-        scenario.root,
-        install_targets,
-        game_mode,
-        StudioRecursiveRfProfile {
-            arena: STUDIO_RF_ARENA.into(),
-            property_namespace: STUDIO_RF_NAMESPACE.into(),
-            property_name: STUDIO_RF_PROPERTY.into(),
-            named_child_label: format!(
-                "{} SIM-{:06}",
-                named.participant_kind_label, named.simthing_id_raw
-            ),
-            named_child_id: SimThingId::from_session_raw(named.simthing_id_raw),
-            ancestor_label: format!("Owner {owner_ref}"),
-            ancestor_id: owner_id,
-            session_root_id,
-            sibling_count: selected_children.len() as u32,
-        },
-    ))
-}
-
-/// Build an authored live profile from a hydrated scenario pack (production elevation).
-///
-/// When the canonical authority exposes admitted RF participants, the profile uses that
-/// exact tree and an ordinary admitted recursive Arena. Smaller field-economy fixtures retain
-/// their legacy hydrate root only because they have no authority-tree participant substrate.
+/// Compose the complete authored profile through the existing canonical scenario and owner doors.
+/// Stage-only hydrate packs without Scenario authority cannot become a live session.
 pub fn authored_live_profile_from_pack(
     pack: &simthing_clausething::HydratedScenarioPack,
-) -> StudioAuthoredLiveProfile {
-    let location_system_ids = location_system_ids_from_pack(pack);
-    let disruption_observation_loci = disruption_observation_loci_from_pack(pack);
-    if let Some((root, install_targets, game_mode, recursive_rf)) =
-        compose_recursive_rf_profile(pack)
-    {
-        let mut profile = StudioAuthoredLiveProfile::from_hydrated_pack(
-            game_mode,
-            install_targets,
-            root,
-            pack.field_economy.is_some(),
-        );
-        profile.recursive_rf = Some(recursive_rf);
-        profile.location_system_ids = location_system_ids;
-        profile.disruption_observation_loci = disruption_observation_loci;
-        return profile;
+) -> Result<StudioAuthoredLiveProfile, String> {
+    let mut scenario = simthing_clausething::project_pack_to_authority_tree_candidate(pack)
+        .map_err(|error| format!("rehearsal ingress canonical authority: {error}"))?;
+    graft_authored_location_hosts(&mut scenario, pack)?;
+    let mut install_targets = pack.install_targets.clone();
+    let session_id = game_session_child(&scenario).map_err(|e| e.to_string())?.id;
+    install_targets.insert(pack.scenario_id.clone(), vec![session_id]);
+    for owner in game_session_owners(&scenario).map_err(|e| e.to_string())? {
+        let key =
+            owner_entity_id(owner).ok_or_else(|| "authored Owner has no identity".to_string())?;
+        install_targets.insert(key, vec![owner.id]);
     }
-
-    let root = pack.root.clone();
-    let mut install_targets: HashMap<String, Vec<SimThingId>> = pack
-        .install_targets
-        .iter()
-        .map(|(k, v)| (k.clone(), v.clone()))
-        .collect();
-    for owner in &pack.owners {
-        install_targets
-            .entry(owner.owner_key.clone())
-            .or_insert_with(|| vec![root.id]);
-    }
+    let admitted = simthing_spec::admit_intrinsic_owner_channels(&scenario)
+        .map_err(|error| format!("rehearsal ingress intrinsic owner admission: {error}"))?;
     let mut profile = StudioAuthoredLiveProfile::from_hydrated_pack(
         pack.game_mode.clone(),
         install_targets,
-        root,
+        admitted.scenario().root.clone(),
         pack.field_economy.is_some(),
     );
-    profile.location_system_ids = location_system_ids;
-    profile.disruption_observation_loci = disruption_observation_loci;
-    profile
+    profile.location_system_ids = location_system_ids_from_pack(pack);
+    profile.disruption_observation_loci = disruption_observation_loci_from_pack(pack);
+    Ok(profile)
 }
 
 /// Typed disruption_presence loci retained from field-economy hydrate identity.
