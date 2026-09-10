@@ -1734,6 +1734,16 @@ impl WorldGpuState {
     /// Failures propagate — callers must not treat a silent skip as success.
     pub fn rescan_accumulator_thresholds_after_resource_flow(&mut self) -> Result<(), String> {
         if self.post_rf_need_threshold_regs.is_empty() {
+            // DA admission 2026-09-10 (orchestrator relay 5618867588):
+            // completed RF band writes MUST publish through the ONE canonical
+            // AnchorTable observation authority even when the session has zero
+            // need bindings. "No thresholds to rescan" never meant "no
+            // observation to publish" — the values plane was just written by
+            // the RF bands, so refresh observed values through the existing
+            // magnitude-maintain (urgency from threshold ops when a session
+            // exists; values-plane refresh with urgency 0 otherwise). One
+            // authority, no second observation path.
+            self.run_anchor_table_magnitude_maintain();
             return Ok(());
         }
         let need = self.post_rf_need_threshold_regs.clone();

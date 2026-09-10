@@ -150,17 +150,25 @@ try:
                     "class_id": row[0],
                     "match": [g.strip() for g in row[1].split("|") if g.strip()],
                     "forbidden": [g.strip() for g in row[3].split("|") if g.strip()],
+                    "priority": int(row[5]) if row[5].strip().isdigit() else 0,
                 }
             )
 except OSError:
     rows = []
 
-for pred in rows:
-    if not any(any_glob(f, pred["match"]) for f in files):
-        continue
+# PRIMARY-CLASS PARITY with clearance routing (#2028 law; DA repair per
+# orchestrator relay 5618867588 part C): among matched classes, ONLY the
+# highest-priority (primary) class's forbidden globs veto at the edit tier.
+# Checking every matched class let a CLOSED lower-priority class's stale match
+# hard-FAIL a lawful edit that the higher-priority open class admits and that
+# clearance itself would route and clear. Tie-break mirrors clearance's
+# (priority, class_id) reverse sort.
+matched = [p for p in rows if any(any_glob(f, p["match"]) for f in files)]
+if matched:
+    primary = max(matched, key=lambda p: (p["priority"], p["class_id"]))
     for f in files:
-        if any_glob(f, pred["forbidden"]):
-            print(f"FORBIDDEN-EDIT class={pred['class_id']} file={f}")
+        if any_glob(f, primary["forbidden"]):
+            print(f"FORBIDDEN-EDIT class={primary['class_id']} file={f}")
 
 gate_paths = []
 try:
@@ -331,9 +339,60 @@ EOF
   selftest_case "footer grammar stable on clean delta" "PASS" "0" "$base2" "$head" "$root" \
     || failures=$((failures + 1))
 
+  # Cases 4-6: PRIMARY-CLASS PARITY (relay 5618867588 part C). Synthetic
+  # two-class predicates: a CLOSED lower-priority class matching the bridge
+  # file and forbidding the reach log, and an open higher-priority class
+  # triggered by rehearsal_ files that admits the reach log but forbids
+  # engine src.
+  mkdir -p "${root}/crates/simthing-clausething/tests" "${root}/crates/simthing-mapeditor/src"
+  cat >"${root}/scripts/ci/class_predicates.tsv" <<'EOF'
+class_id	match_any_globs	scope_globs	forbidden_globs	detect_mode	priority
+closed-legacy-studio	crates/simthing-mapeditor/src/bridge.rs	crates/simthing-mapeditor/src/bridge.rs	scripts/ci/anchor_reach_log.tsv|crates/simthing-clausething/**	any_then_envelope	40
+open-rehearsal-ingress	crates/simthing-clausething/tests/rehearsal_*	crates/simthing-clausething/tests/rehearsal_*|crates/simthing-mapeditor/src/bridge.rs|scripts/ci/anchor_reach_log.tsv	crates/simthing-kernel/**	any_then_envelope	41
+EOF
+  printf 'date\trole\tquery\tanchors_served\thit\n' >"${root}/scripts/ci/anchor_reach_log.tsv"
+  echo '// bridge base' >"${root}/crates/simthing-mapeditor/src/bridge.rs"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "parity fixtures base"
+  local base3
+  base3="$(git -C "$root" rev-parse HEAD)"
+
+  # 4: higher-priority class present -> its envelope governs; lawful reach-log
+  # append + bridge edit must NOT be vetoed by the stale priority-40 forbidden.
+  echo '// rehearsal witness' >"${root}/crates/simthing-clausething/tests/rehearsal_parity_0.rs"
+  echo '// bridge convergence edit' >>"${root}/crates/simthing-mapeditor/src/bridge.rs"
+  printf '2026-09-10\tcoding\tdomain:rehearsal-0088\tall\t1\n' >>"${root}/scripts/ci/anchor_reach_log.tsv"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "lawful ingress delta with reach-log append"
+  head="$(git -C "$root" rev-parse HEAD)"
+  selftest_case "primary 41 defeats stale 40 forbidden -> PASS" "PASS" "" "$base3" "$head" "$root" \
+    || failures=$((failures + 1))
+
+  # 5: the PRIMARY class's own forbidden still vetoes (engine src) -> FAIL.
+  git -C "$root" reset --hard "$base3" -q
+  mkdir -p "${root}/crates/simthing-clausething/tests"
+  echo '// rehearsal witness' >"${root}/crates/simthing-clausething/tests/rehearsal_parity_0.rs"
+  echo '// engine touch' >>"${root}/crates/simthing-kernel/src/lib.rs"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "primary-forbidden engine delta"
+  head="$(git -C "$root" rev-parse HEAD)"
+  selftest_case "primary class forbidden still vetoes -> FAIL" "FAIL" "" "$base3" "$head" "$root" \
+    || failures=$((failures + 1))
+
+  # 6: only the closed class matches (no rehearsal trigger) -> its forbidden
+  # still fences its own surface: bridge edit + reach-log append FAILs.
+  git -C "$root" reset --hard "$base3" -q
+  echo '// bridge-only edit' >>"${root}/crates/simthing-mapeditor/src/bridge.rs"
+  printf '2026-09-10\tcoding\tdomain:rehearsal-0088\tall\t1\n' >>"${root}/scripts/ci/anchor_reach_log.tsv"
+  git -C "$root" add -A
+  git -C "$root" commit -q -m "closed-class-only delta"
+  head="$(git -C "$root" rev-parse HEAD)"
+  selftest_case "closed class alone still fences its surface -> FAIL" "FAIL" "" "$base3" "$head" "$root" \
+    || failures=$((failures + 1))
+
   rm -rf "$root"
   if [[ "$failures" -eq 0 ]]; then
-    echo "AGENT-SCAN-SELFTEST: PASS (3 fixtures)"
+    echo "AGENT-SCAN-SELFTEST: PASS (6 fixtures)"
     return 0
   fi
   echo "AGENT-SCAN-SELFTEST: FAIL (${failures})"
