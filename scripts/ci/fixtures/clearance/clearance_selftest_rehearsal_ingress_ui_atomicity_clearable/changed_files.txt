@@ -1,0 +1,5 @@
+crates/simthing-clausething/tests/rehearsal_ingress_fidelity_0.rs
+crates/simthing-mapeditor/src/app/ui.rs
+crates/simthing-mapeditor/src/studio_live_session_bridge.rs
+docs/tests/rehearsal_ingress_fidelity_0_results.md
+scripts/ci/test_inventory.tsv
