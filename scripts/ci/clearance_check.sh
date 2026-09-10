@@ -1840,6 +1840,7 @@ run_selftest() {
     clearance_selftest_rehearsal_measurement_rejects_anchor_tables
     clearance_selftest_rehearsal_docgrad_rejects_reach_log
     clearance_selftest_rehearsal_ingress_bridge_clearable
+    clearance_selftest_rehearsal_ingress_scenario_io_clearable
     clearance_selftest_tp_closed_track_no_longer_clearable
     clearance_selftest_triage_ancestor_evidence_tail_ok
     clearance_selftest_triage_ancestor_code_delta_missing
