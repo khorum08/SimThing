@@ -257,7 +257,7 @@ fn admit_runtime(
         &mut projected,
     );
     state.install_resolved_values_at_boundary(&projected);
-    let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena_registry, &[], &[])
+    let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena_registry, &[], &[], &std::collections::BTreeMap::new())
         .expect("ordinary RF plan upload");
     state.run_resource_flow_bands(flow.n_bands, 1.0);
     let bindings = deformation
