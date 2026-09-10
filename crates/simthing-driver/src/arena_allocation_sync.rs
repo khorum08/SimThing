@@ -142,6 +142,15 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     }
 
     let governed = build_governed_pairs(registry);
+    // INTERIOR-POLICY COMPOSITION LAW (DA admission 2026-09-10, relay
+    // 5625360554): participants carrying an authored AllocatorWeight program
+    // (the resolved need bindings — the ONE canonical policy authority) keep
+    // that authored value as their upward participation weight; the recursive
+    // upsweep aggregate feeds only their own child-share denominator. Neutral
+    // participants remain pure pressure carriers, bit-identical to the
+    // historical plan.
+    let authored_weight_slots: std::collections::BTreeSet<u32> =
+        need_bindings.iter().map(|b| b.participant_slot).collect();
     let mut combined_cpu = Vec::new();
     let mut max_bands = 0u32;
     for arena in &plan.arenas {
@@ -153,6 +162,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
             active_instances,
             observed_generation,
             allocation_generation,
+            &authored_weight_slots,
         )
         .map_err(|error| match error {
             AllocationPlanError::Hierarchy(error) => ResourceFlowSyncError::Hierarchy(error),

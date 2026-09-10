@@ -70,6 +70,7 @@ pub fn plan_arena_allocation(
         &[],
         GenerationStamp::new(0),
         GenerationStamp::new(1),
+        &std::collections::BTreeSet::new(),
     )
 }
 
@@ -87,6 +88,7 @@ pub fn plan_arena_allocation_with_pressure(
     active_instances: &[ActionBandActiveInstance],
     observed_generation: GenerationStamp,
     allocation_generation: GenerationStamp,
+    authored_weight_slots: &std::collections::BTreeSet<u32>,
 ) -> Result<ArenaAllocationPlan, AllocationPlanError> {
     let mut ops_cpu = Vec::new();
     let bands = layout.band_layout;
@@ -123,18 +125,30 @@ pub fn plan_arena_allocation_with_pressure(
                     band,
                 ));
                 // The child's AllocatorWeight is the branch-pressure carrier.
-                // Reduce it exactly once over this parent's direct children,
-                // then publish the one result to both existing allocator
-                // operands. At the next shallower band, this parent's weight
-                // is itself one direct-child contribution; descendants are
-                // never recounted or scanned independently.
+                // Reduce it exactly once over this parent's direct children.
+                // The aggregate ALWAYS publishes to `weight_sum_col` (this
+                // parent's own child-share denominator). Whether it ALSO
+                // becomes this parent's upward contribution (`weight_col`)
+                // is the INTERIOR-POLICY COMPOSITION LAW (DA admission
+                // 2026-09-10, orchestrator relay 5625360554): a NEUTRAL
+                // interior is a pure pressure carrier — the aggregate is its
+                // weight at the next shallower band, exactly the historical
+                // semantics. A parent carrying an authored AllocatorWeight
+                // program KEEPS that authored value as its participation
+                // identity upward — the constitutional reduce -> apply-policy
+                // -> disburse order per level; silent installation followed
+                // by erasure was the defect. Descendants are never recounted
+                // or scanned independently in either case.
+                let mut aggregate_targets =
+                    vec![(parent.participant_slot, parent.cols.weight_sum_col)];
+                if !authored_weight_slots.contains(&parent.participant_slot.raw()) {
+                    aggregate_targets
+                        .insert(0, (parent.participant_slot, parent.cols.weight_col));
+                }
                 ops_cpu.extend(sum_reduction_to_targets_ops(
                     parent,
                     parent.cols.weight_col,
-                    vec![
-                        (parent.participant_slot, parent.cols.weight_col),
-                        (parent.participant_slot, parent.cols.weight_sum_col),
-                    ],
+                    aggregate_targets,
                     band,
                 ));
             }
@@ -589,6 +603,79 @@ mod tests {
         )
         .unwrap()
     }
+    #[test]
+    fn interior_authored_weight_survives_the_pressure_upsweep() {
+        // INTERIOR-POLICY COMPOSITION LAW witness (DA admission 2026-09-10,
+        // orchestrator relay 5625360554): a parent carrying an authored
+        // AllocatorWeight program keeps `weight_col` as its upward
+        // participation identity; the recursive child aggregate feeds ONLY
+        // its own child-share denominator (`weight_sum_col`). Silent
+        // installation followed by erasure is the outlawed defect.
+        let layout = d2_layout();
+        let root = &layout.participant_roots[0];
+        let root_slot = root.participant_slot;
+        let mut policy = std::collections::BTreeSet::new();
+        policy.insert(root_slot.raw());
+        let plan = plan_arena_allocation_with_pressure(
+            &layout,
+            &[],
+            16,
+            &[],
+            &[],
+            GenerationStamp::new(0),
+            GenerationStamp::new(1),
+            &policy,
+        )
+        .expect("policy-bearing plan");
+        let band = layout.band_layout.upsweep_band(0, 2);
+        let agg: Vec<_> = plan
+            .cpu_ops
+            .iter()
+            .filter(|op| {
+                op.gate == GateSpec::OrderBand(band)
+                    && op.targets
+                        .contains(&(root_slot, root.cols.weight_sum_col))
+            })
+            .collect();
+        assert_eq!(agg.len(), 1, "exactly one branch-pressure aggregate writer");
+        assert_eq!(
+            agg[0].targets,
+            vec![(root_slot, root.cols.weight_sum_col)],
+            "authored interior: the aggregate must NOT overwrite the authored weight_col"
+        );
+        assert!(
+            plan.cpu_ops
+                .iter()
+                .all(|op| !op.targets.contains(&(root_slot, root.cols.weight_col))),
+            "no plan op may erase an authored interior AllocatorWeight"
+        );
+    }
+
+    #[test]
+    fn neutral_interior_pressure_carrier_is_bit_identical_to_history() {
+        // Neutral degeneration: an empty authored-weight set reproduces the
+        // historical plan exactly — the aggregate remains the neutral
+        // interior's upward weight via the double-target write.
+        let layout = d2_layout();
+        let a = plan_arena_allocation(&layout, &[], 16).expect("neutral entry");
+        let b = plan_arena_allocation_with_pressure(
+            &layout,
+            &[],
+            16,
+            &[],
+            &[],
+            GenerationStamp::new(0),
+            GenerationStamp::new(1),
+            &std::collections::BTreeSet::new(),
+        )
+        .expect("empty-policy plan");
+        assert_eq!(
+            format!("{:?}", a.cpu_ops),
+            format!("{:?}", b.cpu_ops),
+            "empty policy set must degenerate to the historical plan bit-for-bit"
+        );
+    }
+
     #[test]
     fn sparse_child_rows_compile_to_one_ordered_input_list_writer() {
         let mut layout = d2_layout();
