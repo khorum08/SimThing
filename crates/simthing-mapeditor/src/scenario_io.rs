@@ -1,8 +1,8 @@
 //! SimThing-Spec scenario authority file IO (separate from `simthing-studio-config.json`).
 //!
-//! Scenario files serialize the whole `SimThingScenarioSpec`. Studio projections rebuild from
-//! authority on load; view models, hydration indexes, Bevy state, and presentation config are not
-//! persisted as model truth.
+//! Structural records serialize `SimThingScenarioSpec`. Native authored sessions save a
+//! content-pinned ClauseThing cache and reopen through the native loader, retaining their
+//! economics. View models, Bevy state and presentation config are never model truth.
 
 use std::path::Path;
 
@@ -30,6 +30,8 @@ pub enum ScenarioIoError {
     Hydration(#[from] StudioHydrationError),
     #[error("studio scenario document build failed: {0}")]
     ScenarioDocument(#[from] StudioScenarioDocumentError),
+    #[error("native scenario source admission failed: {0}")]
+    ClauseSource(String),
 }
 
 pub fn scenario_file_name(stem: &str) -> String {
@@ -48,6 +50,11 @@ pub fn load_scenario_authority_from_path(
     path: &Path,
 ) -> Result<SimThingScenarioSpec, ScenarioIoError> {
     let text = std::fs::read_to_string(path)?;
+    if is_clause_cache(&text) {
+        return crate::clause_scenario_ingest::ingest_clause_scenario_cache_path(path)
+            .map(|ingest| ingest.scenario)
+            .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()));
+    }
     Ok(deserialize_scenario_authority(&text)?)
 }
 
@@ -55,6 +62,27 @@ pub fn save_current_session_scenario_to_path(
     session: &StudioSession,
     path: &Path,
 ) -> Result<(), ScenarioIoError> {
+    if let Some(profile) = &session.authored_live_profile {
+        let provenance = profile.source_cache_provenance.as_ref().ok_or_else(|| {
+            ScenarioIoError::ClauseSource(
+                "authored economics require native source provenance to save a reproducible cache"
+                    .into(),
+            )
+        })?;
+        let scenario_identity =
+            simthing_spec::scenario_authority_digest(&session.scenario_authority)
+                .map_err(|e| ScenarioIoError::ClauseSource(e.message))?;
+        let profile_identity =
+            crate::clause_scenario_ingest::authored_profile_content_identity(profile)
+                .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()))?;
+        if scenario_identity != provenance.scenario_identity
+            || profile_identity != provenance.profile_identity
+        {
+            return Err(ScenarioIoError::ClauseSource("the session differs from its native source; edit the .clause source and reload before regenerating the JSON cache".into()));
+        }
+        return crate::clause_scenario_ingest::write_clause_source_cache(path, &provenance.cache)
+            .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()));
+    }
     save_scenario_authority_to_path(path, &session.scenario_authority)
 }
 
@@ -62,12 +90,28 @@ pub fn load_studio_session_from_scenario_path(
     path: &Path,
     profile_hint: Option<GenerationProfile>,
 ) -> Result<StudioSession, ScenarioIoError> {
+    if is_clause_cache(&std::fs::read_to_string(path)?) {
+        let ingest = crate::clause_scenario_ingest::ingest_clause_scenario_cache_path(path)
+            .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()))?;
+        return crate::clause_scenario_ingest::load_studio_session_from_clause_ingest_result(
+            &ingest,
+            path.to_path_buf(),
+            profile_hint,
+        )
+        .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()));
+    }
     let scenario_authority = load_scenario_authority_from_path(path)?;
     StudioSession::from_loaded_scenario(scenario_authority, path.to_path_buf(), profile_hint)
         .map_err(ScenarioIoError::from)
 }
 
-fn atomic_write(path: &Path, contents: &str) -> Result<(), ScenarioIoError> {
+fn is_clause_cache(text: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(text)
+        .ok()
+        .is_some_and(|value| value.get("format").is_some())
+}
+
+pub(crate) fn atomic_write(path: &Path, contents: &str) -> Result<(), ScenarioIoError> {
     let tmp = path.with_extension(SCENARIO_TMP_SUFFIX);
     std::fs::write(&tmp, contents)?;
     if path.exists() {

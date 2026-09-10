@@ -9,14 +9,12 @@ use std::time::Instant;
 
 use crate::clause_scenario_ingest::{
     ingest_clause_scenario_path_staged, load_studio_session_from_clause_ingest_result,
-    save_clause_scenario_authority_to_path, ClauseScenarioIngestError, ClauseScenarioIngestOptions,
+    save_clause_scenario_cache_to_path, ClauseScenarioIngestError, ClauseScenarioIngestOptions,
     ClauseScenarioIngestResult, ClauseScenarioIngestStage, ClauseScenarioIngestStageEvent,
     ClauseScenarioSourceResolver,
 };
 use crate::generation::GenerationProfile;
-use crate::scenario_io::{load_scenario_authority_from_path, ScenarioIoError};
 use crate::session::StudioSession;
-use crate::studio_live_session_bridge::authored_live_profile_from_pack;
 use crate::studio_scenario_library_ui::{StudioLoaderStage, StudioLoaderStageEvent};
 use crate::studio_scenario_load::{
     canonicalize_scenario_display_path, default_picker_start_directory, ScenarioPickerOutcome,
@@ -34,7 +32,7 @@ pub struct ClausePickerSelection {
     pub clause_path: PathBuf,
     /// Explicit placeholder token → filesystem path (e.g. `"{{FIXTURE_JSON}}"` → path).
     pub resolver_entries: BTreeMap<String, PathBuf>,
-    /// Where to write intermediate ScenarioSpec JSON for session load helpers.
+    /// Where to write the reproducible native-source JSON cache.
     /// When `None`, a sibling `*.from-clause.simthing-scenario.json` path is used.
     pub scenario_json_path: Option<PathBuf>,
 }
@@ -306,23 +304,13 @@ pub fn run_clause_picker_action_staged(
         let ingest =
             ingest_clause_scenario_path_staged(&clause_path, &options, &mut ingest_observer)?;
         observe_loader_stage(StudioLoaderStage::Persist, observer, || {
-            save_clause_scenario_authority_to_path(&json_path, &ingest.scenario)
+            save_clause_scenario_cache_to_path(&json_path, &ingest)
         })?;
-        let scenario = observe_loader_stage(StudioLoaderStage::SessionBuild, observer, || {
-            Ok(load_scenario_authority_from_path(&json_path)?)
+        let ingest = observe_loader_stage(StudioLoaderStage::SessionBuild, observer, || {
+            crate::clause_scenario_ingest::ingest_clause_scenario_cache_path(&json_path)
         })?;
-        // Persist/reload remains the authority source; attach authored live profile from the
-        // same hydrate pack so Auto can open field-bearing (OVL: staged UI must not drop it).
         let session = observe_loader_stage(StudioLoaderStage::Projection, observer, || {
-            Ok(
-                StudioSession::from_loaded_scenario(scenario, json_path.clone(), profile_hint)
-                    .map_err(ScenarioIoError::from)
-                    .map_err(ClauseScenarioIngestError::from)?
-                    .with_authored_live_profile(
-                        authored_live_profile_from_pack(&ingest.pack)
-                            .map_err(ClauseScenarioIngestError::SourceResolution)?,
-                    ),
-            )
+            load_studio_session_from_clause_ingest_result(&ingest, json_path.clone(), profile_hint)
         })?;
         Ok::<_, ClauseScenarioIngestError>((ingest, session))
     })();

@@ -2657,6 +2657,11 @@ fn execute_save_candidate_action(state: &mut StudioAppState) {
             "Save Candidate failed: no active loaded session".into();
         return;
     };
+    if session.authored_live_profile.is_some() {
+        state.last_runtime_saveload_status =
+            "Save Candidate cannot preserve a native authored program. Use Save Scenario for its source cache.".into();
+        return;
+    }
     let json =
         match crate::canonical_json_from_loaded_scenario_authority(&session.scenario_authority) {
             Ok(json) => json,

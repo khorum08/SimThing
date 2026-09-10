@@ -140,6 +140,9 @@ pub struct StudioAuthoredLiveProfile {
     pub location_system_ids: BTreeMap<String, u32>,
     /// Typed disruption_presence loci from field-economy hydrate (not all thresholds).
     pub disruption_observation_loci: Vec<StudioDisruptionObservationLocus>,
+    /// Save validation for native-source cache sessions; never runtime authority.
+    pub(crate) source_cache_provenance:
+        Option<crate::clause_scenario_ingest::StudioSourceCacheProvenance>,
 }
 
 /// Authored disruption_presence observation identity retained from hydrate.
@@ -179,6 +182,7 @@ impl StudioAuthoredLiveProfile {
             recursive_rf: None,
             location_system_ids: BTreeMap::new(),
             disruption_observation_loci: Vec::new(),
+            source_cache_provenance: None,
         }
     }
 
