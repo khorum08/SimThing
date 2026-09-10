@@ -250,6 +250,7 @@ fn fabricated_market_grant_key_is_typed_refusal_without_attach_row_or_retry_and_
         &arena,
         &[],
         &[],
+        &std::collections::BTreeMap::new(),
     )
     .expect("the existing session RF plan binds Current");
     state.run_resource_flow_bands(flow.n_bands, 1.0);

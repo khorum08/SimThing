@@ -569,6 +569,11 @@ impl SimSession {
                 .checked_add(1)
                 .ok_or(crate::need_binding::NeutralPressureBindingError::GenerationOverflow)?,
         );
+        let weight_overlay_targets =
+            crate::arena_allocation_sync::collect_weight_overlay_targets(
+                &self.proto.root,
+                &self.spec_state.arena_registry,
+            );
         crate::arena_allocation_sync::sync_resource_flow_accumulator_with_pressure(
             &mut self.state,
             &self.proto.registry,
@@ -579,6 +584,7 @@ impl SimSession {
             &active_instances,
             observed_generation,
             allocation_generation,
+            &weight_overlay_targets,
         )?;
         self.action_band_execution = Some(SessionActionBandExecution {
             dispatch,
@@ -1381,6 +1387,11 @@ impl SimSession {
                 .checked_add(1)
                 .ok_or(crate::need_binding::NeutralPressureBindingError::GenerationOverflow)?,
         );
+        let weight_overlay_targets =
+            crate::arena_allocation_sync::collect_weight_overlay_targets(
+                &self.proto.root,
+                &self.spec_state.arena_registry,
+            );
         crate::arena_allocation_sync::sync_resource_flow_accumulator_with_pressure(
             &mut self.state,
             &self.proto.registry,
@@ -1391,6 +1402,7 @@ impl SimSession {
             active_instances,
             observed_generation,
             allocation_generation,
+            &weight_overlay_targets,
         )?;
         Ok(())
     }
@@ -1428,6 +1440,10 @@ impl SimSession {
                     .ok_or(crate::need_binding::NeutralPressureBindingError::GenerationOverflow)?,
             ),
             false,
+            &crate::arena_allocation_sync::collect_weight_overlay_targets(
+                &self.proto.root,
+                &self.spec_state.arena_registry,
+            ),
         )?;
         Ok(())
     }

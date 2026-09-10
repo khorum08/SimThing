@@ -69,6 +69,10 @@ pub fn sync_resource_flow_accumulator(
     arena_registry: &ArenaRegistry,
     gated_rates: &[crate::gated_rates::ResolvedGatedRate],
     need_bindings: &[crate::need_binding::ResolvedNeedBinding],
+    weight_overlay_targets: &std::collections::BTreeMap<
+        simthing_core::SimPropertyId,
+        std::collections::BTreeSet<simthing_core::SimThingId>,
+    >,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     sync_resource_flow_accumulator_with_pressure(
         state,
@@ -80,7 +84,30 @@ pub fn sync_resource_flow_accumulator(
         &[],
         GenerationStamp::new(0),
         GenerationStamp::new(1),
+        weight_overlay_targets,
     )
+}
+
+/// Build the per-flow-property installed-overlay AllocatorWeight target map
+/// from the sealed runtime tree (relay 5626653653, completing DA ruling
+/// 5626045761). Observation-only ids from the tree's narrow query; the ONE
+/// canonical authority remains the installed overlay/program set itself.
+pub fn collect_weight_overlay_targets(
+    root: &simthing_sim::SimRuntimeTree,
+    arena_registry: &ArenaRegistry,
+) -> std::collections::BTreeMap<
+    simthing_core::SimPropertyId,
+    std::collections::BTreeSet<simthing_core::SimThingId>,
+> {
+    let role = simthing_core::SubFieldRole::Named("weight".into());
+    let mut map = std::collections::BTreeMap::new();
+    for arena in &arena_registry.arenas {
+        let ids = root.overlay_transform_targets(arena.flow_property_id, &role);
+        if !ids.is_empty() {
+            map.insert(arena.flow_property_id, ids);
+        }
+    }
+    map
 }
 
 /// Sole production sync with the existing typed ActionBand pressure products.
@@ -96,6 +123,10 @@ pub fn sync_resource_flow_accumulator_with_pressure(
     active_instances: &[crate::ActionBandActiveInstance],
     observed_generation: GenerationStamp,
     allocation_generation: GenerationStamp,
+    weight_overlay_targets: &std::collections::BTreeMap<
+        simthing_core::SimPropertyId,
+        std::collections::BTreeSet<simthing_core::SimThingId>,
+    >,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     sync_resource_flow_accumulator_with_options(
         state,
@@ -108,6 +139,7 @@ pub fn sync_resource_flow_accumulator_with_pressure(
         observed_generation,
         allocation_generation,
         true,
+        weight_overlay_targets,
     )
 }
 
@@ -123,6 +155,10 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     observed_generation: GenerationStamp,
     allocation_generation: GenerationStamp,
     include_need_stage_projections: bool,
+    weight_overlay_targets: &std::collections::BTreeMap<
+        simthing_core::SimPropertyId,
+        std::collections::BTreeSet<simthing_core::SimThingId>,
+    >,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     if arena_registry.arenas.is_empty() {
         state.clear_resource_flow_accumulator();
@@ -149,11 +185,27 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     // upsweep aggregate feeds only their own child-share denominator. Neutral
     // participants remain pure pressure carriers, bit-identical to the
     // historical plan.
-    let authored_weight_slots: std::collections::BTreeSet<u32> =
+    // Relay 5626653653 completion: the policy-bearing set derives from EVERY
+    // canonical authored AllocatorWeight authority — the resolved need
+    // bindings AND active installed overlays targeting the flow property's
+    // AllocatorWeight sub-field (ids supplied per property by the sealed
+    // runtime tree's observation-only query). Classification only; the ONE
+    // authority remains the installed program/overlay set itself.
+    let authored_weight_slots_base: std::collections::BTreeSet<u32> =
         need_bindings.iter().map(|b| b.participant_slot).collect();
     let mut combined_cpu = Vec::new();
     let mut max_bands = 0u32;
     for arena in &plan.arenas {
+        let mut authored_weight_slots = authored_weight_slots_base.clone();
+        if let Some(overlay_ids) =
+            weight_overlay_targets.get(&arena.flow_property_id)
+        {
+            for node in arena.iter_all() {
+                if overlay_ids.contains(&node.hosted_simthing_id) {
+                    authored_weight_slots.insert(node.participant_slot.raw());
+                }
+            }
+        }
         let mut alloc = plan_arena_allocation_with_pressure(
             arena,
             &governed,

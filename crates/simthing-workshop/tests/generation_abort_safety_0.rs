@@ -301,7 +301,7 @@ fn untouched_retry_executes_and_resident_axes_poison_on_abort() {
             &mut values,
         );
         state.install_resolved_values_at_boundary(&values);
-        let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena, &[], &[]).unwrap();
+        let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena, &[], &[], &std::collections::BTreeMap::new()).unwrap();
         state.run_resource_flow_bands(flow.n_bands, 1.0);
         // Same auxiliary arena setup used by the frozen axis referee. This is
         // never used to reconstruct or retry the ordinary SimSession witness.

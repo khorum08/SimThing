@@ -67,3 +67,30 @@ increment's semantic edits therefore roll the seal under the standing clean-chec
 - observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 42a7338e0b42b5be`; referee
   `1 passed; 0 failed` — pinned fingerprint reproduced and the qualified witness admitted
   from the fresh canonical-LF clone (sibling directory, never %TEMP%).
+
+## Coverage completion (relay `5626653653`) + EIGHTH E8 roll
+
+Astra's unchanged discriminator stayed RED after #2035: the policy-bearing set derived only
+from resolved need bindings, while the specimen authors AllocatorWeight through the admitted
+`OverlaySpec` route — accepted at install, absent from the set, erased by the neutral
+upsweep. **Completion (no new law):** the classification now derives from EVERY canonical
+authority — need bindings AND active installed overlays whose transform targets the flow
+property's `Named("weight")` sub-field. The sealed `SimRuntimeTree` gained the narrow
+observation-only query `overlay_transform_targets` (ids only); the sync boundary builds the
+per-flow-property map via `collect_weight_overlay_targets`; every wrapper and the
+harness-only DISCONNECT path carry it, so no route reopens the erasure. Neutral callers pass
+the empty map (historical plans, bit-identical). Witness:
+`rehearsal_lifecycle_interior_policy_overlay_0` (host + affected classify; wrong-property
+and wrong-role never do). Workspace `--all-targets` compiles clean; plan witnesses 3/3.
+
+**Eighth roll** (sync is a sealed component): old pin `0x42a7_338e_0b42_b5be` REFUSED the
+amended bundle (RED captured, observed `0x6f28_7da9_8675_0d29`); both literals rolled to the
+observed value; parity 1/1 (mutant matrix), score-and-bands 3/3, gpu runtime 4/4 under
+`simthing-gpu/eml-resource-profiling`. Pin chain: `0xb295…` → `0x42a7…` → `0x6f28_7da9_8675_0d29`.
+
+### Clean-checkout proof (eighth roll)
+- commit: `dae7ab1b8b394b32b79b5ec7320bc215e54b5359`
+- command: fresh `git clone` at that exact commit;
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 6f287da986750d29`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced from the fresh canonical-LF clone.

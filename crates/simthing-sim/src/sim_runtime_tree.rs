@@ -183,6 +183,45 @@ impl SimRuntimeTree {
         ))
     }
 
+    /// Observation-only classification for the arena allocation planner
+    /// (relay 5626653653, completing DA ruling 5626045761): every SimThing
+    /// carrying or affected by an ACTIVE installed overlay whose transform
+    /// targets `property_id`'s given sub-field role. This enumerates the ONE
+    /// canonical installed-overlay AllocatorWeight authority — ids only, the
+    /// sealed tree is never exposed.
+    pub fn overlay_transform_targets(
+        &self,
+        property_id: simthing_core::SimPropertyId,
+        role: &simthing_core::SubFieldRole,
+    ) -> std::collections::BTreeSet<SimThingId> {
+        fn walk(
+            node: &SimThing,
+            property_id: simthing_core::SimPropertyId,
+            role: &simthing_core::SubFieldRole,
+            out: &mut std::collections::BTreeSet<SimThingId>,
+        ) {
+            for overlay in &node.overlays {
+                if overlay.is_active()
+                    && overlay.transform.property_id == property_id
+                    && overlay
+                        .transform
+                        .sub_field_deltas
+                        .iter()
+                        .any(|(r, _)| r == role)
+                {
+                    out.insert(node.id);
+                    out.extend(overlay.affects.iter().copied());
+                }
+            }
+            for child in &node.children {
+                walk(child, property_id, role, out);
+            }
+        }
+        let mut out = std::collections::BTreeSet::new();
+        walk(&self.inner, property_id, role, &mut out);
+        out
+    }
+
     pub fn contains_id(&self, id: SimThingId) -> bool {
         find_node(&self.inner, id).is_some()
     }

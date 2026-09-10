@@ -72,7 +72,7 @@ fn admit(ctx: &GpuContext, realm: u128) -> Tree {
         &mut initial,
     );
     state.install_resolved_values_at_boundary(&initial);
-    let flow = sync_resource_flow_accumulator(&mut state, &registry, &arenas, &[], &[]).unwrap();
+    let flow = sync_resource_flow_accumulator(&mut state, &registry, &arenas, &[], &[], &std::collections::BTreeMap::new()).unwrap();
     let mut schedule = IntegrationSchedule::new();
     schedule.admit_resident_live_head(32).unwrap();
     let runtime = ResidentClearingRuntime::admit_with_persistence_deformations(

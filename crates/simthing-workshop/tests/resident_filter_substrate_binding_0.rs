@@ -119,7 +119,7 @@ impl RealArenaFixture {
             &mut projected,
         );
         state.install_resolved_values_at_boundary(&projected);
-        let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena_registry, &[], &[])
+        let flow = sync_resource_flow_accumulator(&mut state, &registry, &arena_registry, &[], &[], &std::collections::BTreeMap::new())
             .unwrap();
         Self {
             tree,
@@ -586,6 +586,7 @@ fn topology_growth_rebind_preserves_identity_live_head_and_pending_provenance() 
         &fixture.arena_registry,
         &[],
         &[],
+        &std::collections::BTreeMap::new(),
     )
     .unwrap();
     fixture.state.run_resource_flow_bands(flow.n_bands, 1.0);
