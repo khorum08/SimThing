@@ -49,7 +49,7 @@ use simthing_spec::{
     ScalarBoundDirection, ScopeId,
 };
 
-const QUALIFIED_RECORD_FINGERPRINT: u64 = 0xb295_851d_f402_d50b;
+const QUALIFIED_RECORD_FINGERPRINT: u64 = 0x42a7_338e_0b42_b5be;
 
 fn col(raw: usize) -> ColumnIndex {
     ColumnIndex::from_raw_for_oracle_or_rehearsal(raw)
@@ -415,6 +415,7 @@ fn run_live_gpu_pressure_allocation(
             active,
             GenerationStamp::new(10),
             GenerationStamp::new(11),
+            &std::collections::BTreeSet::new(),
         )
         .expect("plan-owned born-F pressure route"),
         None => plan_arena_allocation_with_pressure(
@@ -425,6 +426,7 @@ fn run_live_gpu_pressure_allocation(
             &[],
             GenerationStamp::new(10),
             GenerationStamp::new(11),
+            &std::collections::BTreeSet::new(),
         )
         .expect("plan-owned raw-P pressure route"),
     };

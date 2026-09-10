@@ -605,6 +605,7 @@ fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
             &active,
             GenerationStamp::new(10),
             GenerationStamp::new(11),
+            &std::collections::BTreeSet::new(),
         )
         .expect("ordinary plan inserts born F for N+1")
     } else {
@@ -838,6 +839,7 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
         &active,
         GenerationStamp::new(10),
         GenerationStamp::new(11),
+        &std::collections::BTreeSet::new(),
     )
     .expect("ordinary allocator plan owns typed Gu-Yang insertion");
     let identity_ops = pressure_plan
@@ -871,6 +873,7 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
         &[],
         GenerationStamp::new(10),
         GenerationStamp::new(11),
+        &std::collections::BTreeSet::new(),
     )
     .expect("empty typed-pressure set");
     assert_eq!(
@@ -902,6 +905,7 @@ fn prove_direct_child_pressure_sums_once_and_neutral_f_or_p_drives_next_generati
                 &active,
                 GenerationStamp::new(10),
                 GenerationStamp::new(10),
+                &std::collections::BTreeSet::new(),
             ),
             Err(simthing_driver::AllocationPlanError::NeutralPressure(
                 NeutralPressureBindingError::NotNextGeneration { .. }
