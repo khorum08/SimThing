@@ -53,6 +53,9 @@ use crate::hydrate_scenario_commitment::{
 };
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, RawValue};
 
+#[path = "rehearsal_ingress_fields.rs"]
+mod rehearsal_ingress_fields;
+
 pub const PR3_MAX_LINK_FANOUT: usize = 4;
 /// PR4 admits one scenario-contained SaturatingFlux field operator per document.
 pub const PR4_MAX_SCENARIO_FIELD_OPERATORS: usize = 1;
@@ -395,6 +398,8 @@ pub fn hydrate_scenario_with_source_base(
         reject_forbidden_scenario_field(field)?;
         match field.key.text.as_str() {
             "id" => {}
+            // Resolved against the complete property registry and target identities below.
+            "property_value" | "resource_parent" => {}
             "metadata" => metadata = parse_metadata_block(field)?,
             "location" => {
                 let node = parse_node(
@@ -778,7 +783,7 @@ pub fn hydrate_scenario_with_source_base(
         }
     }
     dedupe_property_specs_by_name(&mut game_mode.properties);
-    Ok(HydratedScenarioPack {
+    let mut pack = HydratedScenarioPack {
         scenario_id,
         metadata,
         game_mode,
@@ -797,7 +802,9 @@ pub fn hydrate_scenario_with_source_base(
         planet_surface_payloads,
         fleet_ship_payloads,
         field_economy,
-    })
+    };
+    rehearsal_ingress_fields::apply_source_fields(scenario, &mut pack)?;
+    Ok(pack)
 }
 
 fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateError> {
@@ -883,6 +890,7 @@ fn parse_owner(property: &RawProperty) -> Result<HydratedScenarioOwner, HydrateE
             "capability_profile" => {
                 capability_profile = Some(read_scalar_text(field, "capability_profile")?);
             }
+            "property_value" | "resource_parent" | "overlays" => {}
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported owner field `{other}`"),
@@ -2450,6 +2458,7 @@ fn parse_node(
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
         match field.key.text.as_str() {
+            "property_value" | "resource_parent" | "owner_ref" => {}
             "id" => {
                 let explicit_id = read_scalar_text(field, "id")?;
                 if !id.is_empty() && id != explicit_id {
@@ -2605,6 +2614,7 @@ fn parse_property_spec(property: &RawProperty) -> Result<PropertySpec, HydrateEr
     let mut display_name = String::new();
     let mut description = String::new();
     let mut admission_disposition = PropertyAdmissionDisposition::Anchored;
+    let mut sub_fields = Vec::new();
 
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
@@ -2615,6 +2625,7 @@ fn parse_property_spec(property: &RawProperty) -> Result<PropertySpec, HydrateEr
             "display_name" => display_name = read_scalar_text(field, "display_name")?,
             "description" => description = read_scalar_text(field, "description")?,
             "disposition" => admission_disposition = parse_property_disposition(field)?,
+            "sub_field" => sub_fields.push(rehearsal_ingress_fields::parse_subfield(field)?),
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported property field `{other}`"),
@@ -2630,7 +2641,7 @@ fn parse_property_spec(property: &RawProperty) -> Result<PropertySpec, HydrateEr
         name: require_field(name, "name", property)?,
         display_name,
         description,
-        sub_fields: Vec::new(),
+        sub_fields,
         admission_disposition,
     })
 }
@@ -2738,6 +2749,7 @@ fn parse_modifier_spec(
     let mut targets_property = None;
     let mut amount_mult = None;
     let mut amount_add = None;
+    let mut sub_field = SubFieldRole::Amount;
 
     for field in &block.properties {
         reject_forbidden_node_field(field)?;
@@ -2749,6 +2761,10 @@ fn parse_modifier_spec(
             }
             "amount_mult" => amount_mult = Some(read_scalar_f32(field, "amount_mult")?),
             "amount_add" => amount_add = Some(read_scalar_f32(field, "amount_add")?),
+            "sub_field" => {
+                sub_field =
+                    rehearsal_ingress_fields::parse_role(&read_scalar_text(field, "sub_field")?);
+            }
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported modifier field `{other}`"),
@@ -2779,7 +2795,7 @@ fn parse_modifier_spec(
         id: require_field(id, "id", property)?,
         display_name,
         targets_property: require_field(targets_property, "targets_property", property)?,
-        sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
+        sub_field_deltas: vec![(sub_field, transform)],
         lifecycle: OverlayLifecycle::UntilDissolved,
         kind: OverlayKind::Policy,
         source: OverlaySource::Player,
