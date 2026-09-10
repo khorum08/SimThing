@@ -111,3 +111,19 @@ heads (#2032 and #2033; Board returns 5620231592 and 5620569093). No engine,
 protected/census, gate, Cargo, historical test, merge or graduation edit occurs
 in this reserve. Remaining hydration/generation, admitted JSON-loader, historical
 successor and census work stays open under the same rung.
+
+## Orchestration dispositions before DA relay
+
+`SPEC-LOWERER-KIND-READ` is **GREEN** at Orchestrator tier. The cited `GameSession`
+kind read only locates the canonical session container so authored aliases resolve
+to existing `SimThingId` identities; no gameplay behavior, RF participation,
+allocation law, role semantics, or execution path is selected by kind. The
+corresponding triage row is landed on this branch.
+
+The separate ClauseThing package failure is classified **pre-existing harness
+error**, not semantic reserve: the historical test reads the closed 0.0.8.7 design
+document for its expected pointer while the live Board correctly follows the open
+0.0.8.8 track. Astra reproduced the same failure on the unchanged parent head.
+It therefore does not contaminate the retained policy RED and is excluded from
+the DA semantic question; Orchestration owns repair of that stale pointer referee
+separately.
