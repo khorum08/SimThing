@@ -61,7 +61,9 @@ increment's semantic edits therefore roll the seal under the standing clean-chec
 
 ## Clean-checkout proof
 
-- commit: `ROLLCOMMIT`
+- commit: `a5864f6b94dbaf07a9edd125c18cf6e1c08503f1`
 - command: fresh `git clone` (canonical LF checkout) at that exact commit;
   `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
-- observed: `PENDING`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 42a7338e0b42b5be`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced and the qualified witness admitted
+  from the fresh canonical-LF clone (sibling directory, never %TEMP%).
