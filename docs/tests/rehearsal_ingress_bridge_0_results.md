@@ -118,6 +118,8 @@ an already admitted replacement. No edit to that surface was made. Orchestration
 resolve this narrow scope gap with the engine reserve; it must not infer complete UI safety
 from the passing bridge test.
 
-No pen renewals were performed: the three new owning tests have AUDIT / ledger-only rows
-under `0.0.8.8-integrated-rehearsal`, DSU 0. No historical test was weakened or deleted.
+No pen renewals were performed: the three new owning tests have behavior-regression /
+AUDIT / ledger-only rows under `0.0.8.8-integrated-rehearsal`, DSU 0. They reproduce concrete
+ingress and publication faults; no permanent-proof classification is claimed. No historical
+test was weakened or deleted.
 No self-triage, merge, census/protected-file change or final clearance was performed.
