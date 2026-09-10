@@ -139,3 +139,13 @@ AUDIT / ledger-only rows under `0.0.8.8-integrated-rehearsal`, DSU 0. They repro
 ingress and publication faults; no permanent-proof classification is claimed. No historical
 test was weakened or deleted.
 No self-triage, merge, census/protected-file change or final clearance was performed.
+
+## Orchestration triage disposition
+
+`TEST-BUDGET` is **GREEN** at Orchestrator tier. The four named owning tests are distinct
+load-bearing contracts: full-authored-economy F1, failed-admission preservation, canonical
+post-RF publication, and actual UI adoption atomicity. They are not malformed-input enumeration;
+a table-driven collapse would obscure the independent regression identity each test protects.
+The corresponding `triage_log.tsv` row was landed before this note; this note exists only to
+bind the results packet to that disposition and to create a normal exact-head CI flight after
+the GitHub-actions-authored triage commit.
