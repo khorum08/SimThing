@@ -1,0 +1,83 @@
+# Native source for the full ingress RF discriminator. Owner seats are not spatial containers.
+@beta_policy = 3
+scenario = rehearsal_ingress_rf {
+  static_galaxy_scenario = base { source_json = "rehearsal_ingress_cache.base.json" namespace = rf_base map_quality_status = PASS }
+  property_value = { property = "ingress_rf::energy" flow = 47 weight = 1 }
+  owner = alpha {
+    property_value = { property = "ingress_rf::energy" flow = 0 weight = 1 }
+    resource_parent = { property = "ingress_rf::energy" parent = rehearsal_ingress_rf }
+    overlays = { modifier = { id = alpha_policy targets_property = "ingress_rf::energy" sub_field = weight amount_mult = 2 } }
+  }
+  owner = beta {
+    property_value = { property = "ingress_rf::energy" flow = 0 weight = 1 }
+    resource_parent = { property = "ingress_rf::energy" parent = rehearsal_ingress_rf }
+    overlays = { modifier = { id = beta_policy targets_property = "ingress_rf::energy" sub_field = weight amount_mult = @beta_policy } }
+  }
+  planet_surface_payload = neutral { applies_to = neutral_systems planets_per_system_min = 1 surface_grid = "1x1" factory_min = 0 cohort_min = 0 }
+  location = alpha_site {
+    system_target = row0_col0
+    owner_ref = alpha
+    property_value = { property = "ingress_rf::energy" flow = 0 weight = 1 }
+    resource_parent = { property = "ingress_rf::energy" parent = alpha }
+    properties = { property = { id = energy namespace = ingress_rf name = energy
+      sub_field = { role = flow accumulator = IntrinsicFlow }
+      sub_field = { role = Amount accumulator = AllocatedFlow { arena = native_energy } }
+      sub_field = { role = weight default = 1 accumulator = AllocatorWeight { arena = native_energy } }
+      sub_field = { role = balance_rate }
+      sub_field = { role = balance governed_by = balance_rate accumulator = Balance }
+    } }
+    children = {
+      child = alpha_0 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 5 weight = 1 }
+      }
+      child = alpha_1 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 6 weight = 1 }
+      }
+      child = alpha_2 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 7 weight = 1 }
+      }
+      child = alpha_3 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 8 weight = 1 }
+      }
+      child = alpha_4 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 0 weight = 1 }
+      }
+      child = alpha_5 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = -30 weight = 1 }
+      }
+      child = alpha_6 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = -25 weight = 1 }
+      }
+    }
+  }
+  location = beta_site {
+    system_target = row0_col1
+    owner_ref = beta
+    property_value = { property = "ingress_rf::energy" flow = 0 weight = 1 }
+    resource_parent = { property = "ingress_rf::energy" parent = beta }
+    children = {
+      child = beta_0 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 5 weight = 1 }
+      }
+      child = beta_1 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 6 weight = 1 }
+      }
+      child = beta_2 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 7 weight = 1 }
+      }
+      child = beta_3 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 8 weight = 1 }
+        resource_parent = { property = "ingress_rf::energy" parent = beta_2 }
+      }
+      child = beta_4 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = 0 weight = 1 }
+      }
+      child = beta_5 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = -30 weight = 1 }
+      }
+      child = beta_6 { kind = Cohort
+        property_value = { property = "ingress_rf::energy" flow = -25 weight = 1 }
+      }
+    }
+  }
+}
