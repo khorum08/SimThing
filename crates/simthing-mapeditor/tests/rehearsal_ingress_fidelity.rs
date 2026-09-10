@@ -10,10 +10,10 @@ use simthing_core::{
     OverlayKind, OverlayLifecycle, OverlaySource, SimThing, SimThingId, SimThingKind, SubFieldRole,
     SubFieldSpec, TransformOp,
 };
-use simthing_driver::SimSession;
+use simthing_driver::{observe_hosted_property_cell, AnchorTableSnapshot, SimSession};
 use simthing_mapeditor::studio_live_session_bridge::{
     authored_live_profile_from_pack, driver_scenario_field_bearing_from_profile,
-    StudioAuthoredLiveProfile, StudioLiveSessionBridge,
+    StudioAuthoredLiveProfile, StudioLiveSessionBridge, StudioLiveSessionPathPreference,
 };
 use simthing_mapeditor::StudioSession;
 use simthing_spec::spec::install_target::InstallTargetSpec;
@@ -324,7 +324,7 @@ fn rehearsal_ingress_installs_full_authored_economy() {
     drop(control);
     let studio = StudioSession::from_loaded_scenario(scenario, "authored-f1.json".into(), None)
         .unwrap()
-        .with_authored_live_profile(authored_live_profile_from_pack(&pack));
+        .with_authored_live_profile(authored_live_profile_from_pack(&pack).unwrap());
     let mut bridge = StudioLiveSessionBridge::default();
     bridge
         .open_from_loaded_studio_session(&studio)
@@ -362,7 +362,185 @@ fn rehearsal_ingress_installs_full_authored_economy() {
     assert_eq!(sim.proto.root.overlay_count(ids["alpha"]), Some(1));
     assert_eq!(sim.proto.root.overlay_count(ids["beta"]), Some(1));
     for owner in ["alpha", "beta"] {
+        assert_eq!(
+            sim.proto
+                .root
+                .owner_of(ids[&format!("{owner}_3")])
+                .unwrap()
+                .as_str(),
+            owner
+        );
         assert_eq!(actual[&format!("{owner}_3")], Some(8.0));
         assert_eq!(actual[&format!("{owner}_4")], Some(0.0), "zero is PRESENT");
     }
+}
+
+#[test]
+fn rehearsal_ingress_failed_admission_preserves_running_session() {
+    let (mut pack, scenario, ids) = specimen();
+    // Amount is the existing canonical primary observation role. The F1 source above
+    // independently owns the named-only admission regression; this running-session
+    // variant authors its governed Balance as an observable Amount before installation.
+    pack.game_mode.properties[0].sub_fields[4].role = SubFieldRole::Amount;
+    let studio = StudioSession::from_loaded_scenario(scenario, "authored-f1.json".into(), None)
+        .unwrap()
+        .with_authored_live_profile(authored_live_profile_from_pack(&pack).unwrap());
+    let mut bridge = StudioLiveSessionBridge::default();
+    bridge.open_from_loaded_studio_session(&studio).unwrap();
+    assert_eq!(bridge.consume_scheduled_ticks(1).unwrap(), 1);
+    let identity = bridge.sim_session().unwrap().persisted_execution_identity();
+    let before = AnchorTableSnapshot::from_session(bridge.sim_session().unwrap());
+    assert!(
+        !before.rows().is_empty(),
+        "session safety compares actual GPU observation rows"
+    );
+    for invalid in ["missing::resource", "malformed_property_reference"] {
+        let mut rejected = studio.clone();
+        rejected
+            .authored_live_profile
+            .as_mut()
+            .unwrap()
+            .game_mode
+            .domain_packs[0]
+            .overlays[0]
+            .targets_property = invalid.into();
+        bridge
+            .open_from_loaded_studio_session(&rejected)
+            .expect_err("invalid program refuses before replacement");
+        let current = bridge
+            .sim_session()
+            .expect("prior valid session remains resident");
+        assert_eq!(current.persisted_execution_identity(), identity);
+        assert_eq!(bridge.executed_ticks(), 1);
+        assert_eq!(
+            AnchorTableSnapshot::from_session(current).rows(),
+            before.rows()
+        );
+        assert_eq!(current.proto.root.overlay_count(ids["beta"]), Some(1));
+    }
+    bridge.set_path_preference(StudioLiveSessionPathPreference::StructuralShell);
+    bridge
+        .open_from_loaded_studio_session(&studio)
+        .expect_err("a path preference cannot discard authored economics");
+    assert_eq!(
+        bridge.sim_session().unwrap().persisted_execution_identity(),
+        identity
+    );
+    bridge.set_path_preference(StudioLiveSessionPathPreference::Auto);
+    assert_eq!(bridge.consume_scheduled_ticks(1).unwrap(), 1);
+    assert_eq!(bridge.executed_ticks(), 2);
+}
+
+#[test]
+fn rehearsal_ingress_post_rf_observation_matches_born_allocations() {
+    fn run(child_rate: u32) -> (BTreeMap<String, f32>, BTreeMap<String, f32>) {
+        fn node_mut(node: &mut SimThing, id: SimThingId) -> Option<&mut SimThing> {
+            if node.id == id {
+                return Some(node);
+            }
+            node.children
+                .iter_mut()
+                .find_map(|child| node_mut(child, id))
+        }
+        let (mut pack, mut scenario, mut ids) = specimen();
+        // Observe the admitted AllocatedFlow through the canonical Amount role.
+        pack.game_mode.properties[0].sub_fields[1].role = SubFieldRole::Amount;
+        let mut registry = DimensionRegistry::new();
+        let (pid, _) = compile_property(&pack.game_mode.properties[0], &mut registry).unwrap();
+        // Two real deficit claimants make the root's authored 47 supply contend.
+        // The F1 presence specimen alone contains producers, so zero allocations there are lawful.
+        for owner in ["alpha", "beta"] {
+            let mut demand = SimThing::new(SimThingKind::Cohort, 0);
+            apply_participant_owner_flow_metadata(&mut demand, owner, 0, 100);
+            populate(&mut demand, &registry, None, -100.0);
+            ids.insert(format!("{owner}_demand"), demand.id);
+            node_mut(
+                pack.authority_root.as_mut().unwrap(),
+                ids[&format!("{owner}_surface")],
+            )
+            .unwrap()
+            .add_child(demand);
+        }
+        let node = node_mut(pack.authority_root.as_mut().unwrap(), ids["beta_3"]).unwrap();
+        apply_participant_owner_flow_metadata(node, "beta", child_rate, 0);
+        node.property_mut(pid).unwrap().set_role(
+            &SubFieldRole::Named("flow".into()),
+            &registry.property(pid).layout,
+            child_rate as f32,
+        );
+        scenario.root = pack.authority_root.clone().unwrap();
+        let studio =
+            StudioSession::from_loaded_scenario(scenario, "authored-variant.json".into(), None)
+                .unwrap()
+                .with_authored_live_profile(authored_live_profile_from_pack(&pack).unwrap());
+        let mut bridge = StudioLiveSessionBridge::default();
+        bridge.open_from_loaded_studio_session(&studio).unwrap();
+        bridge.consume_scheduled_ticks(1).unwrap();
+        let sim = bridge.sim_session().unwrap();
+        let snapshot = AnchorTableSnapshot::from_session(sim);
+        // Diagnostic comparison with the producer buffer localizes stale observation.
+        // The witness still requires the canonical read; raw values cannot replace it.
+        let columns = simthing_driver::resolve_node_columns_for_property(
+            &sim.proto.registry,
+            sim.proto.registry.id_of(NS, PROPERTY).unwrap(),
+            ARENA,
+        )
+        .unwrap();
+        let raw_values = sim.state.read_values();
+        let raw_allocations: BTreeMap<_, _> = ids
+            .iter()
+            .map(|(label, id)| {
+                let slot = sim
+                    .spec_state
+                    .arena_registry
+                    .participant_slot(*id, 0)
+                    .unwrap()
+                    .raw();
+                (
+                    label.clone(),
+                    raw_values[slot as usize * sim.proto.registry.total_columns
+                        + columns.allocated_flow_col.raw_u32() as usize],
+                )
+            })
+            .collect();
+        eprintln!(
+            "diagnostic only: RF active={}, raw allocations={raw_allocations:?}",
+            sim.state.accumulator_resource_flow_active
+        );
+        let observed = ids
+            .iter()
+            .map(|(label, id)| {
+                let value = observe_hosted_property_cell(
+                    &sim.proto.registry,
+                    &sim.proto.allocator,
+                    &snapshot,
+                    *id,
+                    &PropertyKey::new(NS, PROPERTY),
+                    &SubFieldRole::Amount,
+                )
+                .unwrap();
+                (label.clone(), value)
+            })
+            .collect();
+        (observed, raw_allocations)
+    }
+    let (baseline, baseline_producer) = run(8);
+    let (child_changed, child_producer) = run(20);
+    eprintln!("canonical observations baseline={baseline:?}; child={child_changed:?}");
+    assert_ne!(
+        baseline_producer, child_producer,
+        "diagnostic control: the authored child change affects the producer buffer"
+    );
+    assert_eq!(
+        baseline, baseline_producer,
+        "canonical post-RF observation must publish the completed producer output"
+    );
+    assert_eq!(
+        child_changed, child_producer,
+        "canonical post-RF observation must publish the changed producer output"
+    );
+    assert_ne!(
+        baseline, child_changed,
+        "formerly unselected child contribution reaches born output"
+    );
 }

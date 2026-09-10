@@ -318,7 +318,10 @@ pub fn run_clause_picker_action_staged(
                 StudioSession::from_loaded_scenario(scenario, json_path.clone(), profile_hint)
                     .map_err(ScenarioIoError::from)
                     .map_err(ClauseScenarioIngestError::from)?
-                    .with_authored_live_profile(authored_live_profile_from_pack(&ingest.pack)),
+                    .with_authored_live_profile(
+                        authored_live_profile_from_pack(&ingest.pack)
+                            .map_err(ClauseScenarioIngestError::SourceResolution)?,
+                    ),
             )
         })?;
         Ok::<_, ClauseScenarioIngestError>((ingest, session))
