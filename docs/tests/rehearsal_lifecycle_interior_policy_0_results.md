@@ -89,7 +89,8 @@ observed value; parity 1/1 (mutant matrix), score-and-bands 3/3, gpu runtime 4/4
 `simthing-gpu/eml-resource-profiling`. Pin chain: `0xb295…` → `0x42a7…` → `0x6f28_7da9_8675_0d29`.
 
 ### Clean-checkout proof (eighth roll)
-- commit: `ROLL8COMMIT`
+- commit: `dae7ab1b8b394b32b79b5ec7320bc215e54b5359`
 - command: fresh `git clone` at that exact commit;
   `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
-- observed: `PENDING8`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 6f287da986750d29`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced from the fresh canonical-LF clone.
