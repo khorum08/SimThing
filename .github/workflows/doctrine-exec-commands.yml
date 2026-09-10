@@ -32,6 +32,7 @@ jobs:
       triage_outcome: ${{ steps.parse.outputs.triage_outcome }}
       triage_reason: ${{ steps.parse.outputs.triage_reason }}
       orient_role: ${{ steps.parse.outputs.orient_role }}
+      rungclose_rung: ${{ steps.parse.outputs.rungclose_rung }}
       anchor_target: ${{ steps.parse.outputs.anchor_target }}
       handoff_action: ${{ steps.parse.outputs.handoff_action }}
       handoff_text_b64: ${{ steps.parse.outputs.handoff_text_b64 }}
@@ -227,6 +228,16 @@ jobs:
             echo "triage_scan=$(echo "$CMD" | sed -n 's/.*scan=\([^ ]*\).*/\1/p')" >> "$GITHUB_OUTPUT"
             echo "triage_outcome=$(echo "$CMD" | sed -n 's/.*outcome=\([^ ]*\).*/\1/p')" >> "$GITHUB_OUTPUT"
             echo "triage_reason=$(echo "$CMD" | sed -n 's/.*reason=\(.*\)/\1/p')" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == rungclose-invalid* ]]; then
+            echo "command=rungclose-invalid" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ "$CMD" == rungclose* ]]; then
+            echo "command=rungclose" >> "$GITHUB_OUTPUT"
+            RUNG="$(echo "$CMD" | sed -n 's/.*rung=\([^ ]*\).*/\1/p')"
+            echo "rungclose_rung=${RUNG}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [[ "$CMD" == clearance* ]]; then
@@ -699,6 +710,63 @@ jobs:
               fi
             fi
           fi
+
+  rungclose-run:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'rungclose' &&
+      needs.parse-command.outputs.is_collaborator == 'true' &&
+      needs.parse-command.outputs.is_fork == 'false' &&
+      needs.parse-command.outputs.pr_number != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.parse-command.outputs.checkout_ref }}
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Run rungclose graduation gate at exact PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          RUNG="${{ needs.parse-command.outputs.rungclose_rung }}"
+          {
+            echo "pr: ${{ needs.parse-command.outputs.pr_number }}"
+            echo "head_sha: ${{ needs.parse-command.outputs.head_sha }}"
+            echo "base_sha: ${{ needs.parse-command.outputs.base_sha }}"
+            echo "workflow_run_id: ${{ github.run_id }}"
+            echo "rung: ${RUNG}"
+            echo '```'
+          } > rungclose-report.txt
+          set +e
+          bash scripts/ci/track_closeout.sh --rungclose "${RUNG}" >> rungclose-report.txt 2>&1
+          GATE_RC=$?
+          set -e
+          echo '```' >> rungclose-report.txt
+          VERDICT="$(grep '^RUNGCLOSE-VERDICT:' rungclose-report.txt | tail -n 1 || true)"
+          [[ -n "$VERDICT" ]] || VERDICT="RUNGCLOSE-VERDICT: FAIL (gate emitted no verdict; exit=${GATE_RC})"
+          echo "${VERDICT}" >> rungclose-report.txt
+
+      - name: Post rungclose verdict comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ needs.parse-command.outputs.pr_number }}" --body-file rungclose-report.txt
+
+  reject-malformed-rungclose:
+    needs: parse-command
+    if: |
+      needs.parse-command.outputs.command == 'rungclose-invalid' &&
+      needs.parse-command.outputs.is_collaborator == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh issue comment "${{ needs.parse-command.outputs.issue_number }}" --body "FORMAT: /rungclose <RUNG-ID>"
 
   clearance-run:
     needs: parse-command

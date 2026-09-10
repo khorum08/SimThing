@@ -32,6 +32,8 @@ elif [[ "$body" =~ ^/handoff([[:space:]]|$) ]] || [[ "$body" == /handoff* ]]; th
   cmd="handoff"
 elif [[ "$body" =~ ^/triage[[:space:]] ]]; then
   cmd="triage"
+elif [[ "$body" =~ ^/rungclose([[:space:]]|$) ]] || [[ "$body" == /rungclose* ]]; then
+  cmd="rungclose"
 elif [[ "$body" =~ ^/clearance([[:space:]]|$) ]] || [[ "$body" == /clearance* ]]; then
   cmd="clearance"
 elif [[ "$body" =~ ^/relay-lint([[:space:]]|$) ]] || [[ "$body" == /relay-lint* ]]; then
@@ -121,6 +123,19 @@ if [[ "$cmd" == "triage" ]]; then
   fi
   echo "COMMAND: triage-invalid"
   echo "FORMAT: /triage <scan-id> <delete|green|escalate> <reason>"
+  exit 1
+fi
+
+if [[ "$cmd" == "rungclose" ]]; then
+  # /rungclose <RUNG-ID> — head-bound invocation of the existing graduation
+  # gate (DA gate-surface repair per orchestrator relay 5603567918). The gate
+  # itself is unchanged; this only gives the GitHub/GHA role a way to run it.
+  if [[ "$body" =~ ^/rungclose[[:space:]]+([A-Z0-9][A-Z0-9-]*[0-9])[[:space:]]*$ ]]; then
+    echo "COMMAND: rungclose rung=${BASH_REMATCH[1]}"
+    exit 0
+  fi
+  echo "COMMAND: rungclose-invalid"
+  echo "FORMAT: /rungclose <RUNG-ID>"
   exit 1
 fi
 
