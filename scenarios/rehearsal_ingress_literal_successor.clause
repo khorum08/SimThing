@@ -1,0 +1,17 @@
+# Rehearsal successor to CT-1a's stage-only potency modifier record.
+scenario = rehearsal_ingress_literal_successor {
+  static_galaxy_scenario = base { source_json = "rehearsal_ingress_literal_successor.base.json" namespace = literal_base map_quality_status = PASS }
+  owner = specimen {
+    property_value = { property = "simthing::potency" Amount = 40 }
+    overlays = { modifier = { id = ct1a_potency_boost display_name = "CT-1a Potency Boost" targets_property = "simthing::potency" amount_mult = 1.25 } }
+  }
+  planet_surface_payload = neutral { applies_to = neutral_systems planets_per_system_min = 1 surface_grid = "1x1" factory_min = 0 cohort_min = 0 }
+  location = potency_declaration {
+    system_target = row2_col3
+    properties = { property = { id = simthing_potency namespace = simthing name = potency display_name = "Potency"
+      # The historical CPU record applies only the modifier. This runnable quantity
+      # has no implicit [0,1] Amount/Velocity integration before that operation.
+      sub_field = { role = Amount }
+    } }
+  }
+}
