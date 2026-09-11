@@ -5,7 +5,8 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use simthing_core::{PropertyValue, SimThing, SimThingKind};
 use simthing_mapgenerator::{GalaxyGenerationResult, GenerationReport};
 use simthing_spec::{
-    apply_gridcell_property_edit, apply_star_system_display_name_metadata, resolve_map_container,
+    apply_gridcell_property_edit, apply_star_system_display_name_metadata,
+    load_scenario_spec_from_json_str, resolve_map_container, serialize_scenario_authority,
     star_system_display_name, structural_property_value_u32, validate_stead_mapping_consistency,
     SimThingScenarioGrid, SimThingScenarioLink, SimThingScenarioProvenance, SimThingScenarioSpec,
     SimThingStructuralGridFrame, SimThingStructuralGridPlacement,
@@ -219,6 +220,8 @@ pub enum StudioHydrationError {
     GridcellMissingChildren(String),
     #[error("studio scenario authority failed STEAD mapping validation: {0}")]
     SteadMappingInconsistent(String),
+    #[error("generated scenario failed canonical spec admission: {0}")]
+    CanonicalAdmission(String),
     #[error("failed to read Stellaris star-name corpus `{path}`: {message}")]
     StarNameCorpusRead { path: String, message: String },
     #[error("failed to parse Stellaris star-name corpus `{path}`: {message}")]
@@ -375,7 +378,22 @@ pub fn hydrate_mapgen_result_into_simthing_spec_with_star_names(
     };
     validate_stead_mapping_consistency(&scenario)
         .map_err(|err| StudioHydrationError::SteadMappingInconsistent(err.to_string()))?;
-    Ok(scenario)
+    // All generation entry points meet here. The spec loader owns admission, including
+    // compatibility classification for structural producer records without authored owners.
+    let source_label = format!("MapGenerator:{}", scenario.scenario_id);
+    let json = serialize_scenario_authority(&scenario).map_err(|err| {
+        StudioHydrationError::CanonicalAdmission(format!("{source_label}: {err}"))
+    })?;
+    let (admitted, report) =
+        load_scenario_spec_from_json_str(&source_label, &json).map_err(|err| {
+            StudioHydrationError::CanonicalAdmission(format!("{source_label}: {err}"))
+        })?;
+    if !report.ingestion_ready {
+        return Err(StudioHydrationError::CanonicalAdmission(format!(
+            "{source_label} is not ingestion-ready under the spec canonical ingestion profile"
+        )));
+    }
+    Ok(admitted)
 }
 
 pub fn studio_projection_from_scenario_authority(
