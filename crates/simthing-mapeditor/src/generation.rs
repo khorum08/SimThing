@@ -296,7 +296,12 @@ impl GenerationProfile {
         params.hyperlane.num_hyperlanes_min = 1;
         params.hyperlane.max_hyperlane_distance = self.max_hyperlane_distance;
         params.hyperlane.ensure_connected = self.ensure_connected && !self.allow_disconnected;
-        params.shape.shape_params = self.submission_shape_params();
+        // This is the sole submission boundary for preset and edited profile data.
+        // Refresh the active shape before registry-scoped parameter selection, including
+        // callers that request parameters directly without running the producer.
+        let mut submitted = self.clone();
+        submitted.persist_editable_fields_for_active_shape();
+        params.shape.shape_params = submitted.submission_shape_params();
         params.clustering.cluster_count = Some(self.cluster_count);
         params.clustering.cluster_radius = self.cluster_radius;
         if self.no_partitions {
@@ -321,8 +326,6 @@ pub enum GenerationError {
 
 pub fn run_generation(profile: &GenerationProfile) -> Result<GenerationRunOutput, GenerationError> {
     let registry = ShapeRegistry::default();
-    let mut profile = profile.clone();
-    profile.persist_editable_fields_for_active_shape();
     let params = profile.to_map_generator_params();
     params.validate(&registry)?;
     let (hyperlane, special, partition, cluster) = structure_options_from_params(&params)?;
