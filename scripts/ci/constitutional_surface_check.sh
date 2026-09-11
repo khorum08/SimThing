@@ -159,7 +159,6 @@ CENSUS_CATEGORIES = {
     "B": {
         "clause-hydration",
         "canonical-json-load",
-        "literal-install",
         "programmatic-spec",
     },
 }
@@ -909,15 +908,18 @@ def selftest(sources: dict[str, str]) -> int:
     ):
         failures.append("census-invalid-disposition-wrong-reason")
 
+    # B1 census increment (relay 5629006160): literal-install retired from the
+    # B-dimension universe with its row+code; the coverage plant re-anchors on
+    # canonical-json-load at equal strength.
     incomplete_rows = [
         dict(row)
         for row in rows
-        if row["surface_id"] != "AUTHORING-INGRESS-LITERAL-INSTALL"
+        if row["surface_id"] != "AUTHORING-INGRESS-CANONICAL-JSON"
     ]
     incomplete_errors, _ = check_sources(sources, incomplete_rows)
     if not any(
         error.startswith("LEGACY-CENSUS-COVERAGE:")
-        and "literal-install" in error
+        and "canonical-json-load" in error
         for error in incomplete_errors
     ):
         failures.append("census-incomplete-ingress-wrong-reason")

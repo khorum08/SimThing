@@ -15,7 +15,6 @@ pub mod hydration;
 pub mod hyperlane_buckets;
 pub mod hyperlane_ribbon;
 pub mod panel_layout;
-pub mod runtime_vertical_seed;
 pub mod scenario_io;
 pub mod scenario_projection;
 pub mod scenario_runtime_saveload_ui;
@@ -110,10 +109,6 @@ pub use hyperlane_ribbon::{
     compute_camera_facing_width_dir, count_non_finite_vertex_positions, hyperlane_mesh_is_valid,
     hyperlane_rebuild_is_valid, hyperlane_ribbon_width_dir, is_valid_width_dir, HyperlaneMeshStats,
     HyperlaneRibbonBasis, HyperlaneRibbonCamera, HyperlaneWidthDirOutcome,
-};
-pub use runtime_vertical_seed::{
-    runtime_vertical_seed_scenario_spec, RUNTIME_VERTICAL_SEED_PROVENANCE_SOURCE,
-    RUNTIME_VERTICAL_SEED_SCENARIO_ID,
 };
 pub use scenario_io::{
     load_scenario_authority_from_path, load_studio_session_from_scenario_path,
