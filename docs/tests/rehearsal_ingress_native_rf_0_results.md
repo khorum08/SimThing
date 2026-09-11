@@ -1,15 +1,65 @@
-# 0088 native RF policy-consumption reserve
+# 0088 native RF ingress and policy-consumption evidence
 
-STOP / proof-present / RED / OPEN / UNMERGED. This packet is a retained first
-consumer for an engine-boundary gap, not a GREEN leaf or rung-closeout claim.
-Latest dispatch: Board 5626475812; HD-RECEIPT 70df16e1babd;
+PROBATION / proof-present / clearance-pending / OPEN / UNMERGED. The native RF
+first consumer is GREEN after the #2036 engine coverage completion. This is an
+ordinary ingress implementation leaf, not a rung-closeout or census-ready claim.
+Latest dispatch: Board 5627253305; HD-RECEIPT 70df16e1babd;
 ORIENT-RECEIPT 28f56884d309 (mechanically CURRENT on resume).
-Current base: 639ef0fcc3e6b28d208bfa8109827722648ab0b9 (#2035).
+Current base: e89aeade3299a60ffb20fdab8e0deb1575700f89 (#2036).
 Original dispatch: Board 5619313604; original base:
 5ae17dfb9ee360044e491627fe8f461c81555cb0 (source/cache PR #2033).
 Exact retained head and checks are recorded in the PR and Board return.
 
-## Resume after #2035: retained application witness is still RED
+## Current result after #2036: unchanged first consumer is GREEN
+
+Rebased onto e89aeade3299a60ffb20fdab8e0deb1575700f89 without conflicts. The
+owning test, original beta-policy assertion, native specimen and front-end code
+have no Git diff against RED head 2fb660c2645196ae46581ad1033db79edefcb8db.
+That pre-rebase RED is preserved on `codex/0088-ingress-overlay-red`; the earlier
+RED b98f3e1c9584fdbd84ae20aa9d03f1f09d3e2f62 remains on
+`codex/0088-ingress-policy-red`. Original semantic RED 66c36cf9 and original F1
+e59dbef317689bf6c23a8a9cf208de35b0fa1946 remain available.
+
+The unchanged first consumer passed from a clean committed checkout at rebased
+head df8295feab9d715a3f20cc3c5e74f2f5a3bb78ce. Native and reproducible-cache
+routes agree on every canonical hosted allocation; direct programmatic admission
+agrees on beta's allocation. All 19 participants, unequal RF/spatial parentage,
+inherited ownership, zero-valued PRESENT children, empty Owner spatial seats,
+both installed overlays and actual parsed policy multipliers remain checked.
+
+| Authored variant | beta_3 born allocation | beta born allocation |
+| --- | ---: | ---: |
+| Baseline: child flow 8, beta policy 3 | 7.8761916 | 36.257145 |
+| Independent child flow 8 -> 20 | 19.876192 | 36.257145 |
+| Independent beta policy 3 -> 7 | 9.48813 | 45.928776 |
+
+Both independent discriminators are now GREEN after three ticks on each route.
+No expected value is injected into the session and no observation was replaced.
+The existing producer diagnostics show alpha/beta weights 8/27 at baseline and
+8/343 with beta policy 7; these are diagnostic only, not the judge.
+
+Causality is the landed #2036 coverage completion: the ordinary session RF sync
+uses `collect_weight_overlay_targets` over the sealed runtime tree's active
+installed-overlay authority. That per-flow-property target set participates in
+the existing protected-interior classification, so this source's actual
+AllocatorWeight overlays are covered even though it has zero need bindings.
+The same source and assertion stayed RED after #2035 and become GREEN after
+#2036 with no caller replay, invented binding, copied policy state or post-RF
+patch. Coding has not modified engine code or minted a new policy law.
+
+Cargo check passes. Inventory drift and lifecycle schema pass: 967 active rows,
+1536 discovered identities, 569 parked, zero unledgered/stale. Local scan is
+INSPECT solely for the existing Orchestration-triaged SPEC-LOWERER-KIND-READ at
+rehearsal_ingress_fields.rs:173. Exact final-head package checks and hosted
+Doctrine Scan / Clearance results are in the PR and Board return. The stale
+historical 0.0.8.7 Board-pointer referee remains unchanged and Orchestration-owned.
+Routing is now `novelty_claim: NO`, ordinary rehearsal-ingress-mapping to
+Orchestration for O* review/merge. No direct DA relay or self-merge.
+
+The sections below preserve the earlier RED findings and their historical
+validation/state; their reserve posture is superseded by the current GREEN above.
+
+## Historical resume after #2035: retained application witness stayed RED
 
 Dispatch 5626475812 expected the unchanged first consumer to become GREEN on the
 landed interior-policy composition repair. Rebase completed onto #2035 at
