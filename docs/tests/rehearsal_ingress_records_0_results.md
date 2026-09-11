@@ -1,11 +1,15 @@
 # 0088 historical records and runnable successors
 
 PROBATION / proof-present / clearance-pending / OPEN / UNMERGED.
-Dispatch Board 5627721196; HD-RECEIPT 70df16e1babd;
+Implementation dispatch Board 5627721196; revalidation Board 5628850454;
+HD-RECEIPT 70df16e1babd;
 ORIENT-RECEIPT 28f56884d309; 48-anchor ACK Board 5612017867.
-Base 9d2f5d9538442c011cd1f3663c1400502e42307a. Exact tested head and hosted
-results are in the PR and Board return. This independent leaf does not require
-the pending plain-JSON adapter PR #2037.
+Current base 7dffe7a95d78635199f0fbd3a24581a257ef42d4 includes merged #2037
+and #2039. Exact tested head, full package results, hosted checks and fresh
+Clearance are recorded together in PR #2038 and its Board return. Rebase conflicts
+were limited to append-only inventory and anchor-reach ledgers; all already-landed
+rows and both owning rows are preserved. Tests and specimen assets are byte-identical
+to the accepted implementation at 6ce2d67477ff3ebd77ec04db8a91528049822c61.
 
 The two owning tests replace no production authority. They establish the
 successor evidence required before the DA's coupled code/census retirements.
@@ -77,5 +81,6 @@ CENSUS-TRANSITION READY, conditional on this leaf landing:
   DA census increment; no live consumer remains to migrate.
 
 No deletion or census edit is split off here. These are readiness signals to
-Orchestration, not self-graduation. Hydration/generation/preset convergence and
-the remaining B1/final stamp work continue under the same contract.
+Orchestration, not self-graduation. Hydration/generation/preset leaf #2039 has
+landed. Orchestration owns the consolidated B1 census-transition relay after
+#2038 is accepted and merged; this revalidation returns to Orchestration only.
