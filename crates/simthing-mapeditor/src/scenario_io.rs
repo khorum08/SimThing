@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use simthing_spec::{
-    deserialize_scenario_authority, serialize_scenario_authority, ScenarioSerdeError,
+    load_scenario_spec_from_json_str, serialize_scenario_authority, ScenarioSerdeError,
     SimThingScenarioSpec,
 };
 use thiserror::Error;
@@ -32,6 +32,11 @@ pub enum ScenarioIoError {
     ScenarioDocument(#[from] StudioScenarioDocumentError),
     #[error("native scenario source admission failed: {0}")]
     ClauseSource(String),
+    #[error("canonical JSON admission failed for {source_label}: {reason}")]
+    CanonicalAdmission {
+        source_label: String,
+        reason: String,
+    },
 }
 
 pub fn scenario_file_name(stem: &str) -> String {
@@ -55,7 +60,7 @@ pub fn load_scenario_authority_from_path(
             .map(|ingest| ingest.scenario)
             .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()));
     }
-    Ok(deserialize_scenario_authority(&text)?)
+    admit_plain_json(path, &text)
 }
 
 pub fn save_current_session_scenario_to_path(
@@ -90,7 +95,8 @@ pub fn load_studio_session_from_scenario_path(
     path: &Path,
     profile_hint: Option<GenerationProfile>,
 ) -> Result<StudioSession, ScenarioIoError> {
-    if is_clause_cache(&std::fs::read_to_string(path)?) {
+    let text = std::fs::read_to_string(path)?;
+    if is_clause_cache(&text) {
         let ingest = crate::clause_scenario_ingest::ingest_clause_scenario_cache_path(path)
             .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()))?;
         return crate::clause_scenario_ingest::load_studio_session_from_clause_ingest_result(
@@ -100,9 +106,28 @@ pub fn load_studio_session_from_scenario_path(
         )
         .map_err(|e| ScenarioIoError::ClauseSource(e.to_string()));
     }
-    let scenario_authority = load_scenario_authority_from_path(path)?;
+    let scenario_authority = admit_plain_json(path, &text)?;
     StudioSession::from_loaded_scenario(scenario_authority, path.to_path_buf(), profile_hint)
         .map_err(ScenarioIoError::from)
+}
+
+fn admit_plain_json(path: &Path, text: &str) -> Result<SimThingScenarioSpec, ScenarioIoError> {
+    let source_label = path.display().to_string();
+    let refusal = |reason| ScenarioIoError::CanonicalAdmission {
+        source_label: source_label.clone(),
+        reason,
+    };
+    let (scenario, report) = load_scenario_spec_from_json_str(&source_label, text)
+        .map_err(|error| refusal(error.to_string()))?;
+    // The admitted loader can parse a document successfully while refusing ingestion.
+    // Keep that decision ahead of Studio projection and document replacement.
+    if !report.ingestion_ready {
+        return Err(refusal(format!(
+            "scenario {} is not ingestion-ready under the spec canonical ingestion profile",
+            scenario.scenario_id
+        )));
+    }
+    Ok(scenario)
 }
 
 fn is_clause_cache(text: &str) -> bool {
