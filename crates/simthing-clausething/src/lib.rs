@@ -38,7 +38,6 @@ mod hydrate_scenario;
 mod hydrate_scenario_commitment;
 mod hydrate_shipsize_decoder;
 mod json;
-mod literal_install;
 mod mapgen_lattice;
 mod mapgen_links;
 mod mapgen_movement_front;
@@ -102,10 +101,6 @@ pub use clause_scenario_projection::{
 pub use hydrate_scenario_commitment::{HydratedScenarioCommitment, PR6_MAX_SCENARIO_COMMITMENT};
 pub use jomini::{TextTape, TextToken};
 pub use json::to_canonical_json;
-pub use literal_install::{
-    admit_and_apply_domain_pack, admit_and_apply_pack, LiteralInstallSnapshot,
-    OverlaySpecFingerprint,
-};
 pub use mapgen_lattice::{
     admit_structural_grid, assert_allowed_simthing_kinds, collect_gridcell_location_ids,
     generate_mapgen_lattice_hierarchy, validate_fixture_lattice_edge,
