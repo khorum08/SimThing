@@ -311,6 +311,17 @@ fn rehearsal_studio_native_drag_origin_modal_disable_and_dpi_are_exclusive() {
             .playing,
         "egui fallback owner remains functional"
     );
+    {
+        let mut state = app.world_mut().resource_mut::<StudioAppState>();
+        state.native_ui.set_enabled(true);
+        state.performance_diagnostic_hide_panels = true;
+    }
+    app.update();
+    let state = app.world().resource::<StudioAppState>();
+    assert!(
+        !state.native_ui.block_map_pointer && !state.native_ui.block_map_keyboard,
+        "hide-panels alone must preserve the independent camera-freeze setting"
+    );
 }
 
 #[test]

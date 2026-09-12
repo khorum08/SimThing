@@ -176,14 +176,17 @@ fn spawn_button(parent: &mut ChildSpawnerCommands, control: NativeControl) {
         });
 }
 
-pub fn native_suspended(state: &StudioAppState) -> bool {
+fn native_modal_open(state: &StudioAppState) -> bool {
     state.scenario_library.visible
         || state.settings_dialog.visible
         || state.telemetry_dialog.visible
         || state.scenario_library.studio_ops_telemetry_visible
         || state.generation_name_dialog_visible
         || state.loading_cover_active
-        || state.performance_diagnostic_hide_panels
+}
+
+pub fn native_suspended(state: &StudioAppState) -> bool {
+    native_modal_open(state) || state.performance_diagnostic_hide_panels
 }
 
 fn system_count(state: &StudioAppState) -> usize {
@@ -441,8 +444,8 @@ fn route_native_input(
         });
         egui_keyboard |= ctx.wants_keyboard_input();
     }
-    let suspended =
-        native_suspended(&state) || dialog.as_ref().is_some_and(|d| d.visible) || !window.focused;
+    let modal = native_modal_open(&state) || dialog.as_ref().is_some_and(|d| d.visible);
+    let suspended = modal || state.performance_diagnostic_hide_panels || !window.focused;
     if suspended {
         state.native_ui.focus = None;
         state.native_ui.capture = None;
@@ -528,8 +531,9 @@ fn route_native_input(
             }
         }
     }
-    state.native_ui.block_map_pointer = owns_pointer || egui_pointer || suspended;
-    state.native_ui.block_map_keyboard = owns_keyboard || egui_keyboard || suspended || toggled;
+    state.native_ui.block_map_pointer = owns_pointer || egui_pointer || modal || !window.focused;
+    state.native_ui.block_map_keyboard =
+        owns_keyboard || egui_keyboard || modal || !window.focused || toggled;
     // The release belongs to the drag origin. Hand off only on the following frame.
     if mouse.get_pressed().next().is_none() {
         state.native_ui.capture = None;
