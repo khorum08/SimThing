@@ -96,6 +96,33 @@ impl StudioAppState {
         Ok(())
     }
 
+    /// The ordinary ClauseThing loader's token-bound resident admission endpoint.
+    /// Returns false for a cancelled, superseded, or already-recorded attempt.
+    pub fn try_adopt_clause_load_attempt(
+        &mut self,
+        token: u64,
+        session: StudioSession,
+        settings: &mut crate::settings::EditorSettings,
+        bridge: &mut crate::StudioLiveSessionBridge,
+        message: String,
+    ) -> Result<bool, crate::studio_live_session_bridge::StudioLiveSessionBridgeError> {
+        if !self.scenario_library.source_to_ready_pending(token) {
+            return Ok(false);
+        }
+        self.try_adopt_loaded_scenario_session(session, settings, bridge, message)?;
+        // Take the endpoint immediately after real admission, before telemetry projection
+        // and the later scene reveal. Historical stage durations remain unchanged.
+        let ready = Instant::now();
+        self.scenario_library.record_source_to_ready(
+            token,
+            self.session
+                .as_ref()
+                .expect("successful admission installs session"),
+            ready,
+        );
+        Ok(true)
+    }
+
     fn report_scenario_admission_failure(&mut self, error: impl std::fmt::Display) {
         self.last_scenario_io_status = format!("Scenario admission failed: {error}");
         self.status_message = self.last_scenario_io_status.clone();
@@ -443,12 +470,20 @@ fn poll_clause_loader_jobs(
                 let elapsed = adoption.elapsed_before_batches + adoption.batch_started.elapsed();
                 let build = adoption.build.take().expect("build present after complete");
                 let session = adoption.session.take().expect("session present for commit");
-                if let Err(error) = state.try_adopt_loaded_scenario_session(
+                let admitted = state.try_adopt_clause_load_attempt(
+                    adoption.token,
                     session,
                     settings,
                     &mut presentation.bridge,
                     adoption.message.clone(),
-                ) {
+                );
+                if matches!(admitted, Ok(false)) {
+                    state
+                        .clause_scene_cleanup
+                        .push(cancel_batched_galaxy_scene(build));
+                    return;
+                }
+                if let Err(error) = admitted {
                     state
                         .clause_scene_cleanup
                         .push(cancel_batched_galaxy_scene(build));
@@ -2160,6 +2195,20 @@ fn draw_studio_ops_telemetry(ctx: &egui::Context, state: &mut StudioAppState) {
                         }
                     }
                 });
+
+            ui.small("Scene adopt stage excludes resident admission and reveal.");
+            if let Some(sample) = &state.scenario_library.source_to_ready {
+                ui.label(format!(
+                    "Source to ready: {:.3} ms (attempt {})",
+                    sample.elapsed.as_secs_f64() * 1000.0,
+                    sample.attempt_token,
+                ));
+                ui.label(format!("Source: {}", sample.source_path));
+                ui.label(format!("Source identity: {}", sample.source_identity.as_deref().unwrap_or("unavailable")));
+                ui.label(format!("Profile identity: {}", sample.profile_identity.as_deref().unwrap_or("unavailable")));
+            } else {
+                ui.label("Source to ready: -- ms (no successful admission for this attempt)");
+            }
 
             // [OVL] STUDIO-FIELD-SESSION-ELEVATE-0 — session path + field accretion samples.
             ui.separator();
