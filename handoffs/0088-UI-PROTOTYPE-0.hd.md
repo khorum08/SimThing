@@ -20,18 +20,15 @@ this lane deliberately tests the native application/input/render path without ad
 Feathers, upgrading Bevy, or touching Cargo. Build one real existing pane/workflow plus live
 generation-stamped observation, backed by the same application command/state owner and the
 same resident-session and observation doors as egui.
-
 The prototype is an instrument experiment, not a new client authority. Preserve egui as the
 supported acceptance path throughout the rung. Extract only presentation command intent that
 must be shared; do not fork simulation, economics, scenario, save/load, or observation state.
 Make input/focus ownership during coexistence explicit and keep a clean deletion endpoint.
-
 After behavior parity is credible, execute the frozen M16 comparison on the pinned Meridian
 Arm workload. The decision may legitimately be RETAIN-EGUI. A positive migration decision is
 not dependency admission: if CSS styling/widgets require Flair, Feathers, a Bevy upgrade, or
 another crate, return the exact decision/admission packet to Orchestration and STOP before the
 dependency change. Orchestration will relay only that genuine D-scope decision.
-
 ## FENCES
 - StemThing is still the subject; the UI exists to expose, diagnose, and operate admitted
   state. Presentation convenience never changes substrate law.
@@ -46,7 +43,6 @@ dependency change. Orchestration will relay only that genuine D-scope decision.
   the fidelity/exposure/diagnosis/operation benefit is explicit and credible within budget.
 - Preserve lifecycle law: no permanent prototype proof, no bulk renewal, no silent lease
   extension.
-
 ## EXIT-PROOF
 A real native Bevy UI pane and live generation-stamped observation operate through the same
 conforming application/session/observation seams as egui on the reference Windows machine.
