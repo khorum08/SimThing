@@ -1828,6 +1828,7 @@ run_selftest() {
     clearance_selftest_actionband_full_vendor_rejects_anchor_reach_log
     clearance_selftest_rehearsal_scenario_clearable
     clearance_selftest_rehearsal_scenario_rejects_engine_src
+    clearance_selftest_rehearsal_scenario_mixed_legacy_rejects
     clearance_selftest_rehearsal_ingress_clearable
     clearance_selftest_rehearsal_ingress_rejects_census
     clearance_selftest_rehearsal_studio_clearable
