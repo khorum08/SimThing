@@ -1,0 +1,6 @@
+crates/simthing-mapeditor/src/app/ui.rs
+crates/simthing-mapeditor/src/studio_scenario_library_ui.rs
+crates/simthing-mapeditor/tests/rehearsal_studio_source_to_ready.rs
+docs/tests/rehearsal_studio_source_to_ready_0_results.md
+scripts/ci/test_inventory.tsv
+crates/simthing-driver/src/session.rs

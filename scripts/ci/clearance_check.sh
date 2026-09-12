@@ -1832,6 +1832,8 @@ run_selftest() {
     clearance_selftest_rehearsal_ingress_rejects_census
     clearance_selftest_rehearsal_studio_clearable
     clearance_selftest_rehearsal_studio_rejects_lockfile
+    clearance_selftest_rehearsal_studio_legacy_companion_clearable
+    clearance_selftest_rehearsal_studio_legacy_companion_rejects_engine_src
     clearance_selftest_rehearsal_measurement_clearable
     clearance_selftest_rehearsal_lifecycle_clearable
     clearance_selftest_rehearsal_docgrad_stamp_clearable
