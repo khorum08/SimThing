@@ -45,7 +45,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | binding_conditions.tsv | 211b860c2a424d0386a01a2dc93d5c563abfd1411c1f58ec55c7b69d97426cb8 |
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | c8af5e3de55f93ee23dce220a71f9c71435e56fdd131d55ab1ca7a6e07da9a58 |
-| 0_0_8_8_Integrated_SimThing_Rehearsal.md | 96b6d0561a21b8e1d956be150593b130b92eb64dbb7c74ca4a7c1d8dff201743 |
+| 0_0_8_8_Integrated_SimThing_Rehearsal.md | 9b249c66f2a9e0a9e96ca68bcc7593fc72b36d2f17b2316999db2b33e3f602f4 |
 | relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
 | doctrine_anchors.tsv | 12a6c6b7517e2930d22c791b15aee579626106690ab6182575c2887d0c907ab0 |
 | execution_status_taxonomy.tsv | 924c086550221dd7136ec0682293900d8d03feb4bc1dae1a6e750a61e65153bc |
@@ -68,12 +68,13 @@ Dark properties (1): `fixture::dark_reading` (reasons/spans in `property_admissi
 
 Track state: `open`
 
+> Compact view: 1 completed rungs elided; showing all 12 open rungs plus the 3 most recent completions. Full ladder in the design doc.
+
 | # | rung | deliverable | exit proof |
 | --- | --- | --- | --- |
-| 0.1 | 0088-CHARTER-ROUTING-0 | Admit the StemThing-first mission and precedence; complete 0.0.8.7 exposure matr | **DA-GRADUATED / merged #2017 @ `f6deb94a`** (routing companion #2016 @ `98d6887c`) |
 | 0.2 | 0088-BASELINE-0 | Consume the performance leases; restore the stale Gu-Yang gather-vs-tiled measur | **ORCHESTRATOR-GRADUATED / merged #2020 @ 901a82e6** |
 | 1.1 | 0088-INGRESS-FIDELITY-0 | Full paradigm convergence of ClauseThing lowering, projection/hydration, the Stu | **DA-GRADUATED / merged #2042 @ 20d30339** (one contract, multi-PR: leaves #2032/#2033/#2034/#2037/#2038/#2039 O\*-me... |
-| 1.2 | 0088-STUDIO-SLICE-0 | First `stellaristhing_base.clause`: two factions, a live source/sink resource pa | PROPOSED |
+| 1.2 | 0088-STUDIO-SLICE-0 | First `stellaristhing_base.clause`: two factions, a live source/sink resource pa | ORCHESTRATOR-GRADUATED / merged #2052 @ 29b1567d |
 | 1.3 | 0088-UI-PROTOTYPE-0 | Early native-UI prototype: one real pane + live observation through the same con | PROPOSED |
 | 2.1 | 0088-CONSTRUCTION-LIFECYCLE-0 | Execute the §5.3 contract: Model 1 (ordinary settled work-in-progress inventory) | PROPOSED |
 | 2.2 | 0088-ECONOMY-FLEET-0 | Resource chain, storage, upkeep, finite capacity, scarcity/recovery, and genuine | PROPOSED |
@@ -89,7 +90,7 @@ Track state: `open`
 
 ## Next Rung Pointer
 
-Active pointer: `0088-STUDIO-SLICE-0`
+Active pointer: `0088-UI-PROTOTYPE-0`
 
 
 ## Cold-Start Spine (constitutional pointers)
