@@ -1,7 +1,8 @@
 //! Presentation state and minimal authority creation for the Studio scenario library.
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use simthing_core::{SimThing, SimThingKind};
 use simthing_spec::{
@@ -286,6 +287,20 @@ pub enum StudioScenarioLibraryTab {
     Create,
 }
 
+/// M15 source-to-ready: accepted attempt start through successful resident admission.
+/// Presentation telemetry only; excludes the subsequent scene reveal / first display.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioSourceToReadyReadout {
+    pub attempt_token: u64,
+    /// Retained process-local monotonic start, never simulation time or a wall-clock date.
+    pub started_at: Instant,
+    pub source_path: String,
+    pub source_identity: Option<String>,
+    pub profile_identity: Option<String>,
+    pub dependencies: BTreeMap<String, String>,
+    pub elapsed: Duration,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioScenarioLibraryModel {
     pub visible: bool,
@@ -293,6 +308,8 @@ pub struct StudioScenarioLibraryModel {
     pub create_scenario_id: String,
     pub path_text: String,
     pub load_progress: StudioLoaderProgress,
+    pub source_to_ready: Option<StudioSourceToReadyReadout>,
+    source_to_ready_started: Option<(Instant, String)>,
     pub studio_ops_telemetry_visible: bool,
     #[doc(hidden)]
     pub next_load_attempt_token: u64,
@@ -309,6 +326,8 @@ impl Default for StudioScenarioLibraryModel {
             create_scenario_id: STUDIO_SCENARIO_LIBRARY_DEFAULT_CREATE_ID.to_string(),
             path_text: String::new(),
             load_progress: StudioLoaderProgress::default(),
+            source_to_ready: None,
+            source_to_ready_started: None,
             studio_ops_telemetry_visible: false,
             next_load_attempt_token: 0,
             active_load_attempt_token: None,
@@ -322,6 +341,7 @@ impl StudioScenarioLibraryModel {
         self.path_text.clear();
         self.cancel_load_attempt();
         self.load_progress.reset_hidden();
+        self.source_to_ready = None;
         self.enforce_pause(transport);
     }
 
@@ -365,10 +385,48 @@ impl StudioScenarioLibraryModel {
     }
 
     pub fn begin_load_attempt(&mut self) -> u64 {
+        // This same token owns worker, queue, scene staging and resident admission.
+        let started = Instant::now();
         self.next_load_attempt_token = self.next_load_attempt_token.saturating_add(1);
         self.active_load_attempt_token = Some(self.next_load_attempt_token);
+        self.source_to_ready_started = Some((started, self.path_text.trim().to_string()));
+        self.source_to_ready = None;
         self.load_progress.begin_attempt();
         self.next_load_attempt_token
+    }
+
+    pub(crate) fn source_to_ready_pending(&self, token: u64) -> bool {
+        self.is_current_load_attempt(token) && self.source_to_ready_started.is_some()
+    }
+
+    /// Called only after the owning Studio transaction has installed the resident session.
+    pub(crate) fn record_source_to_ready(
+        &mut self,
+        token: u64,
+        session: &StudioSession,
+        ready: Instant,
+    ) {
+        if !self.is_current_load_attempt(token) {
+            return;
+        }
+        let Some((started, source_path)) = self.source_to_ready_started.take() else {
+            return;
+        };
+        let provenance = session
+            .authored_live_profile
+            .as_ref()
+            .and_then(|profile| profile.source_cache_provenance.as_ref());
+        self.source_to_ready = Some(StudioSourceToReadyReadout {
+            attempt_token: token,
+            started_at: started,
+            source_path,
+            source_identity: provenance.map(|p| p.cache.source_identity.clone()),
+            profile_identity: provenance.map(|p| p.profile_identity.clone()),
+            dependencies: provenance
+                .map(|p| p.cache.dependencies.clone())
+                .unwrap_or_default(),
+            elapsed: ready.duration_since(started),
+        });
     }
 
     pub fn observe_load_attempt(&mut self, token: u64, event: StudioLoaderStageEvent) -> bool {
@@ -384,11 +442,13 @@ impl StudioScenarioLibraryModel {
             return false;
         }
         self.active_load_attempt_token = None;
+        self.source_to_ready_started = None;
         true
     }
 
     pub fn cancel_load_attempt(&mut self) {
         self.active_load_attempt_token = None;
+        self.source_to_ready_started = None;
     }
 
     pub fn is_loading(&self) -> bool {
