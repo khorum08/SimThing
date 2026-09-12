@@ -1,0 +1,4 @@
+scenarios/stellaristhing_base.clause
+docs/tests/rehearsal_scenario_base_0_results.md
+scripts/ci/test_inventory.tsv
+crates/simthing-mapeditor/src/studio_sim_clock.rs
