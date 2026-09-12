@@ -80,6 +80,17 @@ fn cursor(app: &mut App, window: Entity, position: Vec2) {
         .set_physical_cursor_position(Some(position.into()));
 }
 
+fn release_key(app: &mut App, window: Entity, key_code: KeyCode) {
+    app.world_mut().send_event(KeyboardInput {
+        key_code,
+        logical_key: Key::Unidentified(bevy::input::keyboard::NativeKey::Unidentified),
+        state: ButtonState::Released,
+        text: None,
+        repeat: false,
+        window,
+    });
+}
+
 #[test]
 fn rehearsal_studio_native_dispatch_validates_shared_tps_and_consumes_focus_events() {
     let (mut app, window, context) = harness();
@@ -107,14 +118,13 @@ fn rehearsal_studio_native_dispatch_validates_shared_tps_and_consumes_focus_even
         "native text must not also reach egui"
     );
 
-    app.world_mut()
-        .resource_mut::<ButtonInput<KeyCode>>()
-        .press(KeyCode::ControlLeft);
+    // Whole chords in one frame must use per-event modifier state, even though
+    // ButtonInput already reports Ctrl released by the time the dispatcher runs.
+    key(&mut app, window, KeyCode::ControlLeft, None);
     key(&mut app, window, KeyCode::KeyA, None);
+    release_key(&mut app, window, KeyCode::KeyA);
+    release_key(&mut app, window, KeyCode::ControlLeft);
     app.update();
-    app.world_mut()
-        .resource_mut::<ButtonInput<KeyCode>>()
-        .reset_all();
     key(&mut app, window, KeyCode::Digit1, Some("12.5"));
     key(&mut app, window, KeyCode::Enter, None);
     app.update();

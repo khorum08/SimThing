@@ -60,6 +60,7 @@ pub struct NativePrototypeState {
     select_all: bool,
     capture: Option<bool>, // Some(true) = native; Some(false) = external drag origin.
     keyboard_capture: bool,
+    modifiers: [bool; 4], // Ctrl L/R, Shift L/R in KeyboardInput event order.
     pub block_map_pointer: bool,
     pub block_map_keyboard: bool,
     displayed_revision: u64,
@@ -446,6 +447,7 @@ fn route_native_input(
         state.native_ui.focus = None;
         state.native_ui.capture = None;
         state.native_ui.keyboard_capture = false;
+        state.native_ui.modifiers = [false; 4];
     }
     let enabled = state.native_ui.enabled && !suspended;
     let inside = enabled && !egui_pointer && pane.iter().any(|(n, t)| hit(n, t, None, cursor));
@@ -472,14 +474,26 @@ fn route_native_input(
         }
         owns_keyboard = true;
     }
-    let ctrl = keyboard.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]);
-    let shift = keyboard.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
     if owns_keyboard && keyboard.get_pressed().next().is_some() {
         state.native_ui.keyboard_capture = true;
     }
     owns_keyboard |= state.native_ui.keyboard_capture;
     let mut toggled = false;
     for key in keys.read() {
+        // A complete chord can arrive in one frame. ButtonInput is its final state,
+        // so it cannot supply modifiers for a press preceding that frame's release.
+        let modifier = match key.key_code {
+            KeyCode::ControlLeft => Some(0),
+            KeyCode::ControlRight => Some(1),
+            KeyCode::ShiftLeft => Some(2),
+            KeyCode::ShiftRight => Some(3),
+            _ => None,
+        };
+        if let Some(index) = modifier {
+            state.native_ui.modifiers[index] = key.state == ButtonState::Pressed;
+        }
+        let ctrl = state.native_ui.modifiers[0] || state.native_ui.modifiers[1];
+        let shift = state.native_ui.modifiers[2] || state.native_ui.modifiers[3];
         if key.key_code == KeyCode::F8
             && key.state == ButtonState::Pressed
             && !key.repeat
@@ -583,9 +597,7 @@ pub fn native_observation_text(state: &StudioAppState) -> String {
         obs.bridge_status_label, bridge.session_path_label,
         obs.scenario_id.as_deref().unwrap_or("(none)"), system_count(state), state.selection.selected_system_id,
     );
-    if state.live_bridge_reset_requested {
-        text.push_str("Session replacement pending; prior observation withheld\n");
-    } else {
+    {
         let mut latest = std::collections::BTreeMap::new();
         for sample in &bridge.field_accretion_samples {
             latest.insert(&sample.property_key, sample);
