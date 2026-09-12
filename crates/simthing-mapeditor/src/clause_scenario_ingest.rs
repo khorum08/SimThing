@@ -120,11 +120,146 @@ pub(crate) struct StudioSourceCacheProvenance {
 pub(crate) fn authored_profile_content_identity(
     profile: &crate::studio_live_session_bridge::StudioAuthoredLiveProfile,
 ) -> Result<String, serde_json::Error> {
-    let targets: BTreeMap<_, _> = profile.install_targets.iter().collect();
+    use serde::ser::Error;
+    use simthing_core::{Overlay, ResourceParentEdge, SimThing};
+
+    // A serialization-only namespace, rooted in the existing ordered tree. Never
+    // change runtime IDs or infer references from arbitrary numeric property data.
+    fn index_tree(node: &SimThing, ids: &mut BTreeMap<u64, u32>) -> Result<(), serde_json::Error> {
+        let ordinal = u32::try_from(ids.len() + 1).map_err(serde_json::Error::custom)?;
+        if ids.insert(u64::from(node.id.raw()), ordinal).is_some() {
+            return Err(serde_json::Error::custom(
+                "duplicate profile SimThing identity",
+            ));
+        }
+        for child in &node.children {
+            index_tree(child, ids)?;
+        }
+        Ok(())
+    }
+
+    fn reference(ids: &BTreeMap<u64, u32>, raw: u64) -> Result<u32, serde_json::Error> {
+        ids.get(&raw).copied().ok_or_else(|| {
+            serde_json::Error::custom(format!(
+                "profile reference {raw} is outside the session tree"
+            ))
+        })
+    }
+
+    fn tree_value(
+        node: &SimThing,
+        ids: &BTreeMap<u64, u32>,
+    ) -> Result<serde_json::Value, serde_json::Error> {
+        // Exhaustive destructuring keeps additions to the identity domain visible
+        // to the compiler. All fields and sequence order survive serialization.
+        let SimThing {
+            id,
+            kind,
+            properties,
+            resource_parent_edges,
+            overlays,
+            children,
+            spawned_generation,
+            declared_specializations,
+        } = node;
+        let properties: Vec<_> = properties
+            .iter()
+            .collect::<BTreeMap<_, _>>()
+            .into_iter()
+            .collect();
+        let edges = resource_parent_edges
+            .iter()
+            .map(|edge| {
+                let ResourceParentEdge {
+                    property_namespace,
+                    property_name,
+                    parent,
+                    source_span_token,
+                } = edge;
+                Ok(serde_json::json!({
+                    "property_namespace": property_namespace,
+                    "property_name": property_name,
+                    "parent": reference(ids, u64::from(parent.raw()))?,
+                    "source_span_token": source_span_token,
+                }))
+            })
+            .collect::<Result<Vec<_>, serde_json::Error>>()?;
+        let overlays = overlays
+            .iter()
+            .map(|overlay| {
+                let Overlay {
+                    id,
+                    kind,
+                    source,
+                    origin,
+                    affects,
+                    transform,
+                    lifecycle,
+                } = overlay;
+                let affects = affects
+                    .iter()
+                    .map(|id| reference(ids, u64::from(id.raw())))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(serde_json::json!({
+                    "id": id,
+                    "kind": kind,
+                    "source": source,
+                    "origin": reference(ids, u64::from(origin.raw()))?,
+                    "affects": affects,
+                    "transform": transform,
+                    "lifecycle": lifecycle,
+                }))
+            })
+            .collect::<Result<Vec<_>, serde_json::Error>>()?;
+        let children = children
+            .iter()
+            .map(|child| tree_value(child, ids))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(serde_json::json!({
+            "id": reference(ids, u64::from(id.raw()))?,
+            "kind": kind,
+            "properties": properties,
+            "resource_parent_edges": edges,
+            "overlays": overlays,
+            "children": children,
+            "spawned_generation": spawned_generation,
+            "declared_specializations": declared_specializations,
+        }))
+    }
+
+    let mut ids = BTreeMap::new();
+    index_tree(&profile.session_root, &mut ids)?;
+    let tree = tree_value(&profile.session_root, &ids)?;
+    let targets = profile
+        .install_targets
+        .iter()
+        .map(|(name, members)| {
+            let members = members
+                .iter()
+                .map(|id| reference(&ids, u64::from(id.raw())))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok((name, members))
+        })
+        .collect::<Result<BTreeMap<_, _>, serde_json::Error>>()?;
+
+    // Explicit RF overrides carry session-node references as raw integer fields.
+    // Remap only those declared references; slots, capacities and all other
+    // GameMode data retain their original values.
+    let mut game_mode = profile.game_mode.clone();
+    if let Some(flow) = &mut game_mode.resource_flow {
+        for arena in &mut flow.arenas {
+            for participant in &mut arena.explicit_participants {
+                participant.subtree_root_id =
+                    reference(&ids, u64::from(participant.subtree_root_id))?;
+                participant.parent_subtree_root_id = participant
+                    .parent_subtree_root_id
+                    .map(|id| reference(&ids, id).map(u64::from))
+                    .transpose()?;
+            }
+        }
+    }
     Ok(clause_source_content_identity(&serde_json::to_vec(&(
-        &profile.game_mode,
-        &profile.session_root,
-        targets,
+        game_mode, tree, targets,
     ))?))
 }
 
