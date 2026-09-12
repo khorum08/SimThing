@@ -1,0 +1,135 @@
+# Meridian Arm, first Studio slice (0088-STUDIO-SLICE-0, Leaf A).
+# Spatial residency, per-resource RF parentage, and ownership are separate below.
+# One generation is one economic tick; Studio speed changes wall-clock pacing only.
+@mine_rate = 3
+@refinery_input = 2
+@refinery_output = 1
+@generator_rate = 2
+@facility_upkeep = -1
+
+scenario = stellaristhing_base {
+  metadata = {
+    display_name = "StellarisThing - Meridian Arm"
+    description = "Two faction economies on the Meridian Arm. Energy supply and facility upkeep use native recursive RF; local mineral conversion uses admitted recipes."
+  }
+  static_galaxy_scenario = arm {
+    namespace = meridian
+    source_json = "stellaristhing_base.base.json"
+    map_quality_status = PASS
+  }
+
+  # This common RF root has no external energy injection.
+  property_value = { property = "meridian::energy" flow = 0 weight = 1 }
+  owner = terran {
+    display_name = "Terran Directorate"
+    property_value = { property = "meridian::energy" flow = 0 weight = 1 balance = 10 }
+    resource_parent = { property = "meridian::energy" parent = stellaristhing_base }
+    overlays = { modifier = {
+      id = terran_industrial_policy
+      targets_property = "meridian::energy"
+      sub_field = weight
+      amount_mult = 1
+    } }
+  }
+  owner = pirate {
+    display_name = "Pirate Compact"
+    property_value = { property = "meridian::energy" flow = 0 weight = 1 balance = 8 }
+    resource_parent = { property = "meridian::energy" parent = stellaristhing_base }
+    overlays = { modifier = {
+      id = pirate_supply_policy
+      targets_property = "meridian::energy"
+      sub_field = weight
+      amount_mult = 1.5
+    } }
+  }
+
+  planet_surface_payload = ambient {
+    applies_to = neutral_systems
+    planets_per_system_min = 1
+    surface_grid = "1x1"
+    factory_min = 0
+    cohort_min = 0
+  }
+
+  # A1 is mapped to system A through STEAD, owned by Terran, RF-parented to Terran.
+  location = A1 {
+    name = "A1 - Directorate Works"
+    system_target = row0_col0
+    owner_ref = terran
+    resource_parent = { property = "meridian::energy" parent = terran }
+    property_value = { property = "meridian::energy" flow = 0 weight = 1 }
+    # Quantity emission seeds the native mineral locus to @mine_rate at admission.
+    property_value = { property = "meridian_material::A1_alloys_quantity" Amount = 4 }
+    properties = { property = {
+      id = meridian_energy
+      namespace = meridian
+      name = energy
+      display_name = "Energy"
+      sub_field = { role = flow accumulator = IntrinsicFlow }
+      sub_field = { role = Amount accumulator = AllocatedFlow { arena = meridian_energy } }
+      sub_field = { role = weight default = 1 accumulator = AllocatorWeight { arena = meridian_energy } }
+      sub_field = { role = balance_rate }
+      sub_field = { role = balance governed_by = balance_rate accumulator = Balance }
+    } }
+    children = {
+      child = terran_generator_1 { kind = Cohort name = "Generator 1"
+        property_value = { property = "meridian::energy" flow = @generator_rate weight = 1 }
+      }
+      child = terran_generator_2 { kind = Cohort name = "Generator 2"
+        property_value = { property = "meridian::energy" flow = @generator_rate weight = 1 }
+      }
+      child = terran_mine { kind = Cohort name = "Mine upkeep"
+        property_value = { property = "meridian::energy" flow = @facility_upkeep weight = 1 }
+      }
+      child = terran_refinery { kind = Cohort name = "Refinery upkeep"
+        property_value = { property = "meridian::energy" flow = @facility_upkeep weight = 1 }
+      }
+    }
+  }
+
+  # E1 is mapped to system E; its Owner is not its spatial parent.
+  location = E1 {
+    name = "E1 - Compact Works"
+    system_target = row0_col4
+    owner_ref = pirate
+    resource_parent = { property = "meridian::energy" parent = pirate }
+    property_value = { property = "meridian::energy" flow = 0 weight = 1 }
+    # Quantity emission seeds the native mineral locus to @mine_rate at admission.
+    property_value = { property = "meridian_material::E1_alloys_quantity" Amount = 3 }
+    children = {
+      child = pirate_generator_1 { kind = Cohort name = "Generator 1"
+        property_value = { property = "meridian::energy" flow = @generator_rate weight = 1 }
+      }
+      child = pirate_generator_2 { kind = Cohort name = "Generator 2"
+        property_value = { property = "meridian::energy" flow = @generator_rate weight = 1 }
+      }
+      child = pirate_mine { kind = Cohort name = "Mine upkeep"
+        property_value = { property = "meridian::energy" flow = @facility_upkeep weight = 1 }
+      }
+      child = pirate_refinery { kind = Cohort name = "Refinery upkeep"
+        property_value = { property = "meridian::energy" flow = @facility_upkeep weight = 1 }
+      }
+    }
+  }
+
+  # Material flows are local at their declared sites, with no cross-owner transfer.
+  # Energy upkeep is a signed RF flow; material conversion is a separate local recipe.
+  # The throttle is a hint, not a claim of a hard one-batch-per-generation cap.
+  field_economy = material_conversion {
+    namespace = meridian_material
+    field_resource_quantity = terran_mining { location = A1 resource = minerals amount = @mine_rate }
+    production_building = terran_refining {
+      location = A1
+      input = { resource = minerals amount = @refinery_input }
+      output = { resource = alloys coefficient = @refinery_output }
+      throttle_hint_max_per_tick = 1
+    }
+    field_resource_quantity = pirate_mining { location = E1 resource = minerals amount = @mine_rate }
+    production_building = pirate_refining {
+      location = E1
+      input = { resource = minerals amount = @refinery_input }
+      output = { resource = alloys coefficient = @refinery_output }
+      throttle_hint_max_per_tick = 1
+    }
+  }
+}
