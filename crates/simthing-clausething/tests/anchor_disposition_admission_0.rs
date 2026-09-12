@@ -63,7 +63,34 @@ fn assert_canonical_tp_disposition_admission_totality(){let preview=canonical_pr
 #[test] fn canonical_inventory_matches_generator_source_tsv(){let path=repo_root().join("scripts/ci/property_admission_inventory.tsv");assert_inventory_matches_live(&path).expect("generator TSV must match live install");}
 #[test] fn board_and_orientation_render_property_admission_inventory(){
  let path=repo_root().join("scripts/ci/property_admission_inventory.tsv");assert_inventory_matches_live(&path).expect("generator freshness required");let inventory=std::fs::read_to_string(path).expect("read generated inventory");let summary=inventory.lines().filter(|l|l.starts_with("summary\t")).map(|l|{let mut p=l.split('\t');let _=p.next();(p.next().unwrap(),p.next().unwrap())}).collect::<HashMap<_,_>>();let render_line=format!("anchored={} unobserved={} total={}",summary["anchored"],summary["unobserved"],summary["total"]);let orientation=std::fs::read_to_string(repo_root().join("docs/orchestrator_orientation.md")).expect("orientation digest present");assert!(orientation.contains("## Live install inventories"));assert!(orientation.contains(&format!("Property admission: {render_line}")));
- let bash=if cfg!(windows){PathBuf::from(std::env::var_os("ProgramFiles").expect("ProgramFiles on Windows")).join("Git/bin/bash.exe")}else{PathBuf::from("bash")};let board=std::process::Command::new(bash).args(["scripts/ci/handoff_dispatch.sh","--board-json","handoffs/ANCHOR-DISPOSITION-ADMISSION-0.hd.md"]).current_dir(repo_root()).output().expect("execute Board JSON renderer");assert!(board.status.success());let board:serde_json::Value=serde_json::from_slice(&board.stdout).expect("parse Board JSON");
- let design=std::fs::read_to_string(repo_root().join("docs/design_0_0_8_7_rf_arena_modernization.md")).expect("read active design doc");let pointer_row=design.lines().find(|l|l.starts_with("| Active open rung |")).expect("design doc carries the active-open-rung row");let expected_pointer=pointer_row.split('`').nth(1).map(str::to_string).unwrap_or_else(||"none".to_string());assert_eq!(board["active_pointer"],serde_json::json!(expected_pointer),"Board pointer must equal the design doc's active open rung");
+ let bash=if cfg!(windows){PathBuf::from(std::env::var_os("ProgramFiles").expect("ProgramFiles on Windows")).join("Git/bin/bash.exe")}else{PathBuf::from("bash")};let board=std::process::Command::new(&bash).args(["scripts/ci/handoff_dispatch.sh","--board-json","handoffs/ANCHOR-DISPOSITION-ADMISSION-0.hd.md"]).current_dir(repo_root()).output().expect("execute Board JSON renderer");assert!(board.status.success());let board:serde_json::Value=serde_json::from_slice(&board.stdout).expect("parse Board JSON");
+    // The harness resolves the current active track when validating orientation.
+    // Use that read-only authority instead of selecting a completed prior track.
+    let authority_check = std::process::Command::new(&bash)
+        .args(["scripts/ci/gen_orientation.sh", "--check"])
+        .current_dir(repo_root())
+        .output()
+        .expect("validate current active-track orientation");
+    assert!(
+        authority_check.status.success(),
+        "current active-track orientation must be fresh: stdout={} stderr={}",
+        String::from_utf8_lossy(&authority_check.stdout),
+        String::from_utf8_lossy(&authority_check.stderr)
+    );
+    let pointer_row = orientation
+        .lines()
+        .find(|line| line.starts_with("Active pointer: "))
+        .expect("orientation carries the current active pointer");
+    // Preserve completed-track none semantics, including unquoted completion text.
+    let expected_pointer = pointer_row
+        .split('`')
+        .nth(1)
+        .map(str::to_string)
+        .unwrap_or_else(|| "none".to_string());
+    assert_eq!(
+        board["active_pointer"],
+        serde_json::json!(expected_pointer),
+        "Board pointer must equal the current active-track orientation pointer"
+    );
  let live=canonical_preview().state.property_admission;assert_eq!(board["property_admission"]["anchored"],live.anchored_count() as u64);assert_eq!(board["property_admission"]["unobserved"],live.unobserved_count() as u64);assert_eq!(board["property_admission"]["total"],live.resource_properties.len() as u64);let dark=board["property_admission"]["dark"].as_array().expect("property_admission.dark array");assert_eq!(dark.len(),live.unobserved_count());
 }
