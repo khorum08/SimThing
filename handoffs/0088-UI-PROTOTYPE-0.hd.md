@@ -1,0 +1,61 @@
+---
+rung: 0088-UI-PROTOTYPE-0
+kind: rung
+track: 0.0.8.8
+base_sha: 3dc38cbc2440bc057b0ec00c722b753e3952557e
+audience: coding
+model_tier: frontier
+expected_route: ORCHESTRATOR-CLEARABLE(rehearsal-studio-presentation)
+owner_approved: true
+owner_notes: "Rung 1.2 graduated by Orchestration in #2053 @ 3dc38cbc after exact-head rungclose and clearance. Active pointer is now 1.3. The committed workplan §3b/§8 and engineering review §4 require a bounded decision-grade native-UI prototype before any large inspector migration. Orchestration selects the lowest-reserve lane first: prototype against the already-present Bevy 0.16.1 native bevy_ui stack only. No Cargo/lockfile/dependency admission is granted. egui remains the supported acceptance client unless the prototype demonstrates credible StemThing instrument benefit and a later D-scope migration/dependency admission is granted. Flair/Feathers/Bevy-version changes are decision candidates only in this rung, never silently added."
+surfaces: ["crates/simthing-mapeditor/src/**","crates/simthing-mapeditor/tests/**","docs/tests/rehearsal_studio_*_results.md","crates/simthing-workshop/src/rehearsal_*","crates/simthing-workshop/tests/rehearsal_perf_*","docs/tests/rehearsal_perf_*_results.md","scripts/ci/test_inventory.tsv","scripts/ci/inspect_justifications.tsv","scripts/ci/triage_log.tsv","scripts/ci/closeout_artifacts.tsv","scripts/ci/anchor_reach_log.tsv","docs/tests/current_evidence_index.md"]
+forbidden: ["no dependency or toolchain admission in this O* lane: Cargo.toml, Cargo.lock, Bevy version changes, bevy_flair, Feathers, or any new UI/render crate are OUT; if the prototype needs one, STOP with a decision packet for Orchestration to relay as D-scope","no engine/spec/ClauseThing/GPU authority changes: crates/simthing-{core,kernel,gpu,driver,sim,spec,feeder}/src/** and crates/simthing-clausething/src/** are OUT","no protected/gate mutation: constitutional/census/anchor/class/router tables, scripts/ci gate code (*.sh/*.py), .github/workflows/**, allow/** are OUT; ordinary permitted data ledgers remain lawful","no parallel application model, session owner, command owner, scenario authority, observation authority, or economic decision in UI; native and egui clients must share the existing conforming state/command/session/observation doors","no migration-by-styling argument: CSS likeness, visual polish, or widget preference alone cannot satisfy the rung; benefit must be tied to StemThing fidelity, exposure, diagnosis, or test-environment operation","no workload shaping, changed measurement denominator, threshold invention, dropped slow samples, or substitution of smoothed/system-cost/generation counters for the frozen §5.7/M16 quantities","no E8/sealed-bundle/compiler qualification change merely to support UI work","no custom code editor, docking-system expansion, or unrelated product UI scope in this prototype","no self-triage: every scan-id-bearing INSPECT returns to Orchestration"]
+required_checks: ["before edits render/read this HD, obtain a fresh coding ORIENT, run bash scripts/ci/anchor_query.sh --domain rehearsal-0088, and ACK every emitted REQUIRED-ANCHOR","first inventory the current egui/application seams actually used by the chosen pane: command flags/context memory, StudioAppState/application command owner, live session bridge, scenario/save-load model, selection/focus/input routing, and generation-stamped observation path; preserve existing egui acceptance behavior","build one real native bevy_ui pane plus live generation-stamped observation through the same conforming state/commands; no static button showcase and no second model. Prefer an existing settings/inspector workflow whose bounded shell can exercise numeric input, scrolling list, selection, modal/focus ownership, keyboard navigation, clipboard/text entry, pointer capture over the map, and reference-Windows DPI/window behavior","where the prototype currently depends on egui context-memory command flags, move only the necessary command intent into the existing application command/state owner so both egui and native presentation reach the same operation; do not migrate economic or observation authority into UI","make transitional coexistence explicit: deterministic input/focus ownership, no double handling, native prototype independently enable/disable-able, egui remains the acceptance fallback, and the prototype has a named deletion endpoint if migration is declined","run the prototype against the pinned Meridian Arm Studio workload. Hold source/profile/dependency identities, generation-stamped commands, observation subscriptions, presentation settings, and semantic operation sequence constant between egui and candidate comparisons; if workload changes, repin before comparing","produce M16 decision evidence under §5.7/§5.8.4: paused and running comparisons, first display where directly instrumented, steady visible panel workload, active editing, resize, and long-list stress; >=3 repetitions for measured quantities, raw samples, exact command/procedure, code+instrument revision, source/profile pins, hardware/backend/driver/compiler/build/cache/warmup qualification","capture full-frame tails, UI CPU cost, render/GPU cost where available, input-event-to-response latency, memory, and observation freshness using direct admitted instruments. A narrowly scoped instrument implementing an already-frozen §5.7 quantity may land in the admitted rehearsal classes; if truthful measurement requires a new authority, changed denominator, sealed renderer change, or external dependency, STOP instead of fabricating the metric","apply the existing reference service lines only as characterization: p95 frame <=16.7 ms and p95 input response <=100 ms on the named release reference machine. Record misses honestly; this rung is not tuning permission","record an explicit migration decision. RETAIN-EGUI is lawful if native UI fails the behavior/budget/instrument-benefit test. If native UI wins but a CSS/widget/dependency stack is needed for migration, return a D-scope admission packet naming candidate/version (for example Flair compatible with current Bevy versus Bevy upgrade/Feathers), exact dependency/render scope, interaction parity gaps, coexistence/deletion plan, estimated migration budget, and M16 evidence; do not add the dependency in this rung without DA admission","split implementation/presentation and measurement leaves by the existing rehearsal classes as needed; every leaf carries tested_code_sha, coverage_basis, ci_green, novelty_claim NO (or exact reserve basis), lifecycle-legal rows for tests/fixtures actually added, and complete INSPECT accounting","run touched-package/local semantic batteries plus hosted Doctrine Scan and fresh Clearance on each final head; never merge on red; return every leaf PROBATION / proof-present / OPEN / UNMERGED to ORCHESTRATION ONLY"]
+stop_conditions: ["the representative native pane cannot be implemented on current Bevy 0.16.1 bevy_ui without Cargo/lockfile/new dependency work","the prototype requires a Bevy upgrade, bevy_flair, Feathers, or another UI/render dependency before its decision evidence can be collected","the same command/session/observation path cannot serve both egui and native presentation without creating a new authority or changing engine/spec/ClauseThing semantics","credible input/focus coexistence would require global renderer/window architecture changes outside the admitted Mapeditor presentation envelope","M16 comparison cannot be made truthful without changing a frozen §5.7 definition, measurement denominator, service line, or workload","a required input/frame/freshness instrument would need GPU/sealed-bundle authority, gate changes, or an unadmitted dependency rather than a bounded existing-client instrument","the migration decision depends only on styling preference or unmeasured intuition rather than the required behavior and StemThing instrument benefit","any protected census/anchor/class/router/gate or sealed E8 surface becomes necessary","a required historical/current referee would need weakening/deletion rather than a stronger successor"]
+---
+## BUILD
+Execute the committed 1.3 decision prototype before any large Studio inspector migration.
+Start with the current dependency set: Bevy 0.16.1 native `bevy_ui` is already available, so
+this lane deliberately tests the native application/input/render path without adding Flair,
+Feathers, upgrading Bevy, or touching Cargo. Build one real existing pane/workflow plus live
+generation-stamped observation, backed by the same application command/state owner and the
+same resident-session and observation doors as egui.
+
+The prototype is an instrument experiment, not a new client authority. Preserve egui as the
+supported acceptance path throughout the rung. Extract only presentation command intent that
+must be shared; do not fork simulation, economics, scenario, save/load, or observation state.
+Make input/focus ownership during coexistence explicit and keep a clean deletion endpoint.
+
+After behavior parity is credible, execute the frozen M16 comparison on the pinned Meridian
+Arm workload. The decision may legitimately be RETAIN-EGUI. A positive migration decision is
+not dependency admission: if CSS styling/widgets require Flair, Feathers, a Bevy upgrade, or
+another crate, return the exact decision/admission packet to Orchestration and STOP before the
+dependency change. Orchestration will relay only that genuine D-scope decision.
+
+## FENCES
+- StemThing is still the subject; the UI exists to expose, diagnose, and operate admitted
+  state. Presentation convenience never changes substrate law.
+- Current native `bevy_ui` only for the initial prototype; no Cargo/lockfile/dependency change.
+- egui remains acceptance client until a later migration admission explicitly says otherwise.
+- Both clients share the same command owner, session owner, save/load semantics, and bounded
+  generation-stamped observation model; no parallel model or second observation authority.
+- M16 compares the same pinned workload and semantic operation sequence. Keep startup separate
+  from steady state and retain raw tails/residuals; do not tune the workload to make a toolkit
+  win.
+- Styling ambition is not exit proof. A performance-neutral candidate may still win only when
+  the fidelity/exposure/diagnosis/operation benefit is explicit and credible within budget.
+- Preserve lifecycle law: no permanent prototype proof, no bulk renewal, no silent lease
+  extension.
+
+## EXIT-PROOF
+A real native Bevy UI pane and live generation-stamped observation operate through the same
+conforming application/session/observation seams as egui on the reference Windows machine.
+Required interaction categories and coexistence/input ownership are demonstrated without a
+parallel authority. Decision-grade M16 evidence compares egui and the native candidate on the
+same pinned workload, with truthful measured/unavailable quantities, raw samples, and the
+§5.7 reference lines applied only as characterization. The result records one explicit
+migration decision: retain egui, or recommend a precisely scoped dependency/migration
+admission. No dependency change is smuggled into this O* rung; a recommended Flair/Feathers/
+Bevy upgrade reserves to D before it lands. All owning rehearsal tests/results/lifecycle rows
+are committed and green, and the decision is justified by StemThing instrument value rather
+than styling preference.
