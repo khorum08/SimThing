@@ -28,7 +28,7 @@ that warmup is operator-qualified, not independently timestamped.
 
 | Condition | Fixed semantic operation | Physical capture status |
 | --- | --- | --- |
-| Paused | Pinned G0, 1x/TPS10, steady visible pane | Group interrupted; one valid unpaired capture; 0 complete pairs |
+| Paused | Pinned G0, 1x/TPS10, steady visible pane | Two six-capture runs complete; fresh-load setup qualification pending |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | PENDING, 0/6 |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6 |
@@ -124,7 +124,7 @@ The launcher then failed before preparing the second card, with
 `File.Replace` reporting "The path is not of a legal form." Studio exited 0.
 The old active config and next staged config both remained intact.
 
-This is **one individually valid unpaired capture, zero complete pairs**.
+At that checkpoint this was **one individually valid unpaired capture, zero complete pairs**.
 It is retained in full as interrupted-run evidence, not silently discarded or
 paired across a fresh process. Its raw-frame p95 is **42.3209 ms**, above the
 16.7 ms characterization threshold; analyzer validity is not a frame-budget pass.
@@ -163,8 +163,83 @@ the rejected v1 capture remains rejected and the successful v2 capture remains
 valid. The full v2 bundle is archived under `versions/m16-b1-ovl-v2`. Audit,
 screenshot and reproducer are in the common gitdir's
 `0088-m16-b1-config-replace` directory. The repaired bundle has 14 frozen files.
-Restart the Paused group from case 1 to preserve its declared one-process setup;
-successful complete-group collection remains pending.
+The next Paused attempt was instructed to restart from case 1 to preserve the
+one-process setup. Subsequent collection is recorded below.
+
+## Group 1 collection and paired setup qualification
+
+Owner reports Group 1 finished and supplies Egui/Native screenshots. Two runs
+completed all six captures, each with no launcher failure and Studio exit 0:
+`b1-20260913-132828-6183d8fe` (PID 35464, 9,867 frames) and
+`b1-20260913-133909-27418d42` (PID 25708, 7,601 frames). Both are retained;
+neither is selected based on performance. All 12 individual captures reproduce
+their valid analyzer reports: pinned workload, focused, paused generation 0,
+1x/TPS10, appropriate Native state, physical 1600x900 and scale 1. The later
+Egui repetitions 2 and 3 lasted 12.3766909 and 12.9113857 seconds: below the
+15-second target but above the frozen 10-second usable minimum. No threshold
+change is made to admit them.
+
+**Protocol difference:** each completed run's scene/resident identities progress
+1 through 6. The source was re-admitted before every capture, although the
+Paused card intended a single load per group. The guide's instruction to repeat
+the load/setup step was ambiguous. Both clients used the same pinned workload
+and started at G0, but these are **fresh-load Paused pairs**, not proof of the
+planned single-load condition. Orchestration qualification remains pending.
+No IDs are normalized into a fictional shared resident; no new resident is
+joined to an earlier publication. The grouping below describes actual runs.
+
+The intermediate `b1-20260913-133654-20ab13e7` run has one valid fresh-load pair
+(2,383 frames) followed by `M16 export: no retained capture`; its Studio exit
+is 0. It remains a separate interrupted repeat. The earlier unpaired valid
+capture and rejected capture also remain. Partial repeats do not fill missing
+repetitions in another process. Across all eight attempts, **242 indexed files**
+verified unchanged, and every saved raw report reproduced identically.
+
+All 12 completed-run frame p95 values exceed 16.7 ms. Values below are nearest
+rank on the full raw intervals; signed residuals are Native minus Egui.
+
+| Run | Rep | Egui p95 ms | Native p95 ms | Delta p95 ms | Shared projection mean delta ns | Private bytes delta MiB | Working set delta MiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 132828 | 1 | 39.8964 | 39.4535 | -0.4429 | +2.652 | +27.082 | +28.816 |
+| 132828 | 2 | 42.2687 | 41.3685 | -0.9002 | +62.871 | -4.035 | -4.586 |
+| 132828 | 3 | 39.8933 | 41.5156 | +1.6223 | -17.752 | +1.680 | +0.824 |
+| 133909 | 1 | 42.5438 | 42.4652 | -0.0786 | +27.077 | +97.504 | +97.578 |
+| 133909 | 2 | 42.5901 | 42.5901 | 0.0000 | +10.026 | +60.656 | +61.445 |
+| 133909 | 3 | 42.5011 | 40.6004 | -1.9007 | +97.349 | +1.777 | +1.922 |
+
+These capture-statistic residuals compare the named computation and actual
+fresh-load conditions; native-on still includes Egui. Memory is process total
+after export, with re-admission/capture allocation history, not a UI-only or GPU
+cost. Separate raw adapter scopes remain in the original JSON and derived
+packet; nested scope durations are never summed. No generic Native speed or
+memory advantage is inferred from mixed-sign, order-dependent observations.
+
+The Native-on captures also retain **8,817 direct shared-projection CPU pairs**
+inside the same recorded frame/publication identity. Every capture was paused
+at G0, so no new publication-delivery samples exist; pre-capture publication ages
+remain separate. The descriptive ordinal residual artifact retains **7,929
+cross-capture frame pairs and all 1,610 unmatched tails** for the completed runs,
+plus the interrupted pair separately. Ordinal pairing has no causal frame or
+latency identity. Required displayed latency remains unavailable/unevaluated.
+
+| Preserved artifact | SHA-256 |
+| --- | --- |
+| First completed run raw index | `11fa6f5f50bf91395b8657ca0d2f308af386d0c318df7c639f2999cf55178525` |
+| Second completed run raw index | `e5b7ea8ba8499cd0ed30c8a1dc744abf70d03ce0a71c8b1f812f71a146cd3548` |
+| Paused results/audit JSON | `d1bfdabab880920bd3439ac78bb02d084c8a14615cd6bba4de2e64cc6e558240` |
+| Ordinal residuals including tails | `0e826484f1eb1f22b6527fa56105086bba091fd7855e8904fa8df989178b62d4` |
+| Audit/aggregation script | `5909ea2a0d5f97cdf2e964b18d6276006a927253d234cabc7bf19ec2b934409f` |
+| Owner Egui screenshot | `5b035d4b3622a8b56602721589a73fd31c998fcc22ce9618cf242c148ee96a0c` |
+| Owner Native screenshot | `8540585633ca06249cb57ba021ca5670b55ee99eea9dc2dcdb6534d900784f5e` |
+
+The common gitdir's `0088-m16-b1-paused-results` directory holds the reproducer,
+derived machine-readable results, signed residual arrays and screenshots.
+Screenshots show client configuration but no run ID or measurement timestamp;
+quantitative geometry/provenance comes from the raw packet, not image dimensions.
+Portable raw-artifact packaging remains part of final B1 handback. No frozen
+bundle, analyzer, protocol or production code changes in this collection return.
+Groups 2-5 remain pending; Group 2 should load once at group start, then retain
+that resident through all six captures. Only the Running group reloads per capture.
 
 ## Required unavailable input-latency evidence
 
