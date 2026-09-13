@@ -6,7 +6,7 @@ mod galaxy_render;
 mod labels;
 mod performance_telemetry;
 mod picking;
-mod resources;
+pub(crate) mod resources;
 pub mod scenario_io;
 mod ui;
 mod window;
@@ -114,6 +114,7 @@ pub fn run_studio() {
         // the camera stays at the known-good default. The plugin-internal variant of that fix is now
         // gated off for live windows via SimthingToolsTextPlugin::without_lut_d3_view_fix().
         .add_plugins(EguiPlugin::default())
+        .add_plugins(crate::rehearsal_studio_native_ui::NativePrototypePlugin)
         .add_plugins(crate::StudioFrostedGlassPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
@@ -282,6 +283,7 @@ pub struct StudioAppState {
     /// Studio sim clock transport (presentation projection over [`crate::StudioSimClock`]).
     /// Does not execute gameplay or mutate ScenarioSpec.
     pub sim_clock_transport: crate::StudioSimClockTransport,
+    pub native_ui: crate::rehearsal_studio_native_ui::NativePrototypeState,
     /// Send-safe snapshot of the live bridge (updated by NonSend bridge system).
     /// Full [`crate::StudioLiveSessionBridge`] is NonSend (holds SimSession).
     pub live_bridge_readout: crate::StudioLiveSessionBridgeReadout,
@@ -354,6 +356,7 @@ impl StudioAppState {
             antialiasing_mode_source:
                 crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
             sim_clock_transport: crate::StudioSimClockTransport::new(),
+            native_ui: Default::default(),
             live_bridge_readout: crate::StudioLiveSessionBridgeReadout::default_unattached(),
             live_bridge_reset_requested: false,
         }
@@ -522,7 +525,7 @@ fn init_studio_map_radius_falloff_state(mut commands: Commands) {
 ///
 /// Bevy `Time` supplies wall `delta_secs` for schedule demand only; tick count authority is
 /// [`crate::StudioSimClock::advance`]. Bridge is NonSend because `SimSession` is !Sync.
-fn live_session_bridge_system(
+pub(crate) fn live_session_bridge_system(
     mut bridge: NonSendMut<crate::StudioLiveSessionBridge>,
     mut state: ResMut<StudioAppState>,
     time: Res<Time>,

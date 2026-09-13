@@ -1852,6 +1852,13 @@ fn draw_left_panel(
                             }
                         });
                         ui.separator();
+                        let mut native_enabled = state.native_ui.enabled;
+                        if ui
+                            .checkbox(&mut native_enabled, "Native simulation prototype (F8)")
+                            .changed()
+                        {
+                            state.native_ui.set_enabled(native_enabled);
+                        }
                         // PERF: collapse heavy sections by default. A collapsed egui CollapsingHeader
                         // does not lay out its children, so the per-frame egui layout/tessellation cost
                         // of the left panel drops dramatically (the cause of the FPS collapse). See

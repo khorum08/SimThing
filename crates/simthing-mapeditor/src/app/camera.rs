@@ -195,9 +195,13 @@ pub fn snap_overhead(camera: &mut StudioCamera) {
 }
 
 pub fn camera_hotkeys_system(
+    app_state: Res<super::StudioAppState>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut camera: ResMut<StudioCamera>,
 ) {
+    if app_state.native_ui.block_map_keyboard {
+        return;
+    }
     if keyboard.just_pressed(KeyCode::KeyO) {
         snap_overhead(&mut camera);
     }
@@ -220,9 +224,11 @@ pub fn camera_control_system(
     time: Res<Time>,
 ) {
     if app_state.performance_diagnostic_freeze_camera {
+        mouse_motion.clear();
+        scroll.clear();
         return;
     }
-    camera.rmb_held = mouse.pressed(MouseButton::Right);
+    camera.rmb_held = !app_state.native_ui.block_map_pointer && mouse.pressed(MouseButton::Right);
     let dt = time.delta_secs();
     let forward = Vec3::new(-camera.orbit_yaw.sin(), 0.0, -camera.orbit_yaw.cos());
     let right = Vec3::new(forward.z, 0.0, -forward.x);
@@ -239,7 +245,7 @@ pub fn camera_control_system(
     if keyboard.pressed(KeyCode::KeyD) {
         delta += right;
     }
-    if delta.length_squared() > 0.0 {
+    if !app_state.native_ui.block_map_keyboard && delta.length_squared() > 0.0 {
         let speed = camera.move_speed;
         camera.orbit_target += delta.normalize() * speed * dt;
     }
@@ -261,7 +267,9 @@ pub fn camera_control_system(
     }
 
     for ev in scroll.read() {
-        camera.orbit_distance = apply_scroll_zoom(camera.orbit_distance, ev.y);
+        if !app_state.native_ui.block_map_pointer {
+            camera.orbit_distance = apply_scroll_zoom(camera.orbit_distance, ev.y);
+        }
     }
 
     let pitch = if camera.overhead {

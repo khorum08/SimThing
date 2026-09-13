@@ -30,7 +30,7 @@ pub fn selection_keyboard_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<StudioAppState>,
 ) {
-    if keyboard.just_pressed(KeyCode::Escape) {
+    if !state.native_ui.block_map_keyboard && keyboard.just_pressed(KeyCode::Escape) {
         state.selection.clear();
     }
 }
@@ -44,6 +44,10 @@ pub fn star_pick_system(
     mut caches: ResMut<StudioRenderLoopCaches>,
     mut perf: ResMut<StudioPerformanceTelemetryState>,
 ) {
+    if state.native_ui.block_map_pointer {
+        state.selection.set_hover(None);
+        return;
+    }
     let Some(session) = state.session.as_ref() else {
         state.selection.set_hover(None);
         return;
