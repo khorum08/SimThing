@@ -21,6 +21,7 @@ pub mod scenario_runtime_saveload_ui;
 pub mod selection;
 pub mod rehearsal_studio_native_ui;
 pub mod rehearsal_studio_m16_capture;
+pub mod rehearsal_studio_present_probe;
 pub mod session;
 pub mod settings;
 pub mod shape_params;

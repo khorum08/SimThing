@@ -367,7 +367,7 @@ pub fn consume_projection(state: &mut StudioAppState, client: Client) {
     );
 }
 
-fn facts(state: &StudioAppState, window: &Window) -> Value {
+pub(crate) fn facts(state: &StudioAppState, window: &Window) -> Value {
     let clock = state.sim_clock_transport.readout();
     let provenance = state
         .session

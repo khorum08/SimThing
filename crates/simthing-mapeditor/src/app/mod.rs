@@ -100,7 +100,8 @@ pub fn run_studio() {
                 })
                 .set(bevy::log::LogPlugin {
                     level: bevy::log::Level::WARN,
-                    filter: "warn,simthing_mapeditor=info".into(),
+                    filter: crate::rehearsal_studio_present_probe::log_filter(),
+                    custom_layer: crate::rehearsal_studio_present_probe::log_layer,
                     ..default()
                 })
                 .set(RenderPlugin {
@@ -116,6 +117,7 @@ pub fn run_studio() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(crate::rehearsal_studio_native_ui::NativePrototypePlugin)
         .add_plugins(crate::rehearsal_studio_m16_capture::M16CapturePlugin)
+        .add_plugins(crate::rehearsal_studio_present_probe::PresentProbePlugin)
         .add_plugins(crate::StudioFrostedGlassPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)

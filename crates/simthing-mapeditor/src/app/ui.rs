@@ -77,6 +77,8 @@ pub(super) struct StudioUiPresentationParams<'w> {
     perf: ResMut<'w, StudioPerformanceTelemetryState>,
     frosted: ResMut<'w, crate::FrostedGlassPanelRegistry>,
     bridge: NonSendMut<'w, crate::StudioLiveSessionBridge>,
+    present_probe: Option<Res<'w, crate::rehearsal_studio_present_probe::PresentProbe>>,
+    frame_count: Res<'w, bevy::diagnostic::FrameCount>,
 }
 
 impl StudioAppState {
@@ -687,6 +689,14 @@ pub fn studio_ui_system(
         &mut presentation.frosted,
     );
     draw_generation_name_corpus_dialog(ctx, &mut state);
+    if let Some(probe) = presentation.present_probe.as_ref() {
+        crate::rehearsal_studio_present_probe::draw_ovl(
+            ctx,
+            probe,
+            u64::from(presentation.frame_count.0),
+            &presentation.perf.telemetry,
+        );
+    }
     record_egui_pass_timing(
         &mut presentation.perf,
         egui_started.elapsed().as_secs_f64() * 1000.0,
