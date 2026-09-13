@@ -115,6 +115,7 @@ pub fn run_studio() {
         // gated off for live windows via SimthingToolsTextPlugin::without_lut_d3_view_fix().
         .add_plugins(EguiPlugin::default())
         .add_plugins(crate::rehearsal_studio_native_ui::NativePrototypePlugin)
+        .add_plugins(crate::rehearsal_studio_m16_capture::M16CapturePlugin)
         .add_plugins(crate::StudioFrostedGlassPlugin)
         .add_plugins(FrameTimeDiagnosticsPlugin::default())
         .add_plugins(performance_telemetry::StudioGpuIdentityInitPlugin)
@@ -284,6 +285,7 @@ pub struct StudioAppState {
     /// Does not execute gameplay or mutate ScenarioSpec.
     pub sim_clock_transport: crate::StudioSimClockTransport,
     pub native_ui: crate::rehearsal_studio_native_ui::NativePrototypeState,
+    pub m16: crate::rehearsal_studio_m16_capture::M16Capture,
     /// Send-safe snapshot of the live bridge (updated by NonSend bridge system).
     /// Full [`crate::StudioLiveSessionBridge`] is NonSend (holds SimSession).
     pub live_bridge_readout: crate::StudioLiveSessionBridgeReadout,
@@ -357,6 +359,7 @@ impl StudioAppState {
                 crate::studio_antialiasing::StudioAntialiasingModeSource::DefaultFallback,
             sim_clock_transport: crate::StudioSimClockTransport::new(),
             native_ui: Default::default(),
+            m16: Default::default(),
             live_bridge_readout: crate::StudioLiveSessionBridgeReadout::default_unattached(),
             live_bridge_reset_requested: false,
         }
@@ -534,7 +537,8 @@ pub(crate) fn live_session_bridge_system(
         &mut state.live_bridge_reset_requested,
         &mut bridge,
     ) {
-        state.live_bridge_readout = bridge.readout();
+        state.m16.resident_reset();
+        state.publish_live_bridge_readout(bridge.readout());
     }
     let StudioAppState {
         scenario_library,
@@ -544,18 +548,25 @@ pub(crate) fn live_session_bridge_system(
     scenario_library.enforce_pause(sim_clock_transport);
     let elapsed = time.delta_secs_f64();
     if !elapsed.is_finite() || elapsed <= 0.0 {
-        state.live_bridge_readout = bridge.readout();
+        state.publish_live_bridge_readout(bridge.readout());
         return;
     }
     let StudioAppState {
         session,
         sim_clock_transport,
-        live_bridge_readout,
         ..
     } = &mut *state;
     let clock = sim_clock_transport.clock_mut();
     let _ = bridge.tick_from_clock(clock, session.as_ref(), elapsed);
-    *live_bridge_readout = bridge.readout();
+    state.publish_live_bridge_readout(bridge.readout());
+}
+
+impl StudioAppState {
+    pub(crate) fn publish_live_bridge_readout(&mut self, readout: crate::StudioLiveSessionBridgeReadout) {
+        self.live_bridge_readout = readout;
+        self.m16.publish(self.scene_render_revision, self.live_bridge_readout.executed_ticks,
+            self.live_bridge_readout.attached);
+    }
 }
 
 fn setup_scene(
