@@ -6,7 +6,7 @@ Base and frozen runtime: `a8c117313dbe3796aa160ba12cad1cd677bdc5e6`.
 Branch: `codex/0088-m16-ui-comparison`. HD-RECEIPT: 47010c34edf2.
 Carried coding ORIENT-RECEIPT: 28f56884d309.
 
-This draft freezes collection and analysis before Owner data. It is not a
+This draft records the frozen protocol and rejected first Owner attempts. It is not a
 completed comparison, proof-present PR, budget pass or migration recommendation.
 The runtime contains the merged Leaf A and B0a instruments. No Mapeditor
 production code, renderer, dependency or simulation authority changes are made.
@@ -28,7 +28,7 @@ that warmup is operator-qualified, not independently timestamped.
 
 | Condition | Fixed semantic operation | Physical capture status |
 | --- | --- | --- |
-| Paused | Pinned G0, 1x/TPS10, steady visible pane | PENDING, 0/6 |
+| Paused | Pinned G0, 1x/TPS10, steady visible pane | OWNER-OVL FAIL; 0 accepted/6; one rejected raw capture |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | PENDING, 0/6 |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6 |
@@ -68,6 +68,51 @@ unmatched tails retained, never a causal frame association or latency join.
 Within-capture publication freshness is separate from the age of a paused
 publication that predates F9. No smoothed FPS, residual GPU estimate or
 submission/prepare timestamp substitutes for a requested quantity.
+
+## First Owner attempt and instruction repair
+
+Owner reported the first Paused group failed. Four v1 launch attempts are
+preserved, all with Studio exit code 0: `b1-20260913-125517-9191e485` closed
+before export; `b1-20260913-125805-347332eb` logged F10 export with no retained
+capture; `b1-20260913-130004-18284eea` logged F9 start refused because a capture
+was already retained. Those logs establish the instrument state at the command,
+not why an earlier key was absent or repeated. None produced a raw export.
+
+`b1-20260913-130128-dab634ef` exported the first Egui case: 45.2129166 seconds,
+3,288 frames, Native enabled throughout all recorded runtime facts, and 3,291
+native shared-projection calls. Studio lost focus at +9.2013466 seconds and
+regained it at +20.2998492 seconds. The three failures are correct: unexpected
+Native state, Native projection in the disabled baseline, and lost focus.
+Source/profile/dependency identities, paused G0, TPS10 and 1600x900 geometry
+matched. No sample is salvaged, relabeled Native, trimmed or counted as a pass.
+The frozen v1 launcher's `completed_captures: 1` counts its analyzed export;
+the report has `valid: false`, so accepted captures remain **0/30**.
+
+The v1 card said to select the client with F8 alongside the explicit checkbox
+state. F8 toggles, so that instruction could undo a correct setting; causation
+is not established from the raw state alone. Revision `m16-b1-ovl-v2` uses the
+mouse checkbox state, states that F9 starts silently, requires one F9/F10 press
+per capture, and makes the existing focused-window rule explicit. Console
+inspection and screenshots occur after F10. Only external card/guide/protocol
+wording changes; Studio, analyzer, settings, operation sequences, thresholds,
+sample retention and acceptance rules are byte-identical or verified unchanged.
+No production edit or new status pane is introduced.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Failed raw `01-paused-r1-egui.json` | `0a88c49b3757b740972817a3dda5283377dec8d77b21c1bb267573c20a358a03` |
+| Original rejection report | `f42b0522996fda2d87cea459e81dec7f64e34bce98ced97355a6535f95f1b148` |
+| Owner screenshot | `06f6994e836cd7b3c1c1e4c38d2c100403bb9eaaca16c363a13cb48f0207befc` |
+| Detailed failure audit | `de1ad587c5f05fe1f7c5900be88abc6d7ebe2de3781a0542a8be35ce7f89b00c` |
+| v2 bundle manifest | `07ab54edbf8665a92bb00fcc4ead124defb243a3378acc2ee2bcb79ee4a866f3` |
+| v2 protocol | `eca99546e881053c518e12161f005408e0a92a1e461acf512b608a5b3d062bd8` |
+
+The common gitdir's `0088-m16-b1-owner-failure` directory retains the screenshot,
+audit/reproducer and v2 verification. All **73 original indexed run entries**
+verified unchanged, and the complete v1 bundle is archived under
+`SimThing-0088-OVL-B1/versions/m16-b1-ovl-v1`. Replaying the actual failed raw
+capture under v1 and v2 produces identical analysis and rejection. This is
+instruction repair validated locally; physical success remains pending.
 
 ## Required unavailable input-latency evidence
 
