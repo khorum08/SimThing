@@ -6,7 +6,7 @@ Base and frozen runtime: `a8c117313dbe3796aa160ba12cad1cd677bdc5e6`.
 Branch: `codex/0088-m16-ui-comparison`. HD-RECEIPT: 47010c34edf2.
 Carried coding ORIENT-RECEIPT: 28f56884d309.
 
-This draft records the frozen protocol and rejected first Owner attempts. It is not a
+This draft records the frozen protocol and interrupted Owner attempts. It is not a
 completed comparison, proof-present PR, budget pass or migration recommendation.
 The runtime contains the merged Leaf A and B0a instruments. No Mapeditor
 production code, renderer, dependency or simulation authority changes are made.
@@ -28,7 +28,7 @@ that warmup is operator-qualified, not independently timestamped.
 
 | Condition | Fixed semantic operation | Physical capture status |
 | --- | --- | --- |
-| Paused | Pinned G0, 1x/TPS10, steady visible pane | OWNER-OVL FAIL; 0 accepted/6; one rejected raw capture |
+| Paused | Pinned G0, 1x/TPS10, steady visible pane | Group interrupted; one valid unpaired capture; 0 complete pairs |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | PENDING, 0/6 |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6 |
@@ -86,7 +86,7 @@ Native state, Native projection in the disabled baseline, and lost focus.
 Source/profile/dependency identities, paused G0, TPS10 and 1600x900 geometry
 matched. No sample is salvaged, relabeled Native, trimmed or counted as a pass.
 The frozen v1 launcher's `completed_captures: 1` counts its analyzed export;
-the report has `valid: false`, so accepted captures remain **0/30**.
+the report has `valid: false`, so that v1 checkpoint had **0 accepted captures**.
 
 The v1 card said to select the client with F8 alongside the explicit checkbox
 state. F8 toggles, so that instruction could undo a correct setting; causation
@@ -112,7 +112,59 @@ audit/reproducer and v2 verification. All **73 original indexed run entries**
 verified unchanged, and the complete v1 bundle is archived under
 `SimThing-0088-OVL-B1/versions/m16-b1-ovl-v1`. Replaying the actual failed raw
 capture under v1 and v2 produces identical analysis and rejection. This is
-instruction repair validated locally; physical success remains pending.
+instruction repair validated locally; the next attempt is recorded below.
+
+## Valid first capture; launcher transition failure
+
+Run `b1-20260913-131121-9db4662f` passed the first Paused/Egui capture checks:
+32.4866474 seconds, 2,433 frames, Native disabled, focused throughout observed
+facts, paused G0, correct source/profile/dependencies and 1600x900 geometry.
+The post-export memory sample belongs to the same PID/start identity (16140).
+The launcher then failed before preparing the second card, with
+`File.Replace` reporting "The path is not of a legal form." Studio exited 0.
+The old active config and next staged config both remained intact.
+
+This is **one individually valid unpaired capture, zero complete pairs**.
+It is retained in full as interrupted-run evidence, not silently discarded or
+paired across a fresh process. Its raw-frame p95 is **42.3209 ms**, above the
+16.7 ms characterization threshold; analyzer validity is not a frame-budget pass.
+Process private bytes were 974,757,888 and working set 713,322,496, sampled
+0.0980549 seconds after the raw file's last write, at the declared post-export
+boundary. These single-run observations do not meet the repetition requirement
+or support a client comparison.
+
+The original config activation statement reproduces the same failure under
+the actual Windows PowerShell 5.1 launcher host. Its `$null` backup argument
+is bound to an empty path. Launcher revision `m16-b1-ovl-v3` supplies a unique
+nonempty backup path and preserves the prior active config on every replacement.
+Raw metadata also pins launcher revision/hash. Studio, analyzer and the complete
+v2 measurement protocol are unchanged. No production edit or acceptance change.
+
+Real filesystem checks exercised the actual launcher activation statement:
+the old first-to-second failure; all six case activations/five replacements in
+the frozen Egui/Native, Native/Egui, Egui/Native order; exact current/previous
+config bytes; and safe refusal with a locked destination followed by successful
+replacement after release. All eight check rows PASS in Windows PowerShell 5.1.
+This verifies config progression, not six physical Studio captures.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Valid raw `01-paused-r1-egui.json` | `4a451459423959c03b16d7d927a973cb731fbb8202d5f48a33fc8856211c69a1` |
+| PID memory snapshot | `c17d60b08f5b217201c0715ecee5accae09e6d0a8c973ffa86b1cf5701f76de4` |
+| Owner transition-failure screenshot | `9ba872c3ad0d1ed5ac631126ca6b58909d245bd08788dc581345fe0a954c06d4` |
+| Preserved-runs audit | `8e17bae1efd8c9e1a5ffce476236964532018c9528e94a11577f7bef8dd44ee6` |
+| Actual filesystem transition checks | `99739015d9d6561feaa8c2c9e304dc8afc9bac297644d45e341a394e9c17bb96` |
+| v3 launcher | `6757113ef68ffb5166a2ac24eb14e4539025224da67c1c50c8140f1962755010` |
+| v3 bundle manifest | `c0edd89964574ed41e3fabb490e0175fe5f3b86bd4a734e4ff569ab6970df77f` |
+
+All **97 original indexed entries** across five runs verified unchanged.
+Both existing raw reports reproduce identically with the unchanged analyzer;
+the rejected v1 capture remains rejected and the successful v2 capture remains
+valid. The full v2 bundle is archived under `versions/m16-b1-ovl-v2`. Audit,
+screenshot and reproducer are in the common gitdir's
+`0088-m16-b1-config-replace` directory. The repaired bundle has 14 frozen files.
+Restart the Paused group from case 1 to preserve its declared one-process setup;
+successful complete-group collection remains pending.
 
 ## Required unavailable input-latency evidence
 
