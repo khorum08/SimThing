@@ -432,6 +432,7 @@ fn route_native_input(
         return;
     };
     let cursor = window.physical_cursor_position();
+    let m16_started = state.m16.cpu_start();
     let mut egui_pointer = false;
     let mut egui_keyboard = false;
     for (mut context, _) in &mut contexts {
@@ -556,6 +557,8 @@ fn route_native_input(
             input.events.push(egui::Event::PointerGone);
         }
     }
+    state.m16.cpu_end(crate::rehearsal_studio_m16_capture::Client::Native,
+        "native_input_router", m16_started);
 }
 
 pub fn native_consumes_egui_event(
@@ -594,6 +597,14 @@ pub fn native_observation_text(state: &StudioAppState) -> String {
     let clock = state.sim_clock_transport.readout();
     let bridge = &state.live_bridge_readout;
     let obs = crate::build_studio_live_observation_readout(&clock, bridge, state.session.as_ref());
+    native_observation_from_projection(state, &obs)
+}
+
+fn native_observation_from_projection(state: &StudioAppState, obs: &crate::StudioLiveObservationReadout) -> String {
+    if state.live_bridge_reset_requested {
+        return "Session replacement pending; prior resident observation withheld".into();
+    }
+    let bridge = &state.live_bridge_readout;
     let mut text = format!(
         "{} | {} | max {:.3} TPS | effective {:.3}/s\nScheduled tick {} | resident generation {}\nBridge: {} | {}\nScenario: {}\nSystems: {} | selected: {:?}\n",
         if obs.clock_paused { "Paused" } else { "Playing" }, obs.clock_rate_label.replace("×", "x"),
@@ -696,6 +707,8 @@ fn sync_native_pane(
     if !visible {
         return;
     }
+    use crate::rehearsal_studio_m16_capture::{measured_projection, consume_projection, Client};
+    let started = state.m16.cpu_start();
     if state.native_ui.displayed_revision != state.scene_render_revision {
         state.native_ui.first_row = 0;
         state.native_ui.focus = None;
@@ -708,11 +721,18 @@ fn sync_native_pane(
     for (control, mut text) in &mut labels {
         text.0 = control_label(&state, control.0);
     }
-    let observation = native_observation_text(&state);
+    let observation = if state.live_bridge_reset_requested {
+        native_observation_text(&state)
+    } else {
+        let obs = measured_projection(&mut state, Client::Native);
+        native_observation_from_projection(&state, &obs)
+    };
+    let mut consumed = false;
     for mut text in &mut readouts {
         if text.0 != observation {
             text.0.clone_from(&observation);
         }
+        consumed = true;
     }
     for (control, interaction, mut color) in &mut buttons {
         color.0 = if state.native_ui.focus == Some(*control) {
@@ -723,4 +743,6 @@ fn sync_native_pane(
             Color::srgb(0.12, 0.18, 0.26)
         };
     }
+    state.m16.cpu_end(Client::Native, "native_pane_sync_including_projection", started);
+    if consumed { consume_projection(&mut state, Client::Native); }
 }

@@ -92,7 +92,8 @@ impl StudioAppState {
         bridge.open_from_loaded_studio_session(&session)?;
         adopt_loaded_scenario_session(session, settings, self, message);
         self.live_bridge_reset_requested = false;
-        self.live_bridge_readout = bridge.readout();
+        self.m16.resident_reset();
+        self.publish_live_bridge_readout(bridge.readout());
         Ok(())
     }
 
@@ -994,6 +995,39 @@ fn draw_window_controls(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rehearsal_studio_m16_egui_consumption_uses_publication_and_rejects_reset() {
+        use crate::rehearsal_studio_m16_capture::{CaptureConfig, Client, Sample};
+        let mut state = StudioAppState::default();
+        let output = tempfile::tempdir().unwrap();
+        let metadata = ["condition", "repetition", "code_revision", "instrument_revision", "seed",
+            "hardware", "backend", "driver", "compiler", "build_flags", "cache_state", "warmup",
+            "exact_command", "operation_sequence", "workload_cardinalities", "presentation_settings", "subscriptions"]
+            .into_iter().map(|k| (k.into(), "synthetic egui validity fixture".into())).collect();
+        state.m16.start(CaptureConfig { output: output.path().join("egui.json"), max_samples: 100, metadata }, serde_json::json!({})).unwrap();
+        let mut readout = crate::StudioLiveSessionBridgeReadout::default_unattached();
+        readout.attached = true;
+        readout.executed_ticks = 12;
+        state.publish_live_bridge_readout(readout);
+        let ctx = egui::Context::default();
+        let mut draw = |state: &mut StudioAppState| {
+            let _ = ctx.run(egui::RawInput::default(), |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| draw_live_observation(ui, state));
+            });
+        };
+        draw(&mut state);
+        draw(&mut state);
+        state.live_bridge_reset_requested = true;
+        draw(&mut state);
+        state.live_bridge_reset_requested = false;
+        state.scene_render_revision += 1;
+        draw(&mut state);
+        let samples = &state.m16.capture.as_ref().unwrap().samples;
+        assert_eq!(samples.iter().filter(|s| matches!(s, Sample::Consumption { client: Client::Egui, stamp, .. } if stamp.generation == 12)).count(), 1);
+        assert_eq!(samples.iter().filter(|s| matches!(s, Sample::Rejected { client: Client::Egui, .. })).count(), 2);
+        assert!(samples.iter().any(|s| matches!(s, Sample::Cpu { client: Client::Egui, scope, .. } if scope == "egui_live_observation_adapter_including_projection")));
+    }
 }
 
 fn draw_settings_dialog(
@@ -1933,6 +1967,7 @@ fn draw_left_panel(
 
 /// Compact operator transport over [`crate::StudioSimClockTransport`] + live bridge readout.
 fn draw_sim_clock_transport(ui: &mut egui::Ui, state: &mut StudioAppState) {
+    let m16_started = state.m16.cpu_start();
     {
         let transport = &mut state.sim_clock_transport;
         let readout = transport.readout();
@@ -2019,16 +2054,15 @@ fn draw_sim_clock_transport(ui: &mut egui::Ui, state: &mut StudioAppState) {
 
     // Live observation (9.4) — pure projection; does not tick or mutate Spec.
     draw_live_observation(ui, state);
+    state.m16.cpu_end(crate::rehearsal_studio_m16_capture::Client::Egui,
+        "egui_clock_transport_including_observation", m16_started);
 }
 
 /// Compact observation panel over clock + bridge + session (presentation only).
-fn draw_live_observation(ui: &mut egui::Ui, state: &StudioAppState) {
-    let clock = state.sim_clock_transport.readout();
-    let obs = crate::build_studio_live_observation_readout(
-        &clock,
-        &state.live_bridge_readout,
-        state.session.as_ref(),
-    );
+fn draw_live_observation(ui: &mut egui::Ui, state: &mut StudioAppState) {
+    use crate::rehearsal_studio_m16_capture::{measured_projection, consume_projection, Client};
+    let started = state.m16.cpu_start();
+    let obs = measured_projection(state, Client::Egui);
 
     ui.separator();
     ui.label(egui::RichText::new("Live observation").strong());
@@ -2086,6 +2120,8 @@ fn draw_live_observation(ui: &mut egui::Ui, state: &StudioAppState) {
     } else {
         ui.label("Session: no loaded session  ·  bridge unattached/idle");
     }
+    state.m16.cpu_end(Client::Egui, "egui_live_observation_adapter_including_projection", started);
+    consume_projection(state, Client::Egui);
 }
 
 /// Read-only Scenario section plus existing debug/operator actions rehomed from the load modal.
