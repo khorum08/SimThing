@@ -721,8 +721,12 @@ fn sync_native_pane(
     for (control, mut text) in &mut labels {
         text.0 = control_label(&state, control.0);
     }
-    let obs = measured_projection(&mut state, Client::Native);
-    let observation = native_observation_from_projection(&state, &obs);
+    let observation = if state.live_bridge_reset_requested {
+        native_observation_text(&state)
+    } else {
+        let obs = measured_projection(&mut state, Client::Native);
+        native_observation_from_projection(&state, &obs)
+    };
     let mut consumed = false;
     for mut text in &mut readouts {
         if text.0 != observation {
