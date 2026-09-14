@@ -31,7 +31,7 @@ that warmup is operator-qualified, not independently timestamped.
 | Paused | Pinned G0, 1x/TPS10, steady visible pane | Two six-capture runs complete; fresh-load setup qualification pending |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | COMPLETE: 6/6 valid, three paired repetitions, same resident; earlier failures retained |
-| Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6; first Egui capture rejected for four cycles; card clarified |
+| Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | 6/6 frozen capture checks pass, same resident; shorter duration/dwell qualification pending |
 | List interaction | Same selected-system sequence 1 through 7; map picking for Egui, native list/Down for Native | PENDING, 0/6 |
 
 The Owner launcher uses the existing Windowed setting and 1600x900 startup
@@ -49,10 +49,10 @@ selection owner; no equal-widget construction-cost claim is made.
 
 | Quantity | Instrument and reporting rule | Current evidence |
 | --- | --- | --- |
-| Raw full-frame cadence/tails | Merged B0a `Time<Real>` unsmoothed intervals; all raw samples; p50/p95/p99/max; nearest rank; p95 <=16.7 ms characterization | Partial: Paused and numeric groups recorded; p95 budget not met |
+| Raw full-frame cadence/tails | Merged B0a `Time<Real>` unsmoothed intervals; all raw samples; p50/p95/p99/max; nearest rank; p95 <=16.7 ms characterization | Partial: Paused, numeric and resize groups recorded with stated qualifications; p95 budget not met |
 | Shared CPU projection | Same `shared_clock_and_observation_projection` computation; host wall elapsed, not OS CPU accounting | Partial: exact same-frame/publication pairs in Native-on captures |
 | Adapter CPU | Each named native/egui scope separately with its existing boundaries; never sum nested scopes | Partial: per-scope distributions retained in group artifacts |
-| Observation freshness | Publication to first matching client consumption, full scene/resident/generation stamp; pre-capture publication ages retained separately | No new publication during Paused/numeric G0 captures; Running pending |
+| Observation freshness | Publication to first matching client consumption, full scene/resident/generation stamp; pre-capture publication ages retained separately | No new publication during Paused/numeric/resize G0 captures; Running pending |
 | Process memory | Read-only PID private bytes and working set immediately after durable raw export, before analyzer; process total including capture/export allocation history | Partial: PID-bound snapshots and signed pair differences retained |
 | Input latency | INSTRUMENT-INVALID / UNAVAILABLE; no qualified endpoint; p95 <=100 ms UNEVALUATED | Existing B0b/R1 failure proof |
 | First actual display | No qualified matching displayed endpoint | UNAVAILABLE |
@@ -508,6 +508,105 @@ Audit, screenshot, freeze/replay scripts and checks are in the common gitdir's
 files remain in the identified OVL run. Input latency remains unavailable;
 no budget pass, migration decision, arbitrary resize or multi-monitor claim
 is made from this failed capture.
+
+## Resize collection: six captures pass frozen checks; pacing qualification pending
+
+Owner reported OVL success with Egui and Native screenshots for
+`b1-20260913-224522-352c334b`. All six original reports replay identically and
+pass the frozen capture checks. Each records exactly three cycles:
+`1600x900 -> 1920x1032 -> 1600x900`, repeated three times, with the same
+starting, maximized and final physical sizes across both clients and all pairs.
+All share scene/resident 1, paused G0/TPS10/1x, pinned source/profile/dependencies,
+focus, visible panels, no selection and scale 1. Only the expected Native flag
+differs in initial facts; during capture only geometry changes. PID **8560**
+and start identity match every post-export memory sample. Studio exited 0,
+with no M16 refusal/export warning. The planned single-load setup is satisfied.
+
+**Five captures are below the 15-second target**, though all exceed the frozen
+10-second usable minimum. Further, **28 of 36 observed geometry dwell intervals
+are below two seconds**, ranging overall from **1.0142679 to 3.3485731 seconds**.
+These six dwell intervals per capture run from first maximize through the
+successive geometry changes and final F10 stop. They measure observed size
+residency, not exact keystroke timing. They do not establish the instructed
+two-second waits. The frozen analyzer checks count/geometry/minimum duration,
+not those individual dwell times; its acceptance is unchanged.
+
+This is complete collection of three descriptive pairs under the **actual
+shorter, variably paced condition**, not an unqualified pass of the planned
+15-second/two-second-wait procedure. **Orchestration disposition is requested**:
+qualify these results at their actual pacing, or require additional target-paced
+resize evidence. No threshold is relaxed, no duration is padded, and no prefix
+or tail is removed. The earlier four-cycle attempt remains rejected.
+
+All **6,060 frame intervals** remain. Statistics below are milliseconds, with
+all resize tails included. Every capture exceeds the p95 16.7 ms frame budget.
+
+| Repetition/client | Duration, seconds | Frames | p50 | p95 | p99 | Maximum |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 Egui | 18.0539349 | 1,343 | 3.6724 | 41.7395 | 45.1395 | 110.9532 |
+| 1 Native | 13.9745124 | 1,038 | 3.7580 | 41.5607 | 45.8799 | 91.7699 |
+| 2 Egui | 11.8803585 | 878 | 3.6034 | 41.7075 | 49.7139 | 91.4260 |
+| 2 Native | 12.0982545 | 895 | 3.9303 | 41.8172 | 52.0408 | 89.0274 |
+| 3 Egui | 10.9782936 | 812 | 3.3418 | 41.5791 | 50.5329 | 91.7625 |
+| 3 Native | 14.7168723 | 1,094 | 3.4374 | 41.9724 | 46.4529 | 89.4676 |
+
+| Repetition | Native minus Egui frame p95, ms | Private bytes difference | Working-set bytes difference |
+| --- | ---: | ---: | ---: |
+| 1 | -0.1788 | +21,512,192 | +12,550,144 |
+| 2 | +0.1097 | -6,729,728 | -864,256 |
+| 3 | +0.3933 | -258,772,992 | +1,454,080 |
+
+All absolute memory values and post-export lags are retained. In pair 3,
+Egui private bytes were 1,313,988,608 and Native private bytes 1,055,215,616;
+the large negative difference is kept as observed, without attributing it to
+client savings. These are one process's totals with allocation/export history,
+not isolated client or GPU memory. Native-on continues to coexist with Egui.
+
+The three Native-on captures contain **2,720 exact same-frame/same-publication
+shared projection CPU pairs**. Signed residuals are Native minus Egui; all
+negative values and positive tails remain in the original reports.
+
+| Native capture | Direct pairs | Minimum residual, ns | p50, ns | p95, ns | p99, ns | Maximum, ns |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Repetition 1 | 938 | -2,100 | +100 | +600 | +1,000 | +3,700 |
+| Repetition 2 | 809 | -4,300 | +100 | +500 | +900 | +12,800 |
+| Repetition 3 | 973 | -2,200 | +100 | +600 | +1,300 | +79,900 |
+
+These host wall timings compare the same projection computation with Runtime
+change frames excluded by the frozen analyzer. Named adapter scopes remain
+separate and nested scopes are never summed. Cross-capture statistics are
+descriptive: different resize timing and durations prevent causal event-cost
+alignment. The ordinal file preserves **2,728 descriptive frame pairs and 604
+unmatched tail intervals**, with no causal frame or input-latency association.
+There are **zero fresh publication delivery samples**: all consumed publications
+are G0 and predate capture. Pre-capture ages remain separate from freshness.
+
+All **429 indexed entries across thirteen runs** verify unchanged, and all six
+new reports reproduce exactly. All 14 frozen bundle files plus source/Python
+pins verify. Bundle v5 / protocol v4, analyzer, launcher and Studio are unchanged.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Run raw index | `e6ab2bf90e430af2d805c00e944027f3b2ead5c492d4f6925b1d4bc7433a29ba` |
+| Resize aggregate/audit | `a6d02a956228467785568ae9a3f84697e9681c126974596ba6bf271ea0efd64d` |
+| Chronological residuals and unmatched tails | `8bbc09194a4fb55f8851f75f77ecc3dd3d163d1dd27a8874d66cdf831eb957bc` |
+| Read-only aggregate script | `eac7af161ec3da28ff75f24923c6f955242e6a9d3d3f8a52c54b9ba22949abf4` |
+| Owner Egui screenshot | `2b8435ed9da5a59d5265e5cdf1de5078848f7a190f8462744c9670598deb2f80` |
+| Owner Native screenshot | `fa9a6846ec2a7eea582a00bcbd25dd8d2a9da6f313caa18a69934a564c32c02e` |
+
+Aggregate, reproducer, residuals and copied screenshots are in the common
+gitdir's `0088-m16-b1-resize-results` directory. Original raw/config/report/memory
+files remain in the identified OVL run. Screenshots show both client panes in
+their final visible state; they have no run/time identifier, and screenshot
+dimensions are not substituted for recorded physical geometry.
+
+Next Owner collection is **Group 4 — Seven-system selection and native list**,
+using the unchanged launcher, one source load for all six captures and the
+card's Overhead view. Group 1 and Group 3 qualifications, Groups 4-5, final
+portable packaging/comparison/decision and final hosted CI/Clearance remain
+pending. Required input latency remains INSTRUMENT-INVALID / UNAVAILABLE,
+p95 <=100 ms UNEVALUATED; arbitrary resize and multi-monitor DPI remain
+unqualified. This checkpoint makes no migration recommendation.
 
 ## Required unavailable input-latency evidence
 
