@@ -32,7 +32,7 @@ that warmup is operator-qualified, not independently timestamped.
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | COMPLETE: 6/6 valid, three paired repetitions, same resident; earlier failures retained |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | 6/6 frozen capture checks pass, same resident; shorter duration/dwell qualification pending |
-| List interaction | Same selected-system sequence 1 through 7; map picking for Egui, native list/Down for Native | PENDING, 0/6 |
+| List interaction | Future captures: same actual row-order sequence 1,2,3,4,5,7,6; map picks for Egui, list/Down for Native | PENDING; original Egui valid/unpaired, Native rejected under incorrect ascending-ID protocol; new paired sequence frozen |
 
 The Owner launcher uses the existing Windowed setting and 1600x900 startup
 size in a copied, process-scoped settings directory. Other copied presentation
@@ -607,6 +607,92 @@ portable packaging/comparison/decision and final hosted CI/Clearance remain
 pending. Required input latency remains INSTRUMENT-INVALID / UNAVAILABLE,
 p95 <=100 ms UNEVALUATED; arbitrary resize and multi-monitor DPI remain
 unqualified. This checkpoint makes no migration recommendation.
+
+## First list pair: native row order differs from the test's assumed ID order
+
+Owner supplied the Group 4 console screenshot for
+`b1-20260913-230204-f9063a95`. Original Egui repetition 1 passes:
+**20.2700475 seconds / 1,517 frames**, selection `[null,1,2,3,4,5,6,7]`.
+Original Native repetition 1 fails only the ascending-ID sequence check:
+**12.8155533 seconds / 960 frames**, selection `[null,1,2,3,4,5,7,6]`.
+Native exceeds the 10-second usable minimum but is below the 15-second target.
+Its observed selections after F9 occur at +1.5996587 (1), +3.3063770 (2),
++4.2817758 (3), +5.2269742 (4), +6.1333353 (5), +7.1481692 (7) and
++8.1625973 (6) seconds. B0a does not record the originating physical keys.
+
+Both captures have the same pinned source/profile/dependencies, scene/resident
+1, paused G0/TPS10/1x, focus, visible panels, no initial selection and physical
+1600x900 at scale 1. Only the expected Native flag differs. PID **29004** and
+start identity match both memory samples. Studio exited 0 and was closed when
+inspected. Egui p95 **39.1802 ms** and Native p95 **41.6306 ms** remain separate
+capture characterizations; the different selection sequences prohibit a paired
+client result. Original status remains one valid unpaired Egui capture, one
+rejected Native capture and zero valid list pairs.
+
+Source archaeology at the unchanged runtime revision explains the order:
+
+- `clause_scenario_ingest.rs` loads the StructuralRebindReady scenario through
+  the existing ClauseScript rebind path and `StudioSession::from_loaded_scenario`.
+- `clause_scenario_projection.rs:227` sorts placements by **(row, col, system_id)**.
+- `hydration.rs:448` and `view_model.rs:157` preserve that placement order in the
+  displayed star vector. Native labels and activation index that vector, and
+  `rehearsal_studio_native_ui.rs:331` advances its index for Down.
+- In the pinned base, G/7 is at **col 5, row 0** and F/6 at **col 4, row 1**.
+  Therefore the native row order is **A,B,C,D,E,G,F**, IDs **1,2,3,4,5,7,6**.
+
+This source-derived order exactly matches the recorded Native sequence. The
+card/analyzer incorrectly assumed ascending IDs were the Native row order.
+This is not evidence of a Down-key defect. Owner clarification about exact
+physical inputs was requested and remains pending at this checkpoint; source
+inspection is not a new runtime trace or independent physical-key proof.
+All six inspected source files are hashed in the audit and unchanged from
+`a8c11731`. No ClauseThing, scenario authority, Mapeditor or selection code is edited.
+
+**Bundle v6 / protocol v5** freezes a prospective replacement Group 4 comparison:
+both clients must select `[null,1,2,3,4,5,7,6]` on the same seven-system workload.
+Egui picks **A,B,C,D,E,G,F** on the map; Native clicks A then makes six separate
+Down taps, releasing between taps. Both end at **F/6**. Keep about two seconds
+between selections and wait idle if needed until 15 seconds before F10.
+No corrective selections or extra visits are part of the sequence.
+
+This changes Group 4's procedural order and its exact-sequence check **for fresh
+captures on both clients**. It preserves the workload, seven selections per
+capture, command/observation ownership, measurement definitions, thresholds,
+other groups and all runtime/launcher bytes. The old pair is not reinterpreted
+or stitched into the new comparison. The new analyzer requires the new list
+protocol revision and matching operation metadata; old list captures are
+refused by it and must be analyzed using their archived original analyzer and
+protocol. Full bundle v5 is archived under `versions/m16-b1-ovl-v5`.
+
+All **458 indexed entries across fourteen runs** verify unchanged. All **34
+original reports** replay identically using their original analyzers/protocols
+(29 valid, five rejected, with existing group qualifications retained). The
+**32 non-list reports** also remain identical under the new analyzer. Five
+focused software checks cover both original list metadata refusals, a transformed
+in-memory future-metadata fixture with the exact new sequence, and refusals for
+the former order and a skipped system. The transformed fixture is explicitly
+software verification, not a fresh physical capture or a retroactive pass.
+Actual analyzer CLI refusal of the old Native raw and actual PowerShell launcher
+`-ValidateOnly` both pass; the launcher validates 14 frozen files.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Original valid Egui raw | `a38051692ec237e130ab4738ab0d6261cf0e754918d197dbaec2cc1c98243888` |
+| Original rejected Native raw | `271bd9597d1955eb4e9cfa39b81fd7d18105bf6afd2e5ac8c650ba88e55a8f67` |
+| Detailed original-result/order audit | `3c120f0ab5cde2a3ef16e210edab01a349d9ae2c88845ff356892cabc7f233e9` |
+| Owner screenshot | `ae6b16d93f995935bd902dd9dba88c1090dd673fd6a2ef875489de7f66d5c54d` |
+| v6 bundle manifest | `1feee6ba0357ec8fd36873a53c737639db43b1ae1eea9b4cdd21af86db3117db` |
+| New v5 protocol | `0e00ec2031a3e8878fc2008de250f37138bdb6b94930c70b31bb2ef234c8b375` |
+| New external analyzer | `e829eb2d3ac954fa24d9b7789f4ccd62a60a287fe79b29af03674ebabf03402a` |
+| v6 verification/replay results | `c0ceed29b4b175dbf5811fc70f6f17ef9639c4b000bca85f584b0f2fa0d5a72e` |
+
+Audit, source bindings, screenshot, freeze/replay script, software checks and
+CLI refusal report are in the common gitdir's `0088-m16-b1-list-order` directory.
+All original raw/config/report/memory files remain in the identified OVL run.
+Restart **Group 4** through the same launcher for fresh paired captures using
+**G before F on both clients**. Other collected groups keep their existing
+results and qualifications. Required input latency remains unavailable;
+no budget pass, long-list scaling claim or migration recommendation is made.
 
 ## Required unavailable input-latency evidence
 
