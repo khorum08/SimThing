@@ -32,7 +32,7 @@ that warmup is operator-qualified, not independently timestamped.
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | COMPLETE: 6/6 valid, three paired repetitions, same resident; earlier failures retained |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | 6/6 frozen capture checks pass, same resident; shorter duration/dwell qualification pending |
-| List interaction | Future captures: same actual row-order sequence 1,2,3,4,5,7,6; map picks for Egui, list/Down for Native | PENDING; original Egui valid/unpaired, Native rejected under incorrect ascending-ID protocol; new paired sequence frozen |
+| List interaction | Same actual row-order sequence 1,2,3,4,5,7,6; map picks for Egui, list/Down for Native | PENDING; new row-order Egui passes, Native starts with F selected; zero valid pairs |
 
 The Owner launcher uses the existing Windowed setting and 1600x900 startup
 size in a copied, process-scoped settings directory. Other copied presentation
@@ -693,6 +693,69 @@ Restart **Group 4** through the same launcher for fresh paired captures using
 **G before F on both clients**. Other collected groups keep their existing
 results and qualifications. Required input latency remains unavailable;
 no budget pass, long-list scaling claim or migration recommendation is made.
+
+## List retry: correct Native order, but F selected at capture start
+
+Two subsequent v6-bundle runs are preserved. In
+`b1-20260913-232035-e26f7c3d`, Egui recorded the former ascending order
+`[null,1,2,3,4,5,6,7]` and correctly failed the new row-order check:
+39.9417721 seconds, 2,993 frames, p95 39.3099 ms, PID 37208.
+
+In the Owner's latest screenshot run, `b1-20260913-232212-fb723200`, Egui is
+valid: **27.1788779 seconds / 2,035 frames**, `[null,1,2,3,4,5,7,6]`.
+Native records the correct seven selections after F9, but **starts with F/6
+already selected**: `[6,1,2,3,4,5,7,6]`. Its sole rejection is the exact-sequence
+check's required clear initial state. Duration is **33.3471206 seconds / 2,497
+frames**. The initial 6 is retained, not replaced with null or trimmed away.
+
+| Native seconds after F9 | Selected system |
+| ---: | --- |
+| 0 | 6/F — initial selection must instead be clear |
+| 2.3480025 | 1/A |
+| 6.1363679 | 2/B |
+| 7.0964539 | 3/C |
+| 7.9507668 | 4/D |
+| 8.8297215 | 5/E |
+| 9.7098574 | 7/G |
+| 10.8307679 | 6/F |
+
+Latest Egui and Native retain the same pinned source/profile/dependencies,
+scene/resident 1, paused G0/TPS10/1x, focus, visible panels and 1600x900/scale1.
+Their initial facts differ only in Native enablement and the leftover selection.
+PID **38184** and start identity match both memory samples. Both new processes
+exited 0 and were closed when inspected. Egui p95 **39.4016 ms** / Native p95
+**39.1732 ms** remain separate characterizations; there is no valid list pair
+or 16.7 ms budget pass. All three captures exceed the 15-second target.
+
+The raw files do not identify which physical setup action left F selected.
+Source confirms the existing **Clear selection (Esc)** button in the right-hand
+Selected system section directly invokes `state.selection.clear()`
+(`app/ui.rs:3091-3092`). Native Escape can release field focus before map Escape
+clears selection; no key history is available to attribute this attempt to that
+path. A visible setup check removes the ambiguity: **before every capture**, click
+the existing clear-selection button if shown, verify the Selected system section
+disappears and Native's readout says **selected: None**, then wait the setup warmup
+and F9. Click A only after F9. Keep the source loaded across the group.
+
+The required clear initial state and row-order sequence are unchanged. No
+bundle/protocol/analyzer/launcher/runtime edit is made. All **509 indexed entries
+across sixteen runs** verify unchanged, all three new reports replay identically,
+and all 14 frozen bundle files plus source pins verify. Valid Egui remains
+unpaired; failed runs are not stitched into a new process's paired comparison.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Earlier wrong-order Egui raw | `856b1097a0ee130986cb56693e66dd9c66b8bdb659f13a3e64d0431c048d80bc` |
+| Latest valid Egui raw | `4795d4732bc668cd8e5b87c83080f0f5cf575368b4de01cfd4ab27c7ae1a6289` |
+| Latest rejected Native raw | `4204d1298721d85b93768bb8778a23607b0e528b08f35bc4985def07bf561831` |
+| Detailed audit | `99861f06113201b0f33c682500b7e56fcce75ec5cc03bff221cbaa86a4dd6e6e` |
+| Audit script | `ec86de3357841aef58ab673dd9f1c049f13c421e7c3becff8e489c5a845e353f` |
+| Owner screenshot | `f2113e7eba3d425c95df8ac39252eaf5a94c5730edfbca71d06a83312fb4db80` |
+
+The common gitdir's `0088-m16-b1-list-initial-selection` directory contains the
+audit, reproducer and screenshot. Originals remain in the two identified OVL
+runs. Restart Group 4 with the same launcher; verify clear selection before
+every F9. The matched sequence stays **A,B,C,D,E,G,F** on both clients.
 
 ## Required unavailable input-latency evidence
 
