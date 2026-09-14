@@ -6,7 +6,7 @@ Base and frozen runtime: `a8c117313dbe3796aa160ba12cad1cd677bdc5e6`.
 Branch: `codex/0088-m16-ui-comparison`. HD-RECEIPT: 47010c34edf2.
 Carried coding ORIENT-RECEIPT: 28f56884d309.
 
-This draft records the frozen protocol and interrupted Owner attempts. It is not a
+This draft records the frozen protocol, collected groups and interrupted Owner attempts. It is not a
 completed comparison, proof-present PR, budget pass or migration recommendation.
 The runtime contains the merged Leaf A and B0a instruments. No Mapeditor
 production code, renderer, dependency or simulation authority changes are made.
@@ -30,7 +30,7 @@ that warmup is operator-qualified, not independently timestamped.
 | --- | --- | --- |
 | Paused | Pinned G0, 1x/TPS10, steady visible pane | Two six-capture runs complete; fresh-load setup qualification pending |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
-| Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | One valid Egui capture; Native rejected after extra seventh change; no complete pairs |
+| Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | COMPLETE: 6/6 valid, three paired repetitions, same resident; earlier failures retained |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6 |
 | List interaction | Same selected-system sequence 1 through 7; map picking for Egui, native list/Down for Native | PENDING, 0/6 |
 
@@ -49,11 +49,11 @@ selection owner; no equal-widget construction-cost claim is made.
 
 | Quantity | Instrument and reporting rule | Current evidence |
 | --- | --- | --- |
-| Raw full-frame cadence/tails | Merged B0a `Time<Real>` unsmoothed intervals; all raw samples; p50/p95/p99/max; nearest rank; p95 <=16.7 ms characterization | PENDING |
-| Shared CPU projection | Same `shared_clock_and_observation_projection` computation; host wall elapsed, not OS CPU accounting | PENDING |
-| Adapter CPU | Each named native/egui scope separately with its existing boundaries; never sum nested scopes | PENDING |
-| Observation freshness | Publication to first matching client consumption, full scene/resident/generation stamp; pre-capture publication ages retained separately | PENDING |
-| Process memory | Read-only PID private bytes and working set immediately after durable raw export, before analyzer; process total including capture/export allocation history | PENDING |
+| Raw full-frame cadence/tails | Merged B0a `Time<Real>` unsmoothed intervals; all raw samples; p50/p95/p99/max; nearest rank; p95 <=16.7 ms characterization | Partial: Paused and numeric groups recorded; p95 budget not met |
+| Shared CPU projection | Same `shared_clock_and_observation_projection` computation; host wall elapsed, not OS CPU accounting | Partial: exact same-frame/publication pairs in Native-on captures |
+| Adapter CPU | Each named native/egui scope separately with its existing boundaries; never sum nested scopes | Partial: per-scope distributions retained in group artifacts |
+| Observation freshness | Publication to first matching client consumption, full scene/resident/generation stamp; pre-capture publication ages retained separately | No new publication during Paused/numeric G0 captures; Running pending |
+| Process memory | Read-only PID private bytes and working set immediately after durable raw export, before analyzer; process total including capture/export allocation history | Partial: PID-bound snapshots and signed pair differences retained |
 | Input latency | INSTRUMENT-INVALID / UNAVAILABLE; no qualified endpoint; p95 <=100 ms UNEVALUATED | Existing B0b/R1 failure proof |
 | First actual display | No qualified matching displayed endpoint | UNAVAILABLE |
 | Direct render/GPU cost | No directly admitted per-client timing instrument | UNAVAILABLE |
@@ -346,6 +346,99 @@ the minimum target duration, then F10. Physical Group 2 completion remains pendi
 
 The common gitdir's `0088-m16-b1-native-extra-edit` directory retains the audit,
 reproducer and all three screenshots with hashes. Earlier failures remain intact.
+
+## Numeric group complete: three valid pairs on one loaded resident
+
+Owner reported OVL success with Egui and Native screenshots for
+`b1-20260913-221404-2c9b6380`. All six original reports replay identically and
+are valid. Each capture records exactly `[10,12.5,10,12.5,10,12.5,10]`, with
+at least 2.922759 seconds between successive applied edits. All exceed the
+15-second target. The sequence and timing come from applied Runtime facts;
+the instrument does not record individual keystrokes or field-focus history.
+
+All six captures kept **scene/resident 1**, paused G0, pinned source/profile/
+dependencies, 1x, focused, panels visible, no selection, physical 1600x900 and
+scale 1. The Native flag is the only differing initial fact. This group meets
+the planned single-load setup. It does not resolve Group 1's fresh-load
+qualification. PID **35336** and process start identity bind all six post-export
+memory snapshots. Studio exited 0; the log has no M16 refusal/export warnings.
+
+The order was Egui/Native, Native/Egui, Egui/Native. All **12,109 full-frame
+intervals** remain, without smoothing, shortening or tail removal. Frame
+statistics below are milliseconds; p95 does **not** meet 16.7 ms in any capture.
+Valid collection is distinct from passing that performance budget.
+
+| Repetition/client | Duration, seconds | Frames | p50 | p95 | p99 | Maximum |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 Egui | 26.5656849 | 1,989 | 3.9104 | 41.7662 | 42.7793 | 45.5682 |
+| 1 Native | 34.3822358 | 2,574 | 3.8281 | 40.7399 | 42.2896 | 45.2894 |
+| 2 Egui | 26.8383319 | 2,010 | 3.8084 | 41.8931 | 42.9368 | 47.3578 |
+| 2 Native | 24.8906034 | 1,864 | 3.7762 | 39.6973 | 41.8541 | 44.9998 |
+| 3 Egui | 23.6243451 | 1,767 | 3.9745 | 42.1089 | 43.1128 | 45.8320 |
+| 3 Native | 25.4513520 | 1,905 | 4.0177 | 42.1362 | 43.1970 | 45.7423 |
+
+| Repetition | Native minus Egui frame p95, ms | Private bytes difference | Working-set bytes difference |
+| --- | ---: | ---: | ---: |
+| 1 | -1.0263 | +11,882,496 | +11,390,976 |
+| 2 | -2.1958 | -663,552 | -675,840 |
+| 3 | +0.0273 | +1,118,208 | +856,064 |
+
+Memory values describe the same process after each raw export, including its
+allocation history, not isolated client or GPU memory. All absolute samples and
+export lags are in `numeric-results.json`. Native-on still coexists with Egui.
+Different manual edit timing and capture duration limit causal interpretation
+of independent-capture differences. Both positive and negative values remain.
+
+The frozen analyzer admits **5,488 exact same-frame/same-publication shared
+projection CPU pairs** within the three Native-on captures, excluding frames
+with Runtime changes or ambiguous calls. These are host wall elapsed timings
+of the same computation, not OS CPU accounting or adapter totals.
+
+| Native capture | Direct pairs | Minimum residual, ns | p50, ns | p95, ns | p99, ns | Maximum, ns |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Repetition 1 | 2,168 | -3,400 | +100 | +500 | +900 | +12,800 |
+| Repetition 2 | 1,641 | -4,600 | +100 | +600 | +1,300 | +8,400 |
+| Repetition 3 | 1,679 | -3,100 | +100 | +600 | +1,000 | +4,300 |
+
+The original reports retain every direct residual and unpaired-call count.
+Each named adapter scope has its own distribution in the aggregate; nested
+scopes are never summed. Separate cross-capture shared-projection statistic
+differences are explicitly identified in `pairs`. The additional chronological
+frame-ordinal file preserves **5,620 descriptive pairs and 869 unmatched tail
+intervals**, with no causal event alignment or latency claim.
+
+All consumed publications are G0 and predate their captures. There are **zero
+within-capture fresh publication delivery samples**; retained pre-capture ages
+do not substitute for freshness or first display. Required input latency remains
+INSTRUMENT-INVALID / UNAVAILABLE, p95 <=100 ms UNEVALUATED. This group makes no
+migration recommendation or historical performance-improvement claim.
+
+All **350 indexed entries across eleven runs** verify unchanged. Six new reports
+reproduce exactly, and all 14 frozen bundle files plus pinned source/Python files
+verify. Earlier failures and the valid unpaired Egui retry remain separate; no
+failed prefix is promoted into this complete group. Bundle v4, protocol v3,
+analyzer, launcher and production executable are unchanged.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| This run's raw index | `62c5c6cc135d673166470903978657419f35f820a24ad99d2d099cb2c98038a1` |
+| Numeric aggregate/audit | `8cdb96a4e5f2da41f09cd721afc6b22a2b21e416939dfb7ccac0296fdeaccf65` |
+| Chronological residuals and unmatched tails | `07f78ded0453a45a2dc94b913298dbf67bfad25eafaaacb9de8cc885aefa2612` |
+| Read-only aggregate script | `637183dad298da6b990285ab88bd136d662355ba2c592a6e188c5e05b238f3d4` |
+| Owner Egui screenshot | `986a11e3a326b2e042eb0ae61dd2947bc79663a8c16b262275a1949325057372` |
+| Owner Native screenshot | `112e93d06cef948085ff44a968b73b7c672319eab0db3e018733bcc70b1ad17b` |
+
+The common gitdir's `0088-m16-b1-numeric-results` directory contains the aggregate,
+reproducer, residuals and copied screenshots. Original raw/config/report/memory
+files remain in the identified OVL run directory, with their hashes in both
+the raw index and aggregate. Both screenshots show applied TPS10; Native also
+shows its editable field focused. They corroborate visual client state but lack
+visible run/time identifiers and do not independently bind quantitative samples.
+
+Group 2 collection is complete. Groups 3-5, Group 1 disposition, final portable
+packaging/comparison/decision, hosted Doctrine/full INSPECT and fresh Clearance
+remain pending. Next Owner group is **3 — Window maximize and restore**, through
+the unchanged launcher, loading the source once for all six captures.
 
 ## Required unavailable input-latency evidence
 
