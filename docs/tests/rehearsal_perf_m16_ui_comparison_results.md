@@ -30,7 +30,7 @@ that warmup is operator-qualified, not independently timestamped.
 | --- | --- | --- |
 | Paused | Pinned G0, 1x/TPS10, steady visible pane | Two six-capture runs complete; fresh-load setup qualification pending |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
-| Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | PENDING, 0/6 |
+| Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | First capture rejected: applied TPS remained 10; 0/6 valid |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6 |
 | List interaction | Same selected-system sequence 1 through 7; map picking for Egui, native list/Down for Native | PENDING, 0/6 |
 
@@ -240,6 +240,61 @@ Portable raw-artifact packaging remains part of final B1 handback. No frozen
 bundle, analyzer, protocol or production code changes in this collection return.
 Groups 2-5 remain pending; Group 2 should load once at group start, then retain
 that resident through all six captures. Only the Running group reloads per capture.
+
+## First numeric capture: no applied TPS transitions
+
+Owner supplied the Group 2 rejection screenshot for
+`b1-20260913-213947-06892d58`. The first Egui capture exported successfully,
+then failed only the required numeric sequence check: **observed `[10]`**,
+required `[10,12.5,10,12.5,10,12.5,10]`. Duration 15.1010401 seconds, 1,131
+frames, zero Runtime fact changes, correct pinned source/profile/dependencies,
+focused, Native disabled, paused G0/1x and 1600x900 scale 1. Studio exited 0.
+PID 36136/start identity matches the retained post-export memory sample.
+No numeric capture is accepted or relabeled as a Paused sample.
+
+B0a records applied TPS, not draft text, editor keyboard focus, key/button
+history or the timing of edits outside the capture. This raw file therefore
+does not establish why no change was applied. Owner clarification was requested
+about whether the draft and applied readout visibly changed; the physical cause
+remains undetermined at this checkpoint.
+
+Source inspection at the frozen revision confirms `app/ui.rs:2024` uses an
+Egui single-line text edit; lines 2025-2029 apply on focus loss, Enter or the
+Apply TPS button. The shared transport parses a finite positive 12.5 normally.
+Pinned **egui 0.32.3**, `src/widgets/text_edit/builder.rs:109` and `:1026`,
+documents and implements surrendering single-line field focus on Enter.
+The original card omitted explicit refocusing before each subsequent value.
+That is a verified instruction gap, not a proven explanation for the whole
+observed `[10]` sequence.
+
+External bundle **v4**, measurement protocol **v3**, clarifies: after F9,
+perform exactly six edits `12.5,10,12.5,10,12.5,10`; click inside the selected
+client's editable box before every value, Ctrl+A/type/Enter, verify the applied
+readout below changes to 12.500 or 10.000, and wait at least one second. If the
+draft/readout fails to change, export and retain a Studio screenshot showing
+both. The guide also resolves load-once wording for groups 1-4; Running alone
+reloads per capture. These instructions do not claim a physical fix or upgrade
+the earlier fresh-load Paused qualification.
+
+Only README/protocol wording changes; launcher, Studio, analyzer, semantic value
+sequence, quantities, durations and all acceptance rules remain unchanged.
+All **264 indexed entries across nine runs** verified unchanged. All **17 saved
+reports** replay identically against the clarified protocol (15 valid, two
+rejected); no prior result is rehabilitated. Complete v3 bundle archived under
+`versions/m16-b1-ovl-v3`. Updated bundle validates all 14 frozen files.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Rejected numeric raw JSON | `c010402441b2db7ccc01ddb2bd79f40c3170bad9af5b7a9e3a6ec2e64dec9eb8` |
+| Original rejection report | `23aebea31e76336779dbd857caee369ab59ae90c6fa6a7ede00a13dcdefc6877` |
+| Owner screenshot | `c563b417804808a1edba9669e4279f8d9ab5812cc3b126042d347d70a7e59df5` |
+| Read-only failure audit | `d69ef121f99c6963471e641f3ac69b5b52203286e4fa2546dcf70683bef239e5` |
+| v4 manifest | `6848fee39bf5333d962d8172a5f72a6b3c9154d18c39019b60c696bdbb4c8478` |
+| Clarified v3 protocol | `d724c3ee3ca8e022bb76f2a9508220f059536aeb473b6c51cec4e13f30518e3d` |
+
+Audit/reproducer/screenshot are in the common gitdir's
+`0088-m16-b1-numeric-failure` directory. Physical numeric success remains pending;
+source inspection and report replay are not desktop interaction proof.
 
 ## Required unavailable input-latency evidence
 
