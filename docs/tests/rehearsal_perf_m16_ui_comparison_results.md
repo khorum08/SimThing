@@ -31,7 +31,7 @@ that warmup is operator-qualified, not independently timestamped.
 | Paused | Pinned G0, 1x/TPS10, steady visible pane | Two six-capture runs complete; fresh-load setup qualification pending |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | COMPLETE: 6/6 valid, three paired repetitions, same resident; earlier failures retained |
-| Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6 |
+| Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6; first Egui capture rejected for four cycles; card clarified |
 | List interaction | Same selected-system sequence 1 through 7; map picking for Egui, native list/Down for Native | PENDING, 0/6 |
 
 The Owner launcher uses the existing Windowed setting and 1600x900 startup
@@ -439,6 +439,75 @@ Group 2 collection is complete. Groups 3-5, Group 1 disposition, final portable
 packaging/comparison/decision, hosted Doctrine/full INSPECT and fresh Clearance
 remain pending. Next Owner group is **3 — Window maximize and restore**, through
 the unchanged launcher, loading the source once for all six captures.
+
+## First resize capture: four cycles and an ambiguous card
+
+Owner supplied the Group 3 rejection screenshot for
+`b1-20260913-223431-74f244c0`. The first Egui capture contains **four complete
+maximize/restore cycles**, where the frozen semantic sequence requires exactly
+three. Its physical size starts and ends at 1600x900, alternating with 1920x1032.
+The original report replays identically; this is its only rejection reason.
+
+| Seconds after F9 | Physical size | Observed cycle position |
+| ---: | --- | --- |
+| 0 | 1600x900 | Start |
+| 4.2671287 | 1920x1032 | First maximize |
+| 8.1178417 | 1600x900 | First restore |
+| 10.4816585 | 1920x1032 | Second maximize |
+| 13.2015028 | 1600x900 | Second restore |
+| 15.2294664 | 1920x1032 | Third maximize |
+| 17.5231567 | 1600x900 | Third restore; required count complete |
+| 19.8161152 | 1920x1032 | Fourth maximize |
+| 22.0845719 | 1600x900 | Fourth restore |
+| 23.7898112 | 1600x900 | F10 stop |
+
+All other recorded facts stayed constant: pinned source/profile/dependencies,
+scene/resident 1, paused G0/TPS10/1x, focus, Native disabled, visible panels,
+no selection and scale 1. PID **19420** and start identity match the retained
+post-export memory sample; Studio exited 0 and was closed when inspected.
+All **1,772 frame intervals** remain, including maximum **97.7145 ms**, p95
+**42.3075 ms** and p99 **44.3233 ms**, as failed-attempt characterization only.
+No three-cycle prefix is extracted into a valid trial or client comparison.
+
+The old action described one cycle and then said **"Repeat three times."**
+That card wording is ambiguous about the total count. Coding owns this
+instruction defect; the raw record establishes four geometry cycles without
+identifying the exact keystrokes or proving why the fourth cycle occurred.
+The named physical maximize/restore path changed geometry and returned to the
+starting size, but Group 3 has **zero accepted captures / zero valid pairs**.
+
+External **bundle v5 / protocol v4** now says **exactly three cycles TOTAL**,
+counts restores **1, 2, 3**, and explicitly stops resizing after the third
+restore. If needed, wait idle at the original size until at least 15 seconds
+since F9, then F10 once. The README enumerates the three cycles. Only README
+and the resize action wording/version metadata change. All other protocol
+fields compare equal after normalizing that wording. Studio, launcher, analyzer,
+measurement quantities, required semantic sequence and acceptance rules remain
+unchanged. The full v4 bundle is archived under `versions/m16-b1-ovl-v4`.
+
+All **372 indexed entries across twelve runs** verify unchanged. All **26 saved
+reports** replay identically under the clarified protocol: 22 valid and four
+rejected, with their original group qualifications preserved. All 14 frozen
+files plus pinned source/Python files verify. This is instruction/replay
+verification, not a completed physical resize group or an upgraded prior result.
+Group 2 remains complete; retry Group 3 with the same launcher.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Rejected resize raw | `b949121299595e33c61b667c180858da527ff356fe309c1513a67d96cc991ae0` |
+| Original report | `5a980560dce82e84ca2f6b9447a95d3714299eb60dffde47091cd0d3072c94ef` |
+| Run raw index | `76c964fb6fce821143e7b7d83795990935a2457899dfc5946691a9e67323f372` |
+| Detailed audit | `26c1784a8145980d4aa6eb810f982523d39f5bd60edf309f58ae56a437dffc13` |
+| Owner screenshot | `73b6db406fd2a09508ac3c75f3dabade5dfa2637fdf2dfa22c5fb07237d5a1c6` |
+| v5 bundle manifest | `017cd23acda60eed8e90176fcb7f020073a6daaf61a4c4cc374b5ece46505486` |
+| Clarified v4 protocol | `e9fe47fdc20804cdff2028241e98f085164a02c64cfcc7f8890ad940f251b81d` |
+| v5 verification/replay results | `7e86d781f32bdd8113b4986b863b57dab1a947a816b2cd9fb6636ccf2ad69d65` |
+
+Audit, screenshot, freeze/replay scripts and checks are in the common gitdir's
+`0088-m16-b1-resize-four-cycles` directory. Original raw/report/config/memory
+files remain in the identified OVL run. Input latency remains unavailable;
+no budget pass, migration decision, arbitrary resize or multi-monitor claim
+is made from this failed capture.
 
 ## Required unavailable input-latency evidence
 
