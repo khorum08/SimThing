@@ -32,7 +32,7 @@ that warmup is operator-qualified, not independently timestamped.
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
 | Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | COMPLETE: 6/6 valid, three paired repetitions, same resident; earlier failures retained |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | 6/6 frozen capture checks pass, same resident; shorter duration/dwell qualification pending |
-| List interaction | Same actual row-order sequence 1,2,3,4,5,7,6; map picks for Egui, list/Down for Native | PENDING; new row-order Egui passes, Native starts with F selected; zero valid pairs |
+| List interaction | Same actual row-order sequence 1,2,3,4,5,7,6; map picks for Egui, list/Down for Native | COMPLETE: 6/6 valid, three paired repetitions, same resident and clear initial selection; all exceed 15 seconds |
 
 The Owner launcher uses the existing Windowed setting and 1600x900 startup
 size in a copied, process-scoped settings directory. Other copied presentation
@@ -49,10 +49,10 @@ selection owner; no equal-widget construction-cost claim is made.
 
 | Quantity | Instrument and reporting rule | Current evidence |
 | --- | --- | --- |
-| Raw full-frame cadence/tails | Merged B0a `Time<Real>` unsmoothed intervals; all raw samples; p50/p95/p99/max; nearest rank; p95 <=16.7 ms characterization | Partial: Paused, numeric and resize groups recorded with stated qualifications; p95 budget not met |
+| Raw full-frame cadence/tails | Merged B0a `Time<Real>` unsmoothed intervals; all raw samples; p50/p95/p99/max; nearest rank; p95 <=16.7 ms characterization | Partial: Paused, numeric, resize and list groups recorded with stated qualifications; p95 budget not met |
 | Shared CPU projection | Same `shared_clock_and_observation_projection` computation; host wall elapsed, not OS CPU accounting | Partial: exact same-frame/publication pairs in Native-on captures |
 | Adapter CPU | Each named native/egui scope separately with its existing boundaries; never sum nested scopes | Partial: per-scope distributions retained in group artifacts |
-| Observation freshness | Publication to first matching client consumption, full scene/resident/generation stamp; pre-capture publication ages retained separately | No new publication during Paused/numeric/resize G0 captures; Running pending |
+| Observation freshness | Publication to first matching client consumption, full scene/resident/generation stamp; pre-capture publication ages retained separately | No new publication during Paused/numeric/resize/list G0 captures; Running pending |
 | Process memory | Read-only PID private bytes and working set immediately after durable raw export, before analyzer; process total including capture/export allocation history | Partial: PID-bound snapshots and signed pair differences retained |
 | Input latency | INSTRUMENT-INVALID / UNAVAILABLE; no qualified endpoint; p95 <=100 ms UNEVALUATED | Existing B0b/R1 failure proof |
 | First actual display | No qualified matching displayed endpoint | UNAVAILABLE |
@@ -756,6 +756,107 @@ The common gitdir's `0088-m16-b1-list-initial-selection` directory contains the
 audit, reproducer and screenshot. Originals remain in the two identified OVL
 runs. Restart Group 4 with the same launcher; verify clear selection before
 every F9. The matched sequence stays **A,B,C,D,E,G,F** on both clients.
+
+## List group complete: three valid pairs with clear initial selection
+
+Owner reports **OVL passed**. Run `b1-20260913-233134-7564dae1` contains
+six valid captures in the frozen counterbalanced order Egui/Native,
+Native/Egui, Egui/Native. Each starts with no selection and records exactly
+**1,2,3,4,5,7,6**, ending at F/6. The same seven-system source stays loaded at
+scene/resident 1, paused G0, 1x/TPS10, throughout all six captures. Runtime
+facts differ only by the expected client enablement and ordered selection
+changes; physical 1600x900/scale1, focus and visible panes stay fixed.
+PID **28700** matches every post-export memory snapshot; Studio exited 0.
+
+All captures exceed the 15-second target. No extra, missing or corrective
+selection is present. The Owner screenshot shows Native rows E/5,G/7,F/6,
+selected F/6 in both the native pane and right panel, and paused G0/TPS10.
+This binds visible completion context, not a raw run/time identifier or exact
+measurement geometry. No new Egui screenshot was supplied. The raw proves
+the ordered shared selection states; physical key/click details, camera pose
+and five-second setup warmup remain Owner-qualified rather than independently
+logged. This is bounded seven-system traversal, not long-list scaling.
+
+Bundle v6 / protocol v5 and the frozen analyzer are unchanged. The earlier
+ascending-ID and uncleared-initial-selection attempts retain their original
+results. They are not reclassified or stitched into these three new pairs.
+
+| Repetition / client | Duration s | Full frame count | p50 ms | p95 ms | p99 ms | Max ms |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 / Egui | 33.2872630 | 2,493 | 5.3331 | 39.0517 | 40.1319 | 43.3875 |
+| 1 / Native | 24.2521099 | 1,815 | 4.6903 | 38.7780 | 39.7387 | 43.7813 |
+| 2 / Native | 26.1979215 | 1,961 | 4.3113 | 39.8233 | 41.4031 | 45.4940 |
+| 2 / Egui | 24.3832933 | 1,826 | 4.2027 | 41.4260 | 42.2326 | 44.8330 |
+| 3 / Egui | 28.2292540 | 2,116 | 4.4645 | 41.3200 | 42.1056 | 45.2264 |
+| 3 / Native | 23.7835860 | 1,779 | 4.1465 | 41.3264 | 42.4032 | 46.0822 |
+
+All **11,990 full frame intervals** remain. Every p95 exceeds 16.7 ms.
+Native-minus-Egui p95 differences are **-0.2737, -1.6027, +0.0064 ms**;
+they do not establish a budget pass or isolated replacement-client benefit.
+Observed interselection spacing ranges from **1.3349518 to 5.2941700 seconds**.
+All individual timelines/spacings remain in the audit. The card says about
+two seconds; no new numerical tolerance is invented or exact cadence claimed.
+Timing and capture durations differ between clients, so capture-statistic
+and chronological residuals are descriptive, not causally aligned event costs.
+
+| Repetition | Shared projection p95 Egui / Native ns | Direct same-frame/publication pairs | Direct N-E residual min / p50 / p95 / max ns | Process private bytes N-E | Process working set bytes N-E |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 900 / 1,000 | 1,624 | -31,600 / 100 / 500 / 13,100 | +10,190,848 | +10,502,144 |
+| 2 | 900 / 1,100 | 1,810 | -115,700 / 100 / 500 / 7,300 | -8,192 | +397,312 |
+| 3 | 1,000 / 1,100 | 1,681 | -70,900 / 100 / 500 / 12,800 | +4,096 | +4,096 |
+
+The first CPU column compares the shared computation across paired captures;
+the direct residual column uses **5,115** exact same-frame/same-publication
+pairs inside Native-on captures, where Egui coexists. Frames with recorded
+runtime changes and other unpaired calls remain accounted for by the frozen
+analyzer. Other adapter scopes retain their separate nested boundaries and
+complete distributions in the reports; no scopes are summed. Signed negatives
+remain, including the -115,700 ns residual. These host wall durations are not
+OS CPU accounting or direct GPU costs.
+
+The separate ordinal artifact retains **5,420 descriptive frame pairs and
+1,150 unmatched intervals**, without truncating either capture's tails.
+Private bytes/working set are whole-process post-export snapshots with
+allocation history, not isolated UI or GPU allocations. Paused publication
+ages remain separate: there are **zero new publication-delivery samples**.
+Group 5 is still required for fresh-publication observations. Input latency
+remains **INSTRUMENT-INVALID / UNAVAILABLE; p95 <=100 ms UNEVALUATED**.
+
+All **566 indexed entries across seventeen runs** verify by hash and size.
+The six new reports replay identically with their captured analyzer/protocol.
+All 14 frozen bundle files, source pins, Python pins, executable identity,
+plan/config metadata and process/memory identities verify. No runtime,
+launcher, protocol, analyzer, threshold or workload change is made this turn.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Egui r1 raw | `efe86b9f4a779a32a40981799bde1567cfcce1aaaa3146c32a38e77b2275e7e4` |
+| Native r1 raw | `c0888c7a891c6f87ebdeb41aac3ddd3c1a09b57e4f41bc1f84fd7aeac54d2db3` |
+| Native r2 raw | `6a561ec9c18271d4ae859d75ef32022dd144a88cef1ed4f60bfa5dc4f123809b` |
+| Egui r2 raw | `fdde76c893ae9fdacef2b6ec48a56b6d00ed86739d67deab7445de7bf17aee36` |
+| Egui r3 raw | `e44a2e3ecf5fea44a50536aa291b34c84c101020c79f6c640062122aa7005303` |
+| Native r3 raw | `6ed6e3c9c712e70b2fe0a3c960731fe1411eabc27681b965dc97c97ef0e734fc` |
+| Run raw index | `96e6440db15b23d2f0581e1723762bc1db0a5b54be748147e0fd4edc3ffabcc4` |
+| Detailed aggregate/audit | `a9877822be55f81c27a7429e0085ac3a62f5df2b07f373d7bb4c3f5200e7eadc` |
+| Ordinal residuals with unmatched tails | `094acacad3e869014f101e3c4c72c5c8014d554afdddf8d3992f2c2ab7ca00b9` |
+| Aggregate script | `fffa1fd47b860c284d764980ecdd6fa441b0d0f0fff98d678c8524c313fe95c7` |
+| Owner Native screenshot | `61405d5717beb59a62b5148dc51e781d65dc084fc7304a4ae27abb900624cc29` |
+
+Original raw/config/report/memory/logs remain in the named OVL run. The common
+gitdir's `0088-m16-b1-list-results` contains `aggregate.py`, `list-results.json`,
+`ordinal-residuals.json` and `owner-native.png`. Final portable committed
+packaging is pending; these local audit files are not claimed as a completed
+portable proof packet.
+
+Next collection is **Group 5 — Running steady pane**, using the unchanged
+launcher. Reload the same Clause source through Library **before each capture**,
+select the card's client, set 1x/TPS10, click that client's Play and wait five
+seconds. F9 once, leave it running for at least 15 seconds, F10 once; wait for
+saved confirmation before Pause. Do not interact, change selection/TPS/window,
+or switch focus while recording. Repeat the same preparation for each of the
+six cards. Group 1 fresh-load and Group 3 pacing qualifications remain with
+Orchestration; final comparison, packaging, decision, hosted Doctrine/full
+INSPECT and fresh Clearance remain pending.
 
 ## Required unavailable input-latency evidence
 
