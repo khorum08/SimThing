@@ -30,7 +30,7 @@ that warmup is operator-qualified, not independently timestamped.
 | --- | --- | --- |
 | Paused | Pinned G0, 1x/TPS10, steady visible pane | Two six-capture runs complete; fresh-load setup qualification pending |
 | Running | Reload G0 before each repetition; Play 1x/TPS10; warmup; F9; F10 before Pause | PENDING, 0/6 |
-| Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | First capture rejected: applied TPS remained 10; 0/6 valid |
+| Numeric editing | Paused G0; three Apply TPS pairs 12.5 then 10 through the selected client | One valid Egui capture; Native rejected after extra seventh change; no complete pairs |
 | Resize | Paused G0; three OS maximize/restore cycles with the same starting/ending size | PENDING, 0/6 |
 | List interaction | Same selected-system sequence 1 through 7; map picking for Egui, native list/Down for Native | PENDING, 0/6 |
 
@@ -295,6 +295,57 @@ rejected); no prior result is rehabilitated. Complete v3 bundle archived under
 Audit/reproducer/screenshot are in the common gitdir's
 `0088-m16-b1-numeric-failure` directory. Physical numeric success remains pending;
 source inspection and report replay are not desktop interaction proof.
+
+## Numeric retry: Egui valid, Native has an extra transition
+
+Owner supplied Egui, Native and console screenshots for
+`b1-20260913-215610-e01f7c05`. Egui repetition 1 is valid: 39.1228876 seconds,
+2,931 frames, exact applied sequence `[10,12.5,10,12.5,10,12.5,10]`.
+Native repetition 1 has the same six correct changes **followed by another
+12.5**: `[10,12.5,10,12.5,10,12.5,10,12.5]`. The sole rejection is the
+extra transition; 47.5077329 seconds and 3,559 frames are preserved in full.
+
+| Native time from F9, seconds | Applied TPS |
+| ---: | ---: |
+| 0 | 10 |
+| 8.0358980 | 12.5 |
+| 12.2128722 | 10 |
+| 27.0991893 | 12.5 |
+| 31.9002873 | 10 |
+| 36.0913877 | 12.5 |
+| 41.7435028 | 10 — required sixth change complete |
+| 45.1050675 | 12.5 — extra seventh change |
+| 47.5077329 | F10 stop; last observed TPS remains 12.5 |
+
+The final Native screenshot shows applied 12.500, consistent with that ending.
+B0a records the applied changes, not the exact originating physical key/button;
+no claim is made about the cause of the additional change. Both captures kept
+the same scene/resident 1, pinned source, paused G0, focus, 1x, physical 1600x900
+and scale 1; only the expected Native flag differs in their initial facts.
+PID 41284/start identity matches both memory snapshots. Studio exited 0.
+
+This provides one valid **unpaired** Egui numeric capture. The Native capture's
+passing prefix is not trimmed into acceptance, and its failed result is not
+paired as a valid comparison. Egui p95 is 39.5591 ms; rejected Native p95 is
+39.5766 ms, retained only as failed-attempt characterization. Neither implies
+a 16.7 ms budget pass or qualified client difference.
+
+All **293 indexed entries across ten runs** verified unchanged, and both new
+reports replay identically. No launcher/protocol/analyzer/production changes
+are warranted by this exact-sequence finding. The existing six-edit card remains
+current: after the third return to 10, stop editing; if needed wait at 10 until
+the minimum target duration, then F10. Physical Group 2 completion remains pending.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Valid Egui raw JSON | `9c567bbad50136de4a8fdc513701fd667040f640d2a63a509ea1ee628a96e98b` |
+| Rejected Native raw JSON | `1e7fdec2bf9fcb40785ec6e577c357158dabca4b03d15ce3b6ff9cf2bc0da17e` |
+| Egui report | `fd5180dddd7a582b5297c7c216343494cd4a72975513a8c5182a5b8fb3c9d1fe` |
+| Native report | `c9240d69f1b92e10b208fcdd362267cc5f85766c6b35dd8bd8bf1459034875e9` |
+| Detailed audit | `2fa27e0c7c5073d8d7fb776d9c49f11d090118161a6336c7c22d9d43e2ca9455` |
+
+The common gitdir's `0088-m16-b1-native-extra-edit` directory retains the audit,
+reproducer and all three screenshots with hashes. Earlier failures remain intact.
 
 ## Required unavailable input-latency evidence
 
