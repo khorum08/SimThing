@@ -204,8 +204,15 @@ fn assert_direct_recursive_shape(layout: &ArenaTreeLayout) {
             (parent.participant_slot, parent.cols.intrinsic_flow_sum_col),
             (parent.participant_slot, parent.cols.allocated_flow_col),
             (parent.participant_slot, parent.cols.weight_sum_col),
+            // INDEPENDENT-RESOURCE BINDING LAW (relay 5688590364): PARAM(3)
+            // is the TARGET CHILD'S OWN resolved weight, supplied per
+            // operation — the column-agnostic shared formula owns no arena
+            // column, so independent resources can never alias one weight
+            // column through the register-once tree.
+            (grandchild.participant_slot, grandchild.cols.weight_col),
         ],
-        "PARAM(1) is the exact level-N AllocatedFlow cell, not an intermediary",
+        "PARAM(1) is the exact level-N AllocatedFlow cell, not an intermediary; \
+         PARAM(3) is the target child's own resolved weight",
     );
 
     let propagated = [
@@ -269,7 +276,7 @@ fn run_gpu_chain(layout: &ArenaTreeLayout, plant_propagated_copy_defect: bool) -
     }
 
     let mut registry = EmlExpressionRegistry::new();
-    register_child_share_formula(&mut registry, cols()).expect("child-share formula registration");
+    register_child_share_formula(&mut registry).expect("child-share formula registration");
     let upload_rows: Vec<_> = registry
         .formulas_for_gpu_upload()
         .map(|(id, meta, nodes)| {
@@ -614,7 +621,7 @@ fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
     let ops = plan.cpu_ops.clone();
 
     let mut registry = EmlExpressionRegistry::new();
-    register_child_share_formula(&mut registry, cols).expect("child-share formula registration");
+    register_child_share_formula(&mut registry).expect("child-share formula registration");
     let upload_rows: Vec<_> = registry
         .formulas_for_gpu_upload()
         .map(|(id, meta, nodes)| {

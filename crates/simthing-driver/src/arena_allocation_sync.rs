@@ -168,13 +168,17 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     let plan = build_execution_plan(registry, arena_registry)?;
 
     let mut eml_registry = EmlExpressionRegistry::new();
+    // One generic column-agnostic registration serves every arena
+    // (INDEPENDENT-RESOURCE BINDING LAW, relay 5688590364); the per-arena
+    // column resolution below remains as layout validation for each flow
+    // property before planning.
+    register_child_share_formula(&mut eml_registry).expect("child_share EML registers");
     for arena in &plan.arenas {
-        let cols = resolve_node_columns_for_property(
+        resolve_node_columns_for_property(
             registry,
             arena.flow_property_id,
             &arena_registry.arenas[arena.arena_idx as usize].name,
         )?;
-        register_child_share_formula(&mut eml_registry, cols).expect("child_share EML registers");
     }
 
     let governed = build_governed_pairs(registry);
