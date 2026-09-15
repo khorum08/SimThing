@@ -1,0 +1,15 @@
+Reclassification verification: PASS
+Checkpoint: a8f5fc65ed11aa493da128f1598140f6df95c10b
+Exact input coverage: 124/124, unique IDs; identities, ledgers and 2026-09-08 dates unchanged.
+Revised: ELEVATE=4 DELETE=38 STOP=82 total=124.
+Full account: ELEVATE=71 DELETE=126 STOP=82 total=279.
+Original table SHA-256: c1d6905393887a54b7337509988b5309bf2fcb2303f2eb7d05342087c1894520
+Revised table SHA-256: f1bea4c6938683fdab8c0cc1c86d4cf8e63afc4ee3da1859e1cb0235d113e230
+All original checkpoint artifacts unchanged (Git blob / LF comparison).
+All three lifecycle/inventory ledgers unchanged (Git blob / LF comparison).
+Preserved snapshot: 365 rows and 162 existing referenced files unchanged; includes all 364 checkpoint CRUFT rows.
+Every 2026-09-10 parked row unchanged: 364 rows.
+Carried DA repair matches cecb22588ad9d5c8663eff0429f22a2b09bbcb82.
+Worktree delta confined to the four new reclassification review artifacts.
+No manual DELETE/ELEVATE source or ledger mutation; no new lease or birth_track.
+Source/consumer classification and scratch dependency checks only; no new Cargo/GPU result claimed.
