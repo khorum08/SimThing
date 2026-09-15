@@ -185,4 +185,3 @@ fn residency_tier_vocabulary_0_consumption_is_identity_blind_many_names_few_tier
         "forty entity names resolve through at most the five admitted price vectors"
     );
 }
-

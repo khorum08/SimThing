@@ -300,4 +300,3 @@ fn generator_cli() {
         other => panic!("unknown FCS_CITIZEN_COUNTS_MODE={other}"),
     }
 }
-

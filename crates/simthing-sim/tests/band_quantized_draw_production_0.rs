@@ -32,4 +32,3 @@ fn simple_boundary() -> (BoundaryProtocol, SimThingId, SimPropertyId) {
     let proto = BoundaryProtocol::new(simthing_sim::SimRuntimeTree::admit(root), reg, alloc);
     (proto, child_id, pid)
 }
-

@@ -370,4 +370,3 @@ fn grid_and_link_graph_cpu_oracle_and_gpu_parity() {
         );
     }
 }
-

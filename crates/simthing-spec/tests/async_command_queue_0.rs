@@ -76,4 +76,3 @@ fn policy(origin: SimThingId, amount: f32) -> Overlay {
         lifecycle: OverlayLifecycle::UntilDissolved,
     }
 }
-

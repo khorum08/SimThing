@@ -195,4 +195,3 @@ fn every_owner_resource_scope_bucket_is_bit_exact_on_cpu_and_gpu() {
     assert!(parity.canonical_bucket_ordering);
     assert!(parity.cpu_gpu_bit_exact);
 }
-

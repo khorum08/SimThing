@@ -278,4 +278,3 @@ fn sparse_owned_rows_execute_single_writer_rf1_and_replay_exact_on_gpu() {
         adapter.name, adapter.backend, adapter.device_type
     );
 }
-

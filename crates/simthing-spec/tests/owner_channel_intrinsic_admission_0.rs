@@ -33,4 +33,3 @@ fn find_mut(node: &mut SimThing, raw_id: u32) -> Option<&mut SimThing> {
         .iter_mut()
         .find_map(|child| find_mut(child, raw_id))
 }
-

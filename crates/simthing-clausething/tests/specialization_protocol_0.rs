@@ -207,4 +207,3 @@ const PRE_3_1_SIMTHING_JSON: &str = r#"{
     "children": [],
     "spawned_day": 0
 }"#;
-

@@ -592,4 +592,3 @@ fn multisource_eml(fixture: &Fixture) -> EmlExpressionRegistry {
     .expect("bounded existing EML program");
     eml
 }
-

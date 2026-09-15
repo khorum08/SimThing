@@ -49,4 +49,3 @@ fn two_owner_tree() -> (SimThing, Vec<OwnerChannelRfOwnAggregate>) {
     ];
     (root, rows)
 }
-

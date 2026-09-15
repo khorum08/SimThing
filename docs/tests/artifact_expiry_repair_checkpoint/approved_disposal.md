@@ -50,7 +50,8 @@ remaining row is unchanged. No lease date is minted.
 saved non-expired rows and 162 referenced files: 123 whole files are byte-identical;
 39 shared files differ only by approved expired-function removals. Across all
 68 files with function removals, 1,140 other function bodies remain byte-identical.
-All remaining source bytes outside the exact removed item ranges are preserved.
+All remaining source bytes outside the exact removed item ranges are preserved,
+apart from empty EOF separators exposed by deletion and removed for diff hygiene.
 
 The carried reaper repair is exactly
 `cecb22588ad9d5c8663eff0429f22a2b09bbcb82`. Its source is unchanged by disposal.

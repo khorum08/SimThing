@@ -376,4 +376,3 @@ fn clause_effect_host_executes_through_boundary_overlay_prep_and_gpu() {
         6.0_f32.to_bits()
     );
 }
-

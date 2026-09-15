@@ -32,4 +32,3 @@ fn dispatch_instruction(origin: SimThingId, lifecycle: OverlayLifecycle) -> Over
         lifecycle,
     }
 }
-

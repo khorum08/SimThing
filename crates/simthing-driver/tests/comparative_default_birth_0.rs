@@ -284,4 +284,3 @@ fn grid_default_emitter_cpu_oracle_gpu_parity() {
         );
     }
 }
-

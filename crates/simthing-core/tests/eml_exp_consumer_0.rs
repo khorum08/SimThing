@@ -47,4 +47,3 @@ fn eml_exp_primitive_0_logistic_steering_admits_and_matches_its_oracle_bit_for_b
     let seam = eval_overlay_eml(&nodes, 0.0, x0);
     assert!((seam - 0.5 * (lo + hi)).abs() < 1.0e-6);
 }
-

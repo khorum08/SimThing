@@ -236,4 +236,3 @@ fn valid_request() -> FieldSweepRegistrationRequest {
         dt: 1.0,
     }
 }
-

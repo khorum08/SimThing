@@ -47,4 +47,3 @@ fn minimal_registry(n_dims: u32) -> DimensionRegistry {
     });
     reg
 }
-

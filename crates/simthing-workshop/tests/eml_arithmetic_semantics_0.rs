@@ -492,4 +492,3 @@ fn eml_arithmetic_semantics_0_standalone_opcodes_match_ieee_on_derived_arms() {
         );
     }
 }
-

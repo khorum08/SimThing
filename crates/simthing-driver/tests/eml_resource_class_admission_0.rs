@@ -45,4 +45,3 @@ fn exact_meta(tree_id: EmlTreeId) -> EmlFormulaMeta {
         display_name: "resource-class-boundary".to_owned(),
     }
 }
-

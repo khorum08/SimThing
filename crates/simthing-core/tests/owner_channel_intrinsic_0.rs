@@ -45,4 +45,3 @@ fn chain() -> (SimThing, [SimThingId; 3]) {
 // ------------------------------------------- (c) single ownership, multi-owner containers
 
 // ----------------------------------------------------------------- (e) crossings
-

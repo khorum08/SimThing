@@ -834,4 +834,3 @@ fn singular_schedule_and_lane_authority_reds() {
     assert_eq!(stats.applied_writes, 0);
     assert_eq!(values, before);
 }
-

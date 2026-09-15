@@ -302,4 +302,3 @@ fn slot_space_origination_attach_stream_bit_identical_and_divergence_mutant_reds
         "transform divergence must break stream parity"
     );
 }
-

@@ -89,4 +89,3 @@ fn admitted_property_with_missing_authored_host_keeps_the_host_law_and_identity(
         "simthings[id=9999].properties[key=\"core::loyalty\"]",
     );
 }
-

@@ -132,4 +132,3 @@ fn target_gpu_ops(
         .map(|delta| (delta.op_kind, delta.value))
         .collect()
 }
-

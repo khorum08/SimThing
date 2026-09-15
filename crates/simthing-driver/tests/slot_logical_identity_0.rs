@@ -563,4 +563,3 @@ fn slot_logical_identity_0_forced_epoch_rebind_is_bit_identical_cpu_gpu() {
         }
     }
 }
-

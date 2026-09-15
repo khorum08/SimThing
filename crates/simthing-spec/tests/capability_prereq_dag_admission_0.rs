@@ -58,4 +58,3 @@ fn seed_mode_properties(mode: &GameModeSpec, registry: &mut DimensionRegistry) {
         }
     }
 }
-

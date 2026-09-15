@@ -102,4 +102,3 @@ fn overlay_from_eml(origin: SimThingId, n: f32) -> Overlay {
         },
     }
 }
-

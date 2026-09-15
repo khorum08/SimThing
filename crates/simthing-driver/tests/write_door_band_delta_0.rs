@@ -142,4 +142,3 @@ fn replay_bit_exact_remaps_and_band_deltas() {
     assert_eq!(driver.last_anchor_remap.as_ref(), Some(&section));
     assert_eq!(driver.last_band_crossing_deltas, deltas);
 }
-
