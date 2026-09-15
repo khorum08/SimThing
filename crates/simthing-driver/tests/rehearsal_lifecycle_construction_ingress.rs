@@ -1,5 +1,5 @@
-//! Leaf A ingress reproduction for Board 5675549349.
-//! RED at ordinary session open is a qualification blocker, not a Model-1 falsification.
+//! Leaf A ingress guard, resumed by Board 5687371290 after the ninth E8 roll.
+//! A refusal at ordinary open is a qualification blocker, not a Model-1 falsification.
 //! No skip, pin replacement, source restoration, or oracle fallback is permitted here.
 
 use simthing_core::{DimensionRegistry, SimProperty, SimThing, SimThingKind};

@@ -1,5 +1,8 @@
 # Construction Leaf A — raw ingress evidence
 
+Historical pre-roll capture. The ninth E8 roll resolved this qualification failure;
+see [current allocation evidence](rehearsal_lifecycle_construction_allocation_results.md).
+
 Status: PROBATION / ingress-proof-present / BLOCKED. Model 1 undecided.
 
 Captured 2026-09-15 at base ffa5b944928c3aa3fc66832700330dc43b2a0f78.
