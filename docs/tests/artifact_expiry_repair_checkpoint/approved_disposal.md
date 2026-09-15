@@ -49,9 +49,18 @@ remaining row is unchanged. No lease date is minted.
 [Preservation verification](approved_disposal_verification.txt) checks all 365
 saved non-expired rows and 162 referenced files: 123 whole files are byte-identical;
 39 shared files differ only by approved expired-function removals. Across all
-68 files with function removals, 1,140 other function bodies remain byte-identical.
+56 surviving files with function removals, 1,086 other function bodies remain byte-identical.
 All remaining source bytes outside the exact removed item ranges are preserved,
 apart from empty EOF separators exposed by deletion and removed for diff hygiene.
+
+The first hosted Doctrine run (34930280747) then identified twelve zero-test
+targets left after the exact removals. The existing `DEAD-TARGET` gate carries
+deletion authority for this unreachable shape. Before reaping their remaining
+local scaffolding, each target was checked for zero live/parked identities,
+zero source/script/config references and absence from the preservation snapshot.
+The [empty-target manifest](approved_empty_targets.tsv) records the paths,
+approved expired identities and remaining-shell hashes. These are consequential
+shell reaps, not additional manual debt identities or shared-helper deletions.
 
 The carried reaper repair is exactly
 `cecb22588ad9d5c8663eff0429f22a2b09bbcb82`. Its source is unchanged by disposal.
@@ -62,3 +71,11 @@ Validation and hosted routing results are recorded in the final PR and Board
 return. Local expiry has reached `expired=0`, with the 364 protected CRUFT rows
 still reported as INSPECT; the restored guide check and all five planted-defect
 selftests pass. Cargo checks cover the ten affected crates with `--tests`.
+
+The follow-up scenario-residue check has no failing targets and reports 47
+advisory DEAD-EXPORT entries (full output in `approved_scenario_residue.txt`).
+Forty-six were already reported in the initial hosted run; removing the empty
+reduce-up target exposes `crates/simthing-spec/tests/support/reduce_up_fixture.rs`
+as the one additional unreachable support entry. These out-of-scope exports and
+support files are retained as unreaped residue for separate orchestration
+assessment; they are not claimed as missing new consumers or silently deleted.
