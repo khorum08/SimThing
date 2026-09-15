@@ -10,7 +10,7 @@ use crate::{
     shaping::ShapingEngine,
 };
 
-const FIXTURE_FONT: &[u8] = include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
+const FIXTURE_FONT: &[u8] = include_bytes!("../assets/typeface/test_font.ttf");
 
 const STAR_SVG: &str = r##"
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">

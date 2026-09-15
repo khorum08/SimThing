@@ -1,0 +1,14 @@
+Approved-disposal preservation: PASS
+Authority: Board 5674704988; checkpoint 8d93a387ffc754049d066b752311b420b4e9ed10
+Manual account: DELETE=208 (191 exact functions +17 whole files), ELEVATE=71 (4 exact tests +67 file dispositions), total=279; STOP=0.
+Separate finance correction: exact source restored from c26f02270ed16749170c780c4d9cadb856f51a2b; one current-track live exemplar identity; old lease remains discharged.
+Live inventory: 995 original rows unchanged +5 exact current consumers =1000.
+Parked inventory: 559 -195 =364; every surviving row byte-field identical and original 2026-09-10 dates retained.
+Artifact ledger: 85 -84 =1; remaining row unchanged.
+Preservation snapshot: all 365 rows retained unchanged; 123 whole files byte-identical; 39 shared files changed only by exact approved expired-function removals.
+All 68 files with function deletions reconstructed exactly from original bytes and approved item ranges; 1140 other function bodies byte-identical; shared helpers/imports retained.
+All 32 research archive moves and one font move byte-identical; archive is outside Cargo; only corresponding workshop module exports removed.
+Same-path protected/numerical production sources and shaders byte-identical; font callers changed only their three literal paths.
+Four elevated functions byte-identical; both existing generator script callers byte-identical; no generator-to-bin rewires.
+Carried track_closeout.sh repair unchanged; all original checkpoint review artifacts unchanged.
+No new lease dates; no broad birth_track rewrite; current consumers retain finite until-closeout ownership.

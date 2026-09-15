@@ -835,32 +835,3 @@ fn singular_schedule_and_lane_authority_reds() {
     assert_eq!(values, before);
 }
 
-#[test]
-fn lane_schema_is_optional_sparse_and_inert_without_a_fact() {
-    let fixture = lane_fixture();
-    assert_eq!(
-        fixture
-            .scenario
-            .registry
-            .id_of(GRANT_DISBURSEMENT_NAMESPACE, GRANT_DISBURSEMENT_PROPERTY),
-        Some(fixture.property_id)
-    );
-    let inactive = fixture.scenario.root.children[4].id;
-    assert!(fixture.scenario.root.children[4]
-        .property(fixture.property_id)
-        .is_none());
-    let session = SimSession::open(fixture.scenario).unwrap();
-    assert_eq!(session.proto.root.overlay_count(fixture.source), Some(1));
-    assert_eq!(session.proto.root.overlay_count(inactive), Some(0));
-    assert_eq!(
-        lane_values(&session, fixture.source, fixture.property_id),
-        [20, 0, 0, 20]
-    );
-    assert!(session
-        .proto
-        .root
-        .snapshot_node(inactive)
-        .unwrap()
-        .property_ids
-        .is_empty());
-}

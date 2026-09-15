@@ -521,47 +521,6 @@ fn require_gpu() -> Option<GpuContext> {
     GpuContext::new_blocking().ok()
 }
 
-#[test]
-fn capacity_witness_fixed_descent_varying_gu_yang_capacity() {
-    let Some(ctx) = require_gpu() else {
-        eprintln!("spatial_flux_witness: GPU leg skipped (no adapter)");
-        return;
-    };
-    let fx = fixture(0.15);
-    let eml = amplifying_eml(fx.value);
-    let (plan, rf) = compile_witness_plan(&fx, &eml, false);
-    let initial = values(&fx, 0.1, 0.8);
-    let descent = descent_identity(
-        fx.value.raw_u32(),
-        fx.palma_d.raw_u32(),
-        "spatial-flux-witness",
-    );
-
-    let mut samples = Vec::new();
-    for cap in [0.5f32, 1.0, 0.75] {
-        let (post, pre, native) = run_witness_leg(&ctx, &fx, cap, &initial, &plan, &rf);
-        // Pre-clamp dual emission observes 2*native when EML is 2x amplifier.
-        assert_eq!(pre.to_bits(), (2.0 * native).to_bits());
-        assert_eq!(post.to_bits(), native.to_bits());
-        assert_pre_clamp_preserves_native_sign(native, lawful_pre_clamp_operand(native)).unwrap();
-        samples.push(CapacityWitnessSample {
-            channel_capacity: cap,
-            descent_identity: descent,
-            pre_clamp_progress: pre,
-            post_clamp_progress: post,
-            native_flux: native,
-        });
-    }
-    assert_capacity_witness(&samples).expect("capacity witness");
-    // Monotonicity on ordered pair 0.5 < 0.75 < 1.0 when natives follow capacity.
-    let mut by_cap = samples.clone();
-    by_cap.sort_by(|a, b| a.channel_capacity.partial_cmp(&b.channel_capacity).unwrap());
-    assert!(
-        by_cap[0].post_clamp_progress.abs() <= by_cap[2].post_clamp_progress.abs() + 1e-5
-            || by_cap[0].native_flux.abs() <= by_cap[2].native_flux.abs() + 1e-5
-    );
-}
-
 /// Two-slot tree so SlotAllocator admits slots 0 and 1 for Gu-Yang grid cells.
 fn two_slot_root() -> SimThing {
     let mut root = SimThing::new(SimThingKind::GameSession, 0);

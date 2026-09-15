@@ -944,17 +944,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn authored_region_field_columns_out_of_range_are_rejected() {
-        let err = compile_region_field_preview(&minimal_spec(2, 2, 0)).expect_err("reject");
-        match err {
-            SpecError::RegionFieldAdmission { reason, .. } => {
-                assert!(
-                    reason.contains("out of range"),
-                    "expected out-of-range admission error, got {reason}"
-                );
-            }
-            other => panic!("unexpected error: {other:?}"),
-        }
-    }
 }

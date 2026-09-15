@@ -460,42 +460,4 @@ mod tests {
         (registry, root, allocator)
     }
 
-    #[test]
-    fn populated_property_and_parent_edges_derive_recursive_arena() {
-        let (registry, root, allocator) = populated_chain();
-        let admission =
-            derive_resource_flow_admission(None, &registry, &root, &allocator).expect("derive");
-        let report = &admission.report.arenas[0];
-        assert_eq!(report.origin, ArenaAdmissionOrigin::Derived);
-        assert_eq!(report.participants.len(), 3);
-        assert_eq!(report.participants[0].parent, None);
-        assert_eq!(
-            report.participants[1].parent,
-            Some(report.participants[0].simthing_id)
-        );
-        assert_eq!(
-            report.participants[2].parent,
-            Some(report.participants[1].simthing_id)
-        );
-    }
-
-    #[test]
-    fn ambiguous_resource_parent_edges_preserve_source_spans() {
-        let (registry, mut root, allocator) = populated_chain();
-        let root_id = root.id;
-        let parent_id = root.children[0].id;
-        let leaf = &mut root.children[0].children[0];
-        leaf.add_resource_parent_edge("derive_test", "flow", root_id, Some(31));
-        leaf.add_resource_parent_edge("derive_test", "flow", parent_id, Some(47));
-
-        let error = derive_resource_flow_admission(None, &registry, &root, &allocator)
-            .expect_err("ambiguous edges must fail");
-        assert!(matches!(
-            error,
-            ResourceFlowDerivationError::AmbiguousParentEdge {
-                span_tokens,
-                ..
-            } if span_tokens == vec![Some(31), Some(47)]
-        ));
-    }
 }

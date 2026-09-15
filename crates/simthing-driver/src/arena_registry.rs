@@ -544,44 +544,4 @@ mod tests {
         &reg.participants[start..end]
     }
 
-    #[test]
-    fn admitted_members_keep_owned_rows_and_resource_parent_edges() {
-        let root = SimThingId::from_session_raw(10);
-        let child = SimThingId::from_session_raw(11);
-        let spawned = SimThingId::from_session_raw(12);
-        let mut builder = ArenaRegistryBuilder::new();
-        let arena_idx = builder.push_arena(food_arena(4));
-        builder
-            .admit_participant(arena_idx, SlotIndex::new(3), root, None)
-            .unwrap();
-        builder
-            .admit_participant(arena_idx, SlotIndex::new(8), child, Some(root))
-            .unwrap();
-        let (mut registry, _) = builder.build().unwrap();
-
-        assert_eq!(
-            registry.participant_slot(root, arena_idx),
-            Some(SlotIndex::new(3))
-        );
-        assert_eq!(
-            registry.participant_slot(child, arena_idx),
-            Some(SlotIndex::new(8))
-        );
-        assert_eq!(
-            participants_in_range(&registry, arena_idx)[1].parent,
-            Some(root)
-        );
-
-        registry
-            .admit_participant_runtime(arena_idx, SlotIndex::new(13), spawned, Some(child))
-            .unwrap();
-        assert_eq!(
-            registry.participant_slot(spawned, arena_idx),
-            Some(SlotIndex::new(13))
-        );
-        assert_eq!(
-            participants_in_range(&registry, arena_idx)[2].parent,
-            Some(child)
-        );
-    }
 }

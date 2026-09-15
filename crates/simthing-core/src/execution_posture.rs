@@ -117,24 +117,6 @@ mod admit_proof {
     use super::*;
 
     #[test]
-    fn continuous_zero_batch_fails_closed_at_admit() {
-        assert_eq!(
-            ExecutionPosture::continuous(0),
-            Err(ExecutionPostureError::ZeroContinuousBatch)
-        );
-        assert_eq!(
-            ExecutionPosture::Continuous {
-                batch_generations: 0
-            }
-            .ensure_admitted(),
-            Err(ExecutionPostureError::ZeroContinuousBatch)
-        );
-        let ok = ExecutionPosture::continuous(3).expect("nonzero admits");
-        assert!(ok.ensure_admitted().is_ok());
-        assert_eq!(ok.generations_per_schedule(), 3);
-    }
-
-    #[test]
     fn scheduling_and_clearing_postures_form_four_independent_combinations() {
         let scheduling = [
             ExecutionPosture::Paced,

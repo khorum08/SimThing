@@ -90,16 +90,3 @@ fn admitted_property_with_missing_authored_host_keeps_the_host_law_and_identity(
     );
 }
 
-#[test]
-fn accepted_resource_economy_fixture_still_opens() {
-    let game_mode = game_mode_with_emission(emission(
-        PropertyKey {
-            namespace: "core".into(),
-            name: "loyalty".into(),
-        },
-        None,
-    ));
-
-    SimSession::open_from_spec(scenario(), &game_mode)
-        .expect("the paired registered-property fixture must remain accepted");
-}

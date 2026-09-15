@@ -7,7 +7,7 @@ use simthing_tools::{
 };
 
 const TYPEFACE_FIXTURE_FONT: &[u8] =
-    include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
+    include_bytes!("../../simthing-tools/assets/typeface/test_font.ttf");
 
 /// True after the Studio shell has mounted typeface plugins and the fixture manifest bake is visible.
 #[derive(Resource, Default, Debug, Clone, Copy, PartialEq, Eq)]

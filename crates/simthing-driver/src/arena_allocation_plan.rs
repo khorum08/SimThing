@@ -676,48 +676,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn sparse_child_rows_compile_to_one_ordered_input_list_writer() {
-        let mut layout = d2_layout();
-        {
-            let root = &mut layout.participant_roots[0];
-            let mut second = root.children[0].clone();
-            second.participant_slot = SlotIndex::new(13);
-            root.children.push(second);
-        }
-
-        let plan = plan_arena_allocation(&layout, &[], 16).expect("sparse rows plan");
-        let root = &layout.participant_roots[0];
-        let root_slot = root.participant_slot;
-        let sparse_weight_sum_ops: Vec<_> = plan
-            .cpu_ops
-            .iter()
-            .filter(|op| {
-                op.gate == GateSpec::OrderBand(layout.band_layout.upsweep_band(0, 2))
-                    && op.targets
-                        == vec![
-                            (root_slot, root.cols.weight_col),
-                            (root_slot, root.cols.weight_sum_col),
-                        ]
-            })
-            .collect();
-        assert_eq!(
-            sparse_weight_sum_ops.len(),
-            1,
-            "sparse branch pressure must have exactly one writer to both existing RF targets"
-        );
-        assert_eq!(sparse_weight_sum_ops[0].combine, CombineFn::Sum);
-        assert_eq!(sparse_weight_sum_ops[0].consume, ConsumeMode::ResetTarget);
-        let SourceSpec::ConjunctiveCrossing { inputs } = &sparse_weight_sum_ops[0].source else {
-            panic!("sparse children must lower through the admitted input-list source");
-        };
-        assert_eq!(
-            inputs
-                .iter()
-                .map(|input| input.slot.raw())
-                .collect::<Vec<_>>(),
-            vec![11, 13],
-            "input-list order must preserve hierarchy child order"
-        );
-    }
 }

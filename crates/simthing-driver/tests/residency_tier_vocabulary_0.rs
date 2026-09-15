@@ -127,60 +127,6 @@ fn residency_tier_vocabulary_0_session_admits_and_freezes_mid_session_mint_reds(
 }
 
 #[test]
-fn residency_tier_vocabulary_0_capacity_partition_is_exact_over_synthetic_grants() {
-    // Inline scenario-neutral synthetic grants: interleaved issue / deliver /
-    // cancel / release cycles with live in-flight throughout. Every
-    // transition of the PRODUCTION partition re-verifies
-    // free + in_flight + occupied = capacity exactly.
-    let mut p = ResidencyCapacityPartition::new(10_000);
-    let script: &[(&str, u64)] = &[
-        ("issue", 2_500),
-        ("issue", 400),
-        ("deliver", 2_000),
-        ("issue", 128),
-        ("cancel", 300),
-        ("deliver", 500),
-        ("release", 750),
-        ("issue", 4_096),
-        ("deliver", 4_000),
-        ("cancel", 128),
-        ("release", 5_000),
-        ("deliver", 96),
-        ("release", 846),
-        ("cancel", 100),
-    ];
-    for &(op, rows) in script {
-        match op {
-            "issue" => p.issue(rows).expect("free covers the issue"),
-            "deliver" => p.deliver(rows).expect("in_flight covers the delivery"),
-            "cancel" => p
-                .cancel_in_flight(rows)
-                .expect("in_flight covers the cancel"),
-            "release" => p.release(rows).expect("occupied covers the release"),
-            _ => unreachable!(),
-        }
-        p.verify_exact()
-            .expect("partition holds after every transition");
-    }
-    assert_eq!(p.capacity(), 10_000);
-    assert_eq!(p.free() + p.in_flight() + p.occupied(), 10_000);
-    assert_eq!(p.in_flight(), 0);
-    assert_eq!(p.occupied(), 0);
-    assert_eq!(p.free(), 10_000);
-
-    // Over-draws refuse exactly — no approximate conservation anywhere.
-    let mut q = ResidencyCapacityPartition::new(10);
-    q.issue(10).unwrap();
-    assert!(q.issue(1).is_err());
-    q.deliver(10).unwrap();
-    assert!(q.deliver(1).is_err());
-    assert!(q.cancel_in_flight(1).is_err());
-    q.release(10).unwrap();
-    assert!(q.release(1).is_err());
-    q.verify_exact().unwrap();
-}
-
-#[test]
 fn residency_tier_vocabulary_0_consumption_is_identity_blind_many_names_few_tiers() {
     let mut session = SpecSessionState::default();
     // Two rows with IDENTICAL price vectors and different authored names —
@@ -240,45 +186,3 @@ fn residency_tier_vocabulary_0_consumption_is_identity_blind_many_names_few_tier
     );
 }
 
-#[test]
-fn residency_tier_vocabulary_0_census_is_sparse_bytes_absent_on_non_granting_nodes() {
-    let mut session = SpecSessionState::default();
-    let set = session
-        .admit_session_residency_tiers(four_generic_tiers())
-        .expect("admit")
-        .clone();
-
-    let nodes: BTreeSet<SimThingId> = (1..=200).map(SimThingId::from_session_raw).collect();
-    let granting: BTreeSet<SimThingId> = [1, 40, 155]
-        .map(SimThingId::from_session_raw)
-        .into_iter()
-        .collect();
-
-    let census = materialize_granting_census(&set, &nodes, &granting);
-    assert_eq!(census.width(), 4);
-    assert_eq!(census.granting_node_count(), 3);
-
-    // Granting-active nodes carry the fixed-width lanes.
-    let per_node_bytes = census
-        .lanes(SimThingId::from_session_raw(40))
-        .expect("granting node has lanes")
-        .lane_bytes();
-    assert_eq!(per_node_bytes, 4 * (4 + 4 + 4));
-
-    // Non-granting nodes are ABSENT — no zero-filled rows, zero bytes.
-    for raw in [2_u32, 39, 41, 199, 200] {
-        assert!(
-            census.lanes(SimThingId::from_session_raw(raw)).is_none(),
-            "non-granting node {raw} must allocate no census lanes"
-        );
-    }
-    assert_eq!(census.total_lane_bytes(), 3 * per_node_bytes);
-
-    // The memory profile scales with granting activity, never with node
-    // count: a 10× larger universe with the same granting set costs the
-    // same bytes. A dense/non-sparse materialization REDs here.
-    let big_nodes: BTreeSet<SimThingId> = (1..=2_000).map(SimThingId::from_session_raw).collect();
-    let big = materialize_granting_census(&set, &big_nodes, &granting);
-    assert_eq!(big.granting_node_count(), 3);
-    assert_eq!(big.total_lane_bytes(), census.total_lane_bytes());
-}
