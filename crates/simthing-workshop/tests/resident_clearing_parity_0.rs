@@ -447,7 +447,7 @@ fn run_live_gpu_pressure_allocation(
     assert_eq!(born_identity_count, if immediate_flow { 4 } else { 0 });
 
     let mut eml = EmlExpressionRegistry::new();
-    register_child_share_formula(&mut eml, columns).expect("child-share formula registration");
+    register_child_share_formula(&mut eml).expect("child-share formula registration");
     let upload_rows: Vec<_> = eml
         .formulas_for_gpu_upload()
         .map(|(id, meta, nodes)| {

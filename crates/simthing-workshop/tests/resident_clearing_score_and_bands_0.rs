@@ -269,7 +269,7 @@ fn run_gpu_chain(layout: &ArenaTreeLayout, plant_propagated_copy_defect: bool) -
     }
 
     let mut registry = EmlExpressionRegistry::new();
-    register_child_share_formula(&mut registry, cols()).expect("child-share formula registration");
+    register_child_share_formula(&mut registry).expect("child-share formula registration");
     let upload_rows: Vec<_> = registry
         .formulas_for_gpu_upload()
         .map(|(id, meta, nodes)| {
@@ -614,7 +614,7 @@ fn run_gpu_pressure_case(immediate_flow: bool) -> Option<Vec<u32>> {
     let ops = plan.cpu_ops.clone();
 
     let mut registry = EmlExpressionRegistry::new();
-    register_child_share_formula(&mut registry, cols).expect("child-share formula registration");
+    register_child_share_formula(&mut registry).expect("child-share formula registration");
     let upload_rows: Vec<_> = registry
         .formulas_for_gpu_upload()
         .map(|(id, meta, nodes)| {
