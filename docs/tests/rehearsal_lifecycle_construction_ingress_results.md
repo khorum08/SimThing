@@ -1,5 +1,10 @@
 # Construction Leaf A — qualification scope-gap return
 
+**Historical packet — qualification blocker resolved by #2063.** On repaired base
+`df5dd480b42dc224926c8bbab1d229b988b3f57c`, the same canonical ingress test passes.
+The current return is [the allocation prerequisite packet](rehearsal_lifecycle_construction_allocation_results.md).
+The following pre-roll evidence and claims are preserved as history, not current status.
+
 Status: **PROBATION / ingress-proof-present / BLOCKED / OPEN / UNMERGED**.
 Recipient: **ORCHESTRATION ONLY**, under [Board 5675549349](https://github.com/khorum08/SimThing/issues/1332#issuecomment-5675549349).
 Base: `ffa5b944928c3aa3fc66832700330dc43b2a0f78`.
