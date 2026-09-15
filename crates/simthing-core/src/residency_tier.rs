@@ -572,44 +572,4 @@ mod tests {
         assert_eq!(resolve_residency_draw(&a, 25).rows, 75);
     }
 
-    #[test]
-    fn capacity_partition_is_exact_through_the_full_grant_cycle() {
-        let mut p = ResidencyCapacityPartition::new(100);
-        p.issue(30).unwrap();
-        assert_eq!((p.free(), p.in_flight(), p.occupied()), (70, 30, 0));
-        p.deliver(20).unwrap();
-        p.cancel_in_flight(10).unwrap();
-        assert_eq!((p.free(), p.in_flight(), p.occupied()), (80, 0, 20));
-        p.release(5).unwrap();
-        assert_eq!((p.free(), p.in_flight(), p.occupied()), (85, 0, 15));
-        p.verify_exact().unwrap();
-        // Over-draws refuse exactly.
-        assert!(matches!(
-            p.issue(1_000),
-            Err(CapacityPartitionError::InsufficientFree { .. })
-        ));
-        assert!(matches!(
-            p.deliver(1),
-            Err(CapacityPartitionError::InsufficientInFlight { .. })
-        ));
-    }
-
-    #[test]
-    fn census_is_sparse_and_absent_on_non_granting_nodes() {
-        let set = SessionTierSet::admit(vec![row("spatial-container", 4), row("granting-root", 8)])
-            .expect("admit");
-        let nodes: BTreeSet<SimThingId> = (7..40).map(SimThingId::from_session_raw).collect();
-        let granting = [SimThingId::from_session_raw(7)].into_iter().collect();
-        let census = materialize_granting_census(&set, &nodes, &granting);
-        assert_eq!(census.granting_node_count(), 1);
-        assert_eq!(census.width(), 2);
-        assert!(census.lanes(SimThingId::from_session_raw(7)).is_some());
-        // Non-granting nodes: ABSENT, not zero-filled.
-        assert!(census.lanes(SimThingId::from_session_raw(8)).is_none());
-        let per_node = census
-            .lanes(SimThingId::from_session_raw(7))
-            .unwrap()
-            .lane_bytes();
-        assert_eq!(census.total_lane_bytes(), per_node);
-    }
 }

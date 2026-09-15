@@ -10,32 +10,6 @@ use std::hint::black_box;
 use std::time::Instant;
 
 #[test]
-fn unmarked_registration_observation_is_bit_identical() {
-    let a = cost_band_quantize(12.5, 4.0, false, Some(3)).unwrap();
-    let b = cost_band_quantize(12.5, 4.0, false, Some(3)).unwrap();
-    assert_eq!(a.n, 0);
-    assert_eq!(a.r.to_bits(), 12.5f32.to_bits());
-    assert_eq!(a.v.to_bits(), b.v.to_bits());
-    assert!(a.n_matches_oracle(false, Some(3)));
-}
-
-#[test]
-fn static_set_is_genuinely_one_node_literal_f32() {
-    let op = TransformOp::set(0.75);
-    let nodes = op.to_eml_nodes();
-    assert_eq!(
-        nodes.len(),
-        1,
-        "Set must be the one-node LITERAL_F32(v) program"
-    );
-    assert_eq!(nodes[0].opcode, simthing_core::eml_opcode::LITERAL_F32);
-    assert_eq!(nodes[0].a, 0.75f32.to_bits());
-    assert_eq!(op.apply(999.0).to_bits(), 0.75f32.to_bits());
-    // Cap accounting matches representation.
-    assert!(admit_overlay_eml_program(nodes, EmlPerProgramCap::new(1)).is_ok());
-}
-
-#[test]
 fn degenerate_specializations_match_admitted_eml_bits() {
     let cases = [
         (TransformOp::set(-0.0), 91.0, 7.0),
@@ -51,81 +25,6 @@ fn degenerate_specializations_match_admitted_eml_bits() {
             "derived specialization must stay bit-identical to its admitted EML program"
         );
     }
-}
-
-#[test]
-fn ordinary_overlay_n_dependent_eml_same_path() {
-    let nodes = magnitude_band_eml_nodes(1.0, 2.0, 3.0, 2.0, 4.0);
-    let op = TransformOp::admit_eml(nodes, EmlPerProgramCap::DEFAULT).expect("admit");
-    assert!(op.as_set_literal().is_none());
-    assert!(op.nodes().len() > 1);
-    let layout = PropertyLayout::standard(0);
-    let mut data = vec![0.0f32];
-    let delta = PropertyTransformDelta {
-        property_id: SimPropertyId(0),
-        sub_field_deltas: vec![(SubFieldRole::Amount, op)],
-    };
-    delta.apply_to_data_with_n(&mut data, &layout, 1.0);
-    assert_eq!(data[0].to_bits(), 1.0f32.to_bits());
-    delta.apply_to_data_with_n(&mut data, &layout, 3.0);
-    assert_eq!(data[0].to_bits(), 2.0f32.to_bits());
-    delta.apply_to_data_with_n(&mut data, &layout, 5.0);
-    assert_eq!(data[0].to_bits(), 3.0f32.to_bits());
-}
-
-#[test]
-fn per_program_cap_at_admission_not_optional_helper() {
-    let nodes = magnitude_band_eml_nodes(0.0, 1.0, 2.0, 1.0, 2.0);
-    assert!(nodes.len() as u32 > 3);
-    let err = TransformOp::admit_eml(nodes, EmlPerProgramCap::new(3)).unwrap_err();
-    assert!(matches!(
-        err,
-        EmlPerProgramCapError::ExceedsCap { max_nodes: 3, .. }
-    ));
-    // Cap-bypass forge is a compile_fail on TransformOp { nodes: ... }
-    // (private field). Public API only admits via admit_eml.
-}
-
-#[test]
-fn off_by_one_n_with_recomputed_r_fails_oracle() {
-    let d = cost_band_quantize(10.0, 3.0, true, None).unwrap();
-    let wrong_n = d.n + 1;
-    let mutant = simthing_core::CostBandDraw {
-        v: d.v,
-        c: d.c,
-        n: wrong_n,
-        r: d.v - (wrong_n as f32) * d.c,
-    };
-    assert!(mutant.conserves_exactly());
-    assert!(!mutant.n_matches_oracle(true, None));
-    assert_eq!(cost_band_expected_n(10.0, 3.0, true, None).unwrap(), d.n);
-}
-
-#[test]
-fn runtime_depth_mutation_changes_output_without_rehydration() {
-    let op = TransformOp::admit_eml(
-        magnitude_band_eml_nodes(1.0, 2.0, 3.0, 2.0, 4.0),
-        EmlPerProgramCap::DEFAULT,
-    )
-    .unwrap();
-    let lo = op.apply_with_params(0.0, 1.0);
-    let hi = op.apply_with_params(0.0, 5.0);
-    assert_ne!(lo.to_bits(), hi.to_bits());
-}
-
-#[test]
-fn cost_band_marker_and_throttle_surface() {
-    assert!(
-        admit_cost_band_marker(Some(CostBandRegistrationMarker { is_sink: true }), None).unwrap()
-    );
-    assert!(admit_cost_band_marker(
-        Some(CostBandRegistrationMarker { is_sink: true }),
-        Some(CostBandResourceMarker { is_sink: false }),
-    )
-    .is_err());
-    let d = cost_band_depth_one(10.0, 3.0, true).unwrap();
-    assert_eq!(d.n, 1);
-    assert!(d.n_matches_oracle(true, Some(1)));
 }
 
 /// Secondary microbenchmark: pre-join arithmetic vs the singular EML entry.

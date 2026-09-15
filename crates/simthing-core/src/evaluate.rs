@@ -310,44 +310,4 @@ mod tests {
         assert_eq!(snap.generation, 7);
     }
 
-    #[test]
-    fn transform_stack_push_shares_history_and_preserves_order() {
-        let (reg, lid) = bootstrap();
-        let root_delta = PropertyTransformDelta {
-            property_id: lid,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::set(2.0))],
-        };
-        let leaf_delta = PropertyTransformDelta {
-            property_id: lid,
-            sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(3.0))],
-        };
-
-        let root_stack = TransformStack::default().push(&root_delta);
-        let cloned_stack = root_stack.clone();
-        assert!(Arc::ptr_eq(
-            root_stack.tail.as_ref().expect("root tail"),
-            cloned_stack.tail.as_ref().expect("cloned root tail")
-        ));
-
-        let leaf_stack = root_stack.push(&leaf_delta);
-        let shared_previous = leaf_stack
-            .tail
-            .as_ref()
-            .and_then(|tail| tail.previous.as_ref())
-            .expect("leaf tail retains root history");
-        assert!(Arc::ptr_eq(
-            root_stack.tail.as_ref().expect("root tail"),
-            shared_previous
-        ));
-
-        let property = reg.property(lid);
-        let mut value = property.default_value();
-        leaf_stack.apply_to(lid, &mut value, &property.layout);
-        assert_eq!(
-            value
-                .get_role(&SubFieldRole::Amount, &property.layout)
-                .to_bits(),
-            5.0f32.to_bits()
-        );
-    }
 }

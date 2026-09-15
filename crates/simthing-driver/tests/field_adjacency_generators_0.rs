@@ -128,117 +128,6 @@ fn undirected_rows(slot_count: usize, edges: &[(u32, u32, f32)]) -> Vec<Vec<Link
 }
 
 #[test]
-fn weighted_grid_presets_keep_all_weights_authored() {
-    let n8 = FieldAdjacency::grid_n8(5, 5, 1.0, 0.625, col()).expect("N8");
-    let offsets = n8.grid_offsets_data().expect("grid metadata");
-    assert_eq!(offsets.len(), 8);
-    assert_eq!(
-        offsets
-            .iter()
-            .filter(|offset| offset.dx() != 0 && offset.dy() != 0)
-            .map(|offset| offset.weight().to_bits())
-            .collect::<BTreeSet<_>>(),
-        BTreeSet::from([0.625f32.to_bits()])
-    );
-
-    let radius = FieldAdjacency::grid_radius(7, 7, 2, &[1.0, 0.25], col()).expect("radius 2");
-    let offsets = radius.grid_offsets_data().expect("grid metadata");
-    assert_eq!(offsets.len(), 24);
-    assert_eq!(
-        offsets
-            .iter()
-            .filter(|offset| offset.dx().abs().max(offset.dy().abs()) == 1)
-            .count(),
-        8
-    );
-    assert!(offsets
-        .iter()
-        .filter(|offset| offset.dx().abs().max(offset.dy().abs()) == 2)
-        .all(|offset| offset.weight() == 0.25));
-
-    assert!(matches!(
-        FieldAdjacency::grid_offsets(3, 3, vec![GridOffset::new(1, 0, 1.0)], col(),)
-            .expect("directed grid adjacency is valid")
-            .apply_undirected_symmetry_certificate(),
-        Err(FieldSweepAdmissionError::AdjacencyNotUndirected)
-    ));
-    assert!(matches!(
-        FieldAdjacency::grid_n8(3, 3, 1.0, 0.0, col()),
-        Err(FieldSweepAdmissionError::InvalidEdgeWeight(_))
-    ));
-}
-
-#[test]
-fn link_graph_admission_and_conductance_ignore_degree_schedule_as_physics() {
-    let rows = undirected_rows(3, &[(0, 1, 2.0), (1, 2, 2.0)]);
-    let adjacency = FieldAdjacency::link_graph(3, rows.clone(), col()).expect("canonical chain");
-    assert_eq!(adjacency.grid_shape(), None);
-    assert_eq!(adjacency.degree_buckets().len(), 2);
-    assert_eq!(adjacency.degree_buckets()[0].degree(), 1);
-    assert_eq!(
-        adjacency.degree_buckets()[0].slots(),
-        &[SlotIndex::new(0), SlotIndex::new(2)]
-    );
-    assert_eq!(adjacency.degree_buckets()[1].degree(), 2);
-    assert_eq!(adjacency.degree_buckets()[1].slots(), &[SlotIndex::new(1)]);
-
-    let certificate = adjacency
-        .apply_conductance_certificate(vec![0.25, 0.20, 0.25], 1.0)
-        .expect("per-row weighted-degree certificate");
-    assert_eq!(certificate.admitted_bound(), 1.0);
-    assert!(matches!(
-        adjacency.apply_conductance_certificate(vec![0.25, 0.26, 0.25], 1.0),
-        Err(FieldSweepAdmissionError::ConductanceBoundExceeded {
-            slot,
-            weighted_degree,
-            ..
-        }) if slot == SlotIndex::new(1) && weighted_degree == 4.0
-    ));
-
-    let mut reversed = rows;
-    reversed[1].reverse();
-    assert!(matches!(
-        FieldAdjacency::link_graph(3, reversed, col()),
-        Err(FieldSweepAdmissionError::LinkGraphNonCanonicalOrder { .. })
-    ));
-    assert!(matches!(
-        FieldAdjacency::link_graph(
-            2,
-            vec![
-                vec![LinkGraphNeighbor {
-                    slot: SlotIndex::new(1),
-                    weight: 1.0
-                }],
-                vec![],
-            ],
-            col(),
-        ),
-        Err(FieldSweepAdmissionError::LinkGraphMissingReverse { .. })
-    ));
-}
-
-#[test]
-fn existing_link_compiler_is_the_link_graph_canonical_order_basis() {
-    let scenario = deserialize_scenario_authority(INLINE_LINK_COMPILER_SCENARIO_JSON)
-        .expect("inline synthetic link authority");
-    let adjacency = compile_structural_link_field_adjacency(&scenario, col(), 0.75)
-        .expect("canonical link projection lowers to field adjacency");
-    assert_eq!(adjacency.slots(), 4);
-    assert_eq!(adjacency.grid_shape(), None);
-    assert_eq!(
-        adjacency
-            .degree_buckets()
-            .iter()
-            .map(|bucket| (bucket.degree(), bucket.slots().len()))
-            .collect::<Vec<_>>(),
-        vec![(1, 3), (3, 1)]
-    );
-    adjacency
-        .apply_conductance_certificate(vec![0.5; 4], 1.0)
-        .expect_err("hub weighted degree 2.25 must reject chi 0.5 at bound 1");
-}
-
-#[test]
 fn all_adjacencies_are_full_buffer_bit_exact_across_natural_bucketed_and_gpu_execution() {
     let n_dims = 3u32;
     let grid_slots = 9 * 9;
@@ -332,26 +221,6 @@ fn all_adjacencies_are_full_buffer_bit_exact_across_natural_bucketed_and_gpu_exe
     );
 }
 
-#[test]
-fn conservative_certificate_is_bound_to_the_exact_authored_adjacency() {
-    let n4 = FieldAdjacency::grid_n4(5, 5, GRID_N4_NSEW, col()).expect("N4");
-    let n8 = FieldAdjacency::grid_n8(5, 5, 1.0, 0.5, col()).expect("N8");
-    let order = n4.apply_canonical_order_proof();
-    let law = FieldLawProof::apply_conservative(
-        n4.apply_undirected_symmetry_certificate()
-            .expect("N4 symmetry"),
-        n8.apply_conductance_certificate(vec![0.1; 25], 1.0)
-            .expect("N8 certificate"),
-    );
-    let mut request = valid_minimal_request(n4);
-    request.canonical_order_proof = Some(order);
-    request.field_law_proof = Some(law);
-    assert!(matches!(
-        apply_field_sweep_registration(request),
-        Err(FieldSweepAdmissionError::ConductanceCertificateMismatch)
-    ));
-}
-
 fn valid_minimal_request(adjacency: FieldAdjacency) -> FieldSweepRegistrationRequest {
     let order = adjacency.apply_canonical_order_proof();
     FieldSweepRegistrationRequest {
@@ -376,61 +245,6 @@ fn valid_minimal_request(adjacency: FieldAdjacency) -> FieldSweepRegistrationReq
         canonical_order_proof: Some(order),
         dt: 1.0,
     }
-}
-
-#[test]
-fn same_authored_field_law_emerges_as_diamond_octagon_and_link_topology() {
-    let n4 = front_registration(
-        FieldAdjacency::grid_n4(9, 9, GRID_N4_NSEW, col()).expect("N4 adjacency"),
-    );
-    let n8 =
-        front_registration(FieldAdjacency::grid_n8(9, 9, 1.0, 0.5, col()).expect("N8 adjacency"));
-    let link = front_registration(
-        FieldAdjacency::link_graph(
-            81,
-            undirected_rows(81, &[(40, 0, 1.0), (0, 80, 1.0), (80, 8, 1.0)]),
-            col(),
-        )
-        .expect("LinkGraph adjacency"),
-    );
-    assert_eq!(n4.map_program(), n8.map_program());
-    assert_eq!(n4.map_program(), link.map_program());
-    assert_eq!(n4.fold_program(), n8.fold_program());
-    assert_eq!(n4.fold_program(), link.fold_program());
-
-    let mut seed = vec![0.0; 81];
-    seed[40] = 1.0;
-    let n4_values = execute_field_sweep_cpu_iterations(&seed, &n4, 3).expect("N4 front");
-    let n8_values = execute_field_sweep_cpu_iterations(&seed, &n8, 3).expect("N8 front");
-    let link_values = execute_field_sweep_cpu_iterations(&seed, &link, 3).expect("link front");
-
-    let active = |values: &[f32]| -> BTreeSet<usize> {
-        values
-            .iter()
-            .enumerate()
-            .filter_map(|(slot, &value)| (value >= 0.24).then_some(slot))
-            .collect()
-    };
-    let n4_active = active(&n4_values);
-    let n8_active = active(&n8_values);
-    let link_active = active(&link_values);
-
-    // N4 is the Manhattan diamond: (dx=2,dy=2) lies outside three steps.
-    assert!(!n4_active.contains(&(6 + 6 * 9)));
-    assert!(n4_active.contains(&(7 + 4 * 9)));
-    // Authored half-weight diagonals cut the N8 square's corners into an octagon.
-    assert!(n8_active.contains(&(6 + 6 * 9)));
-    assert!(!n8_active.contains(&(7 + 7 * 9)));
-    // LinkGraph follows authored remote topology, not embedding distance.
-    assert_eq!(link_active, BTreeSet::from([0, 8, 40, 80]));
-    let emergence_verdict = |n4: &BTreeSet<usize>, n8: &BTreeSet<usize>, link: &BTreeSet<usize>| {
-        n4 != n8 && n8 != link && n4 != link
-    };
-    assert!(emergence_verdict(&n4_active, &n8_active, &link_active));
-    assert!(
-        !emergence_verdict(&n4_active, &n4_active, &link_active),
-        "planted N8->N4 adjacency alias must flip the emergence verdict red"
-    );
 }
 
 #[test]

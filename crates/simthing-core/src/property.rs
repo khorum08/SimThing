@@ -418,22 +418,6 @@ impl TransformOp {
 mod transform_op_storage_tests {
     use super::*;
 
-    #[test]
-    fn degenerate_programs_stay_inline_and_larger_programs_spill() {
-        for op in [
-            TransformOp::set(1.0),
-            TransformOp::add(2.0),
-            TransformOp::multiply(3.0),
-        ] {
-            assert!(!op.nodes.spilled());
-            assert!(!op.clone().nodes.spilled());
-        }
-
-        let node = TransformOp::set(1.0).nodes[0];
-        let larger = TransformOp::admit_eml(vec![node; 4], EmlPerProgramCap::DEFAULT)
-            .expect("four-node program remains below the admitted cap");
-        assert!(larger.nodes.spilled());
-    }
 }
 
 /// Shared overlay EML eval: PARAM(0)=current, PARAM(1)=N (CostBand depth).

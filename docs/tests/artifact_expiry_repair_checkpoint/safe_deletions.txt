@@ -1,0 +1,11 @@
+crates/simthing-workshop/tests/eml_ln_primitive_0_cost_evidence.rs
+crates/simthing-workshop/tests/eml_arithmetic_contraction_ambiguity_census_0.rs
+crates/simthing-embedder/tests/finance_toy_0.rs
+crates/simthing-driver/tests/gated_rates_eml_rewire_0.rs
+crates/simthing-driver/tests/continuous_posture_stead_lane_0.rs
+crates/simthing-driver/tests/rf_column_mint_migrate_0.rs
+crates/simthing-core/tests/band_quantized_draw_generation_perf.rs
+crates/simthing-workshop/tests/eml_exp_primitive_0_cost_evidence.rs
+crates/simthing-driver/tests/contention_conservation_judge_0.rs
+docs/tests/generation_critical_path_baseline_0_results.md
+docs/tests/resident_clearing_plan_0_results.md

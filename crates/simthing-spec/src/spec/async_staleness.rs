@@ -373,19 +373,6 @@ mod column_proofs {
         vec![0.0; column.n_slots() * column.n_dims()]
     }
 
-    #[test]
-    fn inert_column_pays_zero() {
-        let col = AsyncStalenessColumn::inert();
-        assert!(!col.is_allocated());
-        assert_eq!(col.column_bytes(), 0);
-        assert_eq!(col.registration_count(), 0);
-        assert_eq!(col.dispatch_count, 0);
-        assert_eq!(col.visit_count, 0);
-        assert_eq!(col.seed_count, 0);
-        assert!(col.seeds().is_empty());
-        assert!(col.property_id().is_none());
-    }
-
     /// Test-only planted whole-lattice registration — production API has no door.
     fn plant_whole_lattice_registration_mutant(
         _column: &mut AsyncStalenessColumn,
@@ -396,75 +383,4 @@ mod column_proofs {
         Err("whole-lattice registration is forbidden (seeded/horizon law)")
     }
 
-    #[test]
-    fn whole_lattice_registration_mutant_reds_in_test_only_scope() {
-        let mut registry = empty_registry();
-        let mut col = AsyncStalenessColumn::admit(
-            &mut registry,
-            4,
-            [SimThingId::from_session_raw(1)],
-            AuthoredStalenessHorizon::new(1),
-        )
-        .expect("admit");
-        let err = plant_whole_lattice_registration_mutant(
-            &mut col,
-            (0..4u32).map(SlotIndex::new),
-            GenerationStamp::new(1),
-            GenerationStamp::new(0),
-        )
-        .expect_err("whole-lattice must RED");
-        assert!(err.contains("forbidden"));
-    }
-
-    #[test]
-    fn missing_latest_child_stamp_fails_closed_without_fabricating_zero_freshness() {
-        let root = SimThing::new(simthing_core::SimThingKind::Custom("seed".into()), 0);
-        let seed = root.id;
-        let mut slots = BTreeMap::new();
-        slots.insert(seed, SlotIndex::new(0));
-        let mut registry = empty_registry();
-        let mut col =
-            AsyncStalenessColumn::admit(&mut registry, 1, [seed], AuthoredStalenessHorizon::new(0))
-                .expect("admit registered seed");
-        let mut plane = stead_plane(&col);
-        let parent = GenerationStamp::new(10);
-        let empty_latest = BTreeMap::new();
-        let err = col
-            .sweep_seeded(&mut plane, &root, &slots, parent, &empty_latest)
-            .expect_err("missing stamp must fail closed");
-        assert!(matches!(
-            err,
-            AsyncStalenessError::MissingLatestIntegratedChildStamp(id) if id == seed
-        ));
-        // No fabricated freshness: STEAD lane stays admit-zero.
-        assert_eq!(
-            col.value_at(&plane, SlotIndex::new(0))
-                .expect("lane")
-                .to_bits(),
-            0.0f32.to_bits()
-        );
-        assert_eq!(col.visit_count, 0);
-    }
-
-    #[test]
-    fn admit_grows_registry_plane_without_owning_values_vec() {
-        let mut registry = empty_registry();
-        assert_eq!(registry.total_columns, 0);
-        let col = AsyncStalenessColumn::admit(
-            &mut registry,
-            3,
-            [SimThingId::from_session_raw(9)],
-            AuthoredStalenessHorizon::new(1),
-        )
-        .expect("admit");
-        assert_eq!(registry.total_columns, 1);
-        assert_eq!(col.n_dims(), 1);
-        assert_eq!(col.column_bytes(), 3 * std::mem::size_of::<f32>());
-        // Structural: no parallel values field — only registration metadata.
-        let debug = format!("{col:?}");
-        assert!(
-            !debug.contains("values:"),
-            "production column must not carry a values Vec mirror: {debug}"
-        );
-    }
 }

@@ -26,7 +26,7 @@ use crate::{
     warp::{TextWarpParams, TextWarpTableResource},
 };
 
-const FIXTURE_FONT: &[u8] = include_bytes!("../../simthing-workshop/assets/typeface/test_font.ttf");
+const FIXTURE_FONT: &[u8] = include_bytes!("../assets/typeface/test_font.ttf");
 
 pub const LR9_ATLAS_SIZE: u32 = 4096;
 pub const LR9_LABEL_PX: f32 = 24.0;

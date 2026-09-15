@@ -1,0 +1,1 @@
+Post-apply PASS: 365 nonexpired rows and 162 referenced files unchanged; DA repair unchanged; all 11 safe paths removed; all 279 expired identities match manual refusals.

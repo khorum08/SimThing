@@ -1,0 +1,10 @@
+Current-consumer dependency audit for Board 5673802606
+Checkpoint: a8f5fc65ed11aa493da128f1598140f6df95c10b
+Actual unchanged checkpoint: FAIL(guide-path:crates/simthing-embedder/tests/finance_toy_0.rs)
+No worktree source restored or removed; accepted safe reap unchanged.
+Scratch fixture: checkpoint guide/network plus c26f0227 finance source.
+Existing check_tree on complete scratch fixture: PASS
+M057: removed exact function in scratch -> FAIL(guide-drift:derive::ComparativeEmitterClass {); unique consumed snippets=3
+M112: removed exact function in scratch -> FAIL(guide-drift:gadgets: vec![derive::EmlGadgetInstanceSpec::PowerLaw {); unique consumed snippets=1
+Restored scratch baseline: PASS
+No claim of Rust, GPU or benchmark execution from this dependency check.

@@ -396,20 +396,4 @@ mod unit_tests {
         }
     }
 
-    #[test]
-    fn unique_matrix_binding_independent_of_registration_scan_order() {
-        let fields = [rf("a", 0, 1), rf("b", 2, 3)];
-        let a = admit_field_plan_from_region_fields(&fields)
-            .unwrap()
-            .unwrap();
-        // Rebuild after reversing authored list — authored_order follows new
-        // list positions (different product). Same call twice must be stable.
-        let b = admit_field_plan_from_region_fields(&fields)
-            .unwrap()
-            .unwrap();
-        assert_eq!(a.emitters()[0].value_col, b.emitters()[0].value_col);
-        assert_eq!(a.emitters()[1].value_col, b.emitters()[1].value_col);
-        assert_eq!(a.emitters()[0].class_id, 0.0);
-        assert_eq!(a.emitters()[1].class_id, 1.0);
-    }
 }

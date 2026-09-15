@@ -109,49 +109,6 @@ fn soft_tail_exp_nodes(x_col: u32) -> Vec<eml_nodes::EmlNode> {
 }
 
 #[test]
-fn eml_arithmetic_semantics_0_new_exp_consumer_needs_zero_exactness_evidence() {
-    let nodes = soft_tail_exp_nodes(0);
-    let meta = EmlFormulaMeta {
-        tree_id: EmlTreeId(42),
-        execution_class: EmlExecutionClass::ExactDeterministic,
-        allowed_consumers: Default::default(),
-        max_abs_error: None,
-        deterministic_gpu: true,
-        requires_guard_for_hard_threshold: false,
-        node_count: nodes.len() as u32,
-        max_stack_depth: 0,
-        has_loops: false,
-        has_recursion: false,
-        display_name: "soft-tail-exp".into(),
-    };
-    let mut reg = EmlExpressionRegistry::new();
-    reg.register_formula(EmlTreeId(42), meta, nodes.clone())
-        .expect("admits from arithmetic semantics alone");
-
-    let gpu: Vec<EmlNodeGpu> = nodes
-        .iter()
-        .map(|n| EmlNodeGpu {
-            opcode: n.opcode,
-            flags: n.flags,
-            a: n.a,
-            b: n.b,
-            c: n.c,
-            d: n.d,
-        })
-        .collect();
-    let v = simthing_kernel::eval_eml_cpu(&gpu, 0, &[1.25], 1, [0.0; 4]);
-    let expected = simthing_core::eml_exp_pinned_f32((-1.25_f32.abs()).clamp(
-        f32::from_bits(simthing_core::EML_EXP_DOMAIN_MIN_BITS),
-        f32::from_bits(simthing_core::EML_EXP_SATURATION_CEILING_BITS),
-    ));
-    assert_eq!(v.to_bits(), expected.to_bits());
-    // Absence of the deleted 5.13 policing symbols is proven by
-    // `eml_arithmetic_semantics_0_deleted_plumbing_grep_absent` — this test
-    // only proves the new consumer admits with no exactness declaration.
-    let _ = EXP_PRIMITIVE_NAME;
-}
-
-#[test]
 fn eml_arithmetic_semantics_0_cpu_seam_plant_reds_falloff() {
     let registration = stead_falloff_registration();
     let values = probe_falloff_values();
@@ -534,28 +491,4 @@ fn eml_arithmetic_semantics_0_standalone_opcodes_match_ieee_on_derived_arms() {
             "{name}: CPU twin and interpreted WGSL must agree bit-exactly"
         );
     }
-}
-
-#[test]
-fn eml_arithmetic_semantics_0_deleted_plumbing_grep_absent() {
-    let gate = include_str!("../../simthing-kernel/src/eml_opcode_gate.rs");
-    for needle in [
-        "ExactBearingEvidence",
-        "derive_consumer_arms",
-        "ExactConsumerArm",
-        "ExactConsumerDigestEvidence",
-        "ExactConsumerExecutionShape",
-        "ExactConsumerShapeBinding",
-        "FieldConsumerShapeProof",
-    ] {
-        assert!(
-            !gate.contains(needle),
-            "eml_opcode_gate.rs must not contain deleted symbol {needle}"
-        );
-    }
-    let sweep = include_str!("../../simthing-kernel/src/field_sweep.rs");
-    assert!(
-        !sweep.contains("exact_consumer_shape_proof"),
-        "field_sweep.rs must not mint exact_consumer_shape_proof"
-    );
 }

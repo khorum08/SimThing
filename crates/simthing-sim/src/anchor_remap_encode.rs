@@ -171,71 +171,9 @@ mod tests {
     };
 
     #[test]
-    fn remap_less_fission_encode_is_rejected() {
-        let id = SimThingId::from_session_raw(42);
-        let prop = SimPropertyId(7);
-        let section = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fission, vec![]);
-        let err = gate_structural_gpu_encode(&section, &[(id, prop)]).unwrap_err();
-        assert_eq!(err.operation, AnchorRemapOperation::Fission);
-        assert!(!err.missing.is_empty());
-    }
-
-    #[test]
     fn reparent_empty_witness_admits_when_no_required_loci() {
         let section = AnchorRemapSection::empty_not_required(AnchorRemapOperation::Reparent);
         assert!(validate_anchor_remap_for_encode(&section, &[]).is_ok());
     }
 
-    #[test]
-    fn exact_retire_never_fabricates_slot_zero() {
-        let id = SimThingId::from_session_raw(11);
-        let prop = SimPropertyId(3);
-        let mut pre = AnchoredLocusMap::new();
-        pre.insert(
-            (id, prop),
-            (
-                SlotIndex::new(4),
-                ColumnIndex::from_raw_for_oracle_or_rehearsal(2),
-            ),
-        );
-        let post = AnchoredLocusMap::new();
-        let outcome = BoundaryOutcome::default();
-        let section = build_exact_anchor_remap_section(&pre, &post, &outcome, false).unwrap();
-        assert_eq!(section.remaps[0].from_slot, Some(SlotIndex::new(4)));
-        assert_ne!(section.remaps[0].from_slot, Some(SlotIndex::new(0)));
-    }
-
-    #[test]
-    fn omitted_retire_and_move_fail_production_exact_gate() {
-        let id = SimThingId::from_session_raw(20);
-        let prop = SimPropertyId(2);
-        let mut pre = AnchoredLocusMap::new();
-        let mut post = AnchoredLocusMap::new();
-        pre.insert(
-            (id, prop),
-            (
-                SlotIndex::new(3),
-                ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
-            ),
-        );
-        // Retire omitted.
-        let omitted_retire = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fusion, vec![]);
-        assert!(gate_structural_gpu_encode_exact(
-            &omitted_retire,
-            &pre,
-            &AnchoredLocusMap::new(),
-            false
-        )
-        .is_err());
-        // Move omitted.
-        post.insert(
-            (id, prop),
-            (
-                SlotIndex::new(5),
-                ColumnIndex::from_raw_for_oracle_or_rehearsal(1),
-            ),
-        );
-        let omitted_move = AnchorRemapSection::with_remaps(AnchorRemapOperation::Fission, vec![]);
-        assert!(gate_structural_gpu_encode_exact(&omitted_move, &pre, &post, false).is_err());
-    }
 }

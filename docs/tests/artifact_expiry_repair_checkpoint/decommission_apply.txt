@@ -1,0 +1,295 @@
+TRACK-CLOSEOUT DECOMMISSION
+  now: 2026-09-15  wall: 7d  mode: expired-only
+  parked rows reaped: 9
+  files deleted: 11
+    - rm crates/simthing-workshop/tests/eml_ln_primitive_0_cost_evidence.rs
+    - rm crates/simthing-workshop/tests/eml_arithmetic_contraction_ambiguity_census_0.rs
+    - rm crates/simthing-embedder/tests/finance_toy_0.rs
+    - rm crates/simthing-driver/tests/gated_rates_eml_rewire_0.rs
+    - rm crates/simthing-driver/tests/continuous_posture_stead_lane_0.rs
+    - rm crates/simthing-driver/tests/rf_column_mint_migrate_0.rs
+    - rm crates/simthing-core/tests/band_quantized_draw_generation_perf.rs
+    - rm crates/simthing-workshop/tests/eml_exp_primitive_0_cost_evidence.rs
+    - rm crates/simthing-driver/tests/contention_conservation_judge_0.rs
+    - rm docs/tests/generation_critical_path_baseline_0_results.md
+    - rm docs/tests/resident_clearing_plan_0_results.md
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::default_path_threshold_plan_compatible::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/event_generation_stamp_0.rs::admit_dispatch_helpers_match_production_door::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/capability_prereq_dag_admission_0.rs::builder_rejects_prereq_cycle_at_admission::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_adjacency_generators_0.rs::conservative_certificate_is_bound_to_the_exact_authored_adjacency::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/band_quantized_draw_0.rs::runtime_depth_mutation_changes_output_without_rehydration::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/event_generation_stamp_reduce_up_0.rs::raw_unstamped_report_is_rejected_at_production_integration_door::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/async_command_queue_0.rs::same_key_burst_coalesces_exactly_conserves_and_replay_mutants_red::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_sweep_session_seam_0.rs::ordinary_session_executes_admitted_palma_guyang_and_observes_comparative::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/async_staleness.rs::missing_latest_child_stamp_fails_closed_without_fabricating_zero_freshness::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/anchor_remap.rs::omitted_move_row_is_rejected_by_exact_gate::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::planted_separate_boolean_branch_reds::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_recursive_composition_0.rs::trivial_state_rf_and_scalar_costband_gate_stays_inline::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/continuous_posture_soak_0.rs::owner_channel_stead_growth_crossing_bounded_over_scaling_matrix_and_product_form_reds::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/band_quantized_draw_production_0.rs::ambiguous_resource_marker_hard_errors_at_admission::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/accumulator_op/session.rs::observer_egress_census_reds_on_unsanctioned_direct_readback_call::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/event_generation_stamp_0.rs::forced_observer_lag_throttle_and_coalesce_without_perturbing_sim::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/write_door_band_delta_0.rs::column_shift_records_pre_to_post_layout::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/accumulator_op/session.rs::observer_egress_negative_bypass_census::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/install.rs::overlay_effect_host_admission_rejects_missing_property_with_source_span::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/src/anchor_remap_encode.rs::exact_retire_never_fabricates_slot_zero::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/guyang_comparative_projections_0.rs::install_does_not_invent_topology_or_string_default_birth::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/eml_exp_consumer_0.rs::eml_exp_primitive_0_staircase_deviation_from_the_smooth_curve_is_measured_nonzero::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/residency_tier.rs::census_is_sparse_and_absent_on_non_granting_nodes::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-workshop::crates/simthing-workshop/tests/eml_arithmetic_semantics_0.rs::eml_arithmetic_semantics_0_deleted_plumbing_grep_absent::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/boundary/capability_handler.rs::max_active_sibling_suspend_is_atomic_at_generation_barrier::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/continuous_posture_soak_0.rs::staleness_is_one_derived_stead_lane_seeded_horizon_inert_zero_and_whole_lattice_reds::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::present_malformed_or_blank_binding_never_silently_inherits::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::authored_opt_out_visible::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/resolution_site_split_0.rs::gpu_wire_event_vocabulary_is_slot_space_only::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/evaluate.rs::transform_stack_push_shares_history_and_preserves_order::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-workshop::crates/simthing-workshop/tests/actionband_spatial_flux_witness_0.rs::capacity_witness_fixed_descent_varying_gu_yang_capacity::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-workshop::crates/simthing-workshop/tests/actionband_spatial_vendorization_0.rs::sealed_actionband_locus_reparents_one_n4_edge_with_stable_slots::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/simthing_automaton_intrinsic_0.rs::deficit_directive_routes_origin_to_lca_to_target_and_policy_filters_it::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/capability_effect_host_admission_0.rs::existing_capability_effect_corpus_has_no_mis_hosted_overlay::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/owner_channel_rf.rs::in_flight_escape_from_all_three_accounts_mutant_reds::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/session.rs::continuous_zero_batch_fails_closed_on_session_set_and_run::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/first_citizen_specialists_0.rs::canonical_citizen_counts_match_generator_source_tsv::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/band_quantized_draw_production_0.rs::threshold_builder_unmarked_stays_observation::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_adjacency_generators_0.rs::weighted_grid_presets_keep_all_weights_authored::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/write_door_band_delta_0.rs::rising_falling_exact_edge_no_crossing_and_multi_edge_oracle::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/anchor_remap.rs::incomplete_remap_refuses_encode::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/band_quantized_draw_0.rs::off_by_one_n_with_recomputed_r_fails_oracle::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-workshop::crates/simthing-workshop/tests/actionband_spatial_vendorization_0.rs::field_overlay_only_redirects_same_actionband_to_different_adjacent_step::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::class_id_is_authored_order_as_f32_not_name::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/band_quantized_draw_0.rs::cost_band_marker_and_throttle_surface::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/eml_resource_class_admission_0.rs::admitted_field_census_maps_to_one_smallest_class_without_caller_sizes::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/first_citizen_specialists_0.rs::authored_entity_owner_seat_spans_kind_unmet_with_exact_token::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/capability_effect_host_admission_0.rs::clause_effect_host_rejection_uses_authored_property_reference_span::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/accumulator_op/session.rs::production_egress_sequence_real_session_generation_seal_ring_lag::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/first_citizen_specialists_0.rs::authored_location_spatial_admits_when_placed_and_spans_when_unplaced::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/first_citizen_specialists_0.rs::board_and_orientation_render_citizen_counts::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_sweep_n4_parity_0.rs::field_sweep_n4_parity_0_session_binding_mismatch_rejects_before_dispatch::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::boolean_depth_one_same_path::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/event_generation_stamp_reduce_up_0.rs::production_reduce_up_returns_stamped_product_and_integrates_into_parent_state::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::session_root_enforces_the_strict_sole_direct_child_invariant::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/src/tree_mutation.rs::row_slot_object_semantics_structural_routes_preserve_one_authority::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-embedder::crates/simthing-embedder/tests/network_saturation_triad_0.rs::network_saturation_triad_bands_are_born_from_the_tree::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/slot_logical_identity_0.rs::slot_logical_identity_0_pre_remap_replay_resolves_through_the_chain::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/band_quantized_draw_production_0.rs::depth_one_command_deficit_same_resolve_path::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/property.rs::degenerate_programs_stay_inline_and_larger_programs_spill::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/plan_struct_typing_0.rs::resolve_node_columns_honors_nonzero_authoritative_range_start::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-workshop::crates/simthing-workshop/tests/eml_resource_class_capability_census_0.rs::eml_resource_class_supported_adapter_capability_census::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/sealed/band_crossing_delta.rs::multi_edge_jump_emits_ordered_deltas::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/owner_channel_rf.rs::coalesced_staleness_mutants_red_against_newest_carrier_law::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::ordinary_install_without_region_fields_no_invent::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_gpu_execution_0.rs::sparse_gpu_state_ping_pongs_and_matches_exact_eml_oracle::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_adjacency_generators_0.rs::link_graph_admission_and_conductance_ignore_degree_schedule_as_physics::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/plan_struct_typing_0.rs::arena_plan_ops_carry_resolved_column_index_without_remint::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/admission_provenance_typed_0.rs::accepted_resource_economy_fixture_still_opens::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::inheritance_reaches_through_three_levels_without_stamping_descendants::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/residency_tier_vocabulary_0.rs::residency_tier_vocabulary_0_capacity_partition_is_exact_over_synthetic_grants::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/derived_span_projection_tests.rs::invalidation_visits_spans_not_depth_times_descendants::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/owner_channel_intrinsic_admission_0.rs::authored_owner_cannot_claim_reserved_neutral_identity::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::nearest_bound_ancestor_wins_over_a_more_distant_one::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/src/anchor_remap_encode.rs::remap_less_fission_encode_is_rejected::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_gpu_execution_0.rs::inactive_rows_allocate_zero_hot_storage_and_dense_mutant_is_red::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/anchor_remap.rs::retire_from_nonzero_slot_is_exact::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/first_citizen_specialists_0.rs::generator_check_fails_when_citizen_count_corrupted::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_adjacency_generators_0.rs::same_authored_field_law_emerges_as_diamond_octagon_and_link_topology::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/guyang_comparative_projections_0.rs::authored_order_tie_break_invariant_under_registration_vector_reversal::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/owner_channel_rf.rs::make_the_parent_wait_mutant_reds_then_restores_green::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/session.rs::paced_default_run_retains_boundary_count_behavior::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/async_command_queue_0.rs::slow_child_never_blocks_and_authored_tolerance_breach_is_atomic_hard_error::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/resource_flow_derivation.rs::ambiguous_resource_parent_edges_preserve_source_spans::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/arena_registry.rs::admitted_members_keep_owned_rows_and_resource_parent_edges::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/anchor_remap.rs::complete_birth_remap_admits_encode::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_adjacency_generators_0.rs::existing_link_compiler_is_the_link_graph_canonical_order_basis::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/band_quantized_draw_production_0.rs::boundary_resolve_door_must_be_the_execute_path::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_recursive_composition_0.rs::parent_activates_children_next_then_resolves_after_later_collapse::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_semantic_shadow_0.rs::identity_blindness_labels_do_not_change_numerical_or_sealed_products::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::sealed_topology_no_independent_neighbor_rebind_api::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/capability_prereq_dag_admission_0.rs::existing_authored_ron_capability_trees_admit_unchanged::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/resource_flow_derivation.rs::populated_property_and_parent_edges_derive_recursive_arena::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/resolution_site_split_0.rs::unadmitted_slot_reattachment_fails_closed_never_default_origin::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/async_staleness.rs::admit_grows_registry_plane_without_owning_values_vec::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/simthing_automaton_intrinsic_0.rs::predicate_broadcast_is_one_subtree_walk_and_policy_rules_are_conjunctive::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::throttle_cap_enforced::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-embedder::crates/simthing-embedder/tests/vendor_door_triad_surface_0.rs::five_verbs_reach_the_session_seam_and_observe_only_live_triad_output::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::foreign_target_fails_membership_closed_instead_of_aliasing_neutral::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/event_generation_stamp_0.rs::forced_observer_lag_honors_overwrite_oldest_without_blocking::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/continuous_posture_soak_0.rs::continuous_posture_forced_lag_growth_and_staleness_soak_n_generations::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::exact_conservation_v_eq_n_c_plus_r_randomized::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/band_quantized_draw_production_0.rs::runtime_depth_mutation_changes_n_without_re_admission::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::ambiguous_marker_hard_errors::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/simthing_automaton_intrinsic_0.rs::standing_directive_is_inherited_without_descendant_copies_or_conservation_state::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/anchor_disposition_admission_0.rs::canonical_inventory_matches_generator_source_tsv::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/band_quantized_draw_production_0.rs::threshold_builder_and_boundary_admit_recipe_throttle_sink::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/slot_logical_identity_0.rs::slot_logical_identity_0_production_row_order_mutant_reds::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/async_staleness.rs::whole_lattice_registration_mutant_reds_in_test_only_scope::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/event_generation_stamp_reduce_up_0.rs::schedule_is_per_product_full_generation_set_and_replays_bit_exactly::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/grant_disbursement_lane_0.rs::lane_schema_is_optional_sparse_and_inert_without_a_fact::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-embedder::crates/simthing-embedder/tests/network_saturation_triad_0.rs::volume_delay_power_law_reds_a_staircase_rival::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/continuous_posture_soak_0.rs::execution_posture_continuous_batches_same_kernel_paced_default::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/anchor_remap.rs::wrong_endpoint_and_duplicate_remap_are_rejected::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::fission_is_one_property_rebind_and_reparents_the_whole_subtree::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-workshop::crates/simthing-workshop/tests/actionband_full_field_triad_movement_vendor_0.rs::full_vendor_capacity_overlay_costband_and_arrival_chain_is_native_bounded::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/residency_tier.rs::capacity_partition_is_exact_through_the_full_grant_cycle::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/guyang_comparative_projections_0.rs::front_formed_hardened_and_chokepoint_threshold_plan_compatible::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/capability_prereq_dag_admission_0.rs::clause_authored_and_programmatic_capability_corpus_admits::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/anchor_disposition_admission_0.rs::generator_cli::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/band_quantized_draw_0.rs::unmarked_registration_observation_is_bit_identical::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_recursive_composition_0.rs::state_carry_curve_reports_increasing_active_cardinality::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::pre_3_1_fixture_loads_admits_and_reserializes_without_the_new_field::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::authored_unmet_requirement_carries_simthing_requirement_and_span::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::planted_off_by_one_n_reds::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/owner_channel_intrinsic_reduce_up_0.rs::n_owner_container_conserves_and_reconstructs_in_canonical_bucket_order::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/anchor_remap.rs::omitted_retire_row_is_rejected_by_exact_gate::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/band_quantized_draw_0.rs::static_set_is_genuinely_one_node_literal_f32::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::crossings_are_exactly_the_edges_where_ownership_changes::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/eml_resource_class_admission_0.rs::eml_resource_class_boundaries_and_smallest_fit_are_deterministic::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-workshop::crates/simthing-workshop/tests/eml_arithmetic_semantics_0.rs::eml_arithmetic_semantics_0_new_exp_consumer_needs_zero_exactness_evidence::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/owner_channel_intrinsic_reduce_up_0.rs::production_rf_compile_and_writeback_share_one_intrinsic_owner_view::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/event_generation_stamp_0.rs::production_delivery_rejects_dispatch_mint_without_authored_dissolve::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/anchor_disposition_admission_0.rs::canonical_tp_install_has_total_default_anchored_disposition::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/write_door_band_delta_0.rs::gpu_multi_edge_band_delta_boundary_replay_transport::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::planted_lost_remainder_reds::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/simthing_automaton_rf_reception_0.rs::standing_directive_uses_shared_inheritance_walk_without_descendant_state::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_semantic_shadow_0.rs::fleet_presence_in_transit_from_admitted_reparent_without_mapeditor_coupling::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/write_door_band_delta_0.rs::retire_from_nonzero_slot_is_exact::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/slot.rs::epoch_rebind_moves_rows_exact_once_and_rebuilds_the_one_table::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/first_citizen_specialists_0.rs::generator_cli::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::ordinary_install_mints_field_plan_from_region_fields::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/src/fission.rs::row_slot_object_semantics_fission_clone_routes_all_rows_through_relations::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::resolution_is_total_and_bottoms_out_at_the_neutral_owner::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/band_quantized_draw_production_0.rs::production_resolve_uses_admitted_semantics_not_caller_is_sink::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/sealed/band_crossing_delta.rs::exact_edge_landing_is_not_a_rising_crossing::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::emitter_counts_1_2_3_many_fixed_census::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/execution_posture.rs::continuous_zero_batch_fails_closed_at_admit::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::one_installed_canonical_report_derives_all_three_seed_populations::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/owner_channel_intrinsic_admission_0.rs::compatibility_owner_stamps_convert_once_then_rf_reads_only_intrinsic_view::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/comparative_default_birth.rs::unique_matrix_binding_independent_of_registration_scan_order::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/async_staleness.rs::inert_column_pays_zero::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/continuous_posture_soak_0.rs::forced_lag_soak_replays_from_one_schedule_and_causal_cycle_is_generation_paced::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/band_quantized_draw_0.rs::ordinary_overlay_n_dependent_eml_same_path::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::authored_order_invariant_under_incidental_emitter_vector_reversal::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/arena_allocation_plan.rs::sparse_child_rows_compile_to_one_ordered_input_list_writer::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/band_quantized_draw_0.rs::per_program_cap_at_admission_not_optional_helper::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/install.rs::overlay_effect_host_admission_accepts_and_transforms_correct_host::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-kernel::crates/simthing-kernel/src/slot.rs::epoch_rebind_rejects_collision_growth_reserved_and_row_churn::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/src/session.rs::invalid_overlay_projection_returns_typed_session_error_without_panic::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::inert_simthings_store_zero_owner_bytes::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/event_generation_stamp_reduce_up_0.rs::production_integrate_n_plus_3_from_n_never_waits::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::owner_seat_requires_the_admitted_policy_weight_authority::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/owner_channel_intrinsic_admission_0.rs::every_non_neutral_resolved_owner_is_an_admitted_owner_entity::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/resolution_site_split_0.rs::reception_identical_at_both_sites::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::unmarked_observation_is_bit_identical_no_consumption::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::ownership_flip_is_an_ordinary_rebind_not_a_none_transition::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::authored_unknown_profile_carries_simthing_profile_and_span::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/comparative_default_birth_0.rs::link_default_emitters_with_sealed_topology_and_same_length_unconstructible::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/tests/async_command_queue_0.rs::one_schedule_replays_upward_products_and_torn_free_downward_standing_reads_bit_exactly::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/owner_channel_intrinsic_reduce_up_0.rs::retained_owner_state_is_bounded_by_crossings_not_nodes_owners_or_resources::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::custom_kind_impostors_never_satisfy_builtin_identity::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/validate_order_weight.rs::order_weight_admission_table::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/event_generation_stamp_feeder_egress_0.rs::production_egress_error_variant_is_distinct_from_threshold_readback::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::one_container_admits_many_owners_among_its_children::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/plan_struct_typing_0.rs::resolve_node_columns_returns_typed_column_index::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/spec/owner_channel_rf.rs::dropped_pending_product_mutant_reds::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/tests/resolution_site_split_0.rs::unconverted_semantics_and_default_placement_no_flag_day::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/write_door_band_delta_0.rs::slot_churn_birth_remap_is_complete::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/actionband_field_triad_progress_0.rs::real_gu_yang_resident_output_bounds_rf_progress_without_duplicate_solve_or_cpu_mirror::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/write_door_band_delta_0.rs::remap_less_structural_encode_is_rejected_with_operation_context::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-clausething::crates/simthing-clausething/tests/specialization_protocol_0.rs::callers_cannot_fabricate_spatial_placement::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/arena_participant_elimination_0.rs::dynamic_fission_admits_the_existing_owned_row_once_and_replays_exactly::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/cost_band.rs::per_registration_wins_when_agreeing_shape::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/residency_tier_vocabulary_0.rs::residency_tier_vocabulary_0_census_is_sparse_bytes_absent_on_non_granting_nodes::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/guyang_comparative_projections_0.rs::explicit_admit_dispositions_and_fixed_comparative_column_count::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/event_generation_stamp_feeder_egress_0.rs::ordinary_feeder_tick_admits_to_production_event_egress::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-sim::crates/simthing-sim/src/anchor_remap_encode.rs::omitted_retire_and_move_fail_production_exact_gate::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/tests/owner_channel_intrinsic_0.rs::authored_owner_identity_cannot_collide_with_reserved_neutral::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/field_sweep_n4_parity_0.rs::field_sweep_n4_parity_0_typed_pre_dispatch_negatives_bite::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/validate.rs::prereq_dag_admission_table::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/write_door_band_delta_0.rs::wrong_endpoint_and_duplicate_remap_negatives::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-core::crates/simthing-core/src/anchor_remap.rs::column_shift_records_pre_to_post_endpoints::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-driver::crates/simthing-driver/tests/simthing_automaton_rf_reception_0.rs::command_deficit_rides_disbursement_and_arrives_with_live_route_policy::integration — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: simthing-spec::crates/simthing-spec/src/compile/region_field_admission.rs::authored_region_field_columns_out_of_range_are_rejected::unit — inline/src or shared file — remove the test by hand, then drop the pen row
+    ! manual: crates/simthing-workshop/src/persistent_bench.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/persistent_bench_gpu.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/persistent_bench_report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/persistent_bench_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/multitarget_replay.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/multitarget_replay_gpu.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/multitarget_replay_report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/multitarget_replay_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/multitarget_replay_resident_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/transfer_contention.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/transfer_contention_gpu.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/transfer_contention_report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/transfer_contention_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/overlay_order.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/overlay_order_current.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/overlay_order_pivot.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/overlay_order_report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/overlay_order_semantics_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/eml_phase5.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/eml_phase5.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/eml_phase5_hardcoded.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/eml_phase5_reports_hardened.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/weighted_mean.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/weighted_mean.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/weighted_mean_current_style.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/weighted_mean_pivot_style.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/weighted_mean_perf.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/weighted_mean_perf_report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/weighted_mean_report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/weighted_mean_ab_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/weighted_mean_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/workshop_full_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_operator_toolkit_sandbox_code_preserve.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_sandbox_code_preserve.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_strategic_horizon_sandbox_code_preserve.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_clamped_prototype.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_decayed_normalized_refinement.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_decayed_prototype.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_directed_refinement.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_normalized_prototype.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_normalized_refinement.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_pingpong_refinement.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_prototype.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_prototype_notes.md — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_raw_additive_prototype.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_refinement_notes.md — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_refinement_prototype.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_refinement_sandbox_code_preserve.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/field_policy/field_policy_tensor_stencil_wgsl_sandbox_code_preserve.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: docs/workshop/archive/c1_perf_reframe_memo.md — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/actionband_full_field_triad_movement_vendor_0.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/actionband_spatial_flux_witness_0.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/actionband_spatial_vendorization_0.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/lib.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/typeface/mod.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/README.md — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/assets/typeface/test_font.ttf — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/eml_exp_primitive_0_qualification.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/eml_ln_primitive_0_qualification.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/eml_resource_class_jit_parity_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/eml_resource_class_measurement_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/exact_consumer_obligation_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/field_sweep_ir_probe_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/support/field_sweep_ir_probe.rs — tests/support/** is shared support code — never auto-reaped; delete by hand
+    ! manual: crates/simthing-workshop/tests/support/field_sweep_ir_probe.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/actionband_full_field_triad_movement_vendor_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/actionband_spatial_flux_witness_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/actionband_spatial_vendorization_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/eml_arithmetic_semantics_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/eml_resource_class_capability_census_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-spec/src/spec/constrained_clearing.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/generation_critical_path_baseline.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/generation_critical_path_baseline_report.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/generation_critical_path_baseline_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-workshop/tests/generation_critical_path_baseline_reports.txt — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-spec/src/spec/flow_market.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-kernel/src/accumulator_op/facility_resident_plane.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-kernel/src/derived_span_projection.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-kernel/src/clearing_weight_projection.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/src/resident_clearing_plan.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-workshop/tests/resident_clearing_plan_0.rs — surviving live/parked tests still reference this file — dispose of them first
+    ! manual: crates/simthing-gpu/src/resident_clearing_runtime.rs — expired lease on a non-reapable path — delete or relocate by hand
+    ! manual: crates/simthing-kernel/src/shaders/resident_recursive_intake_transform.wgsl — expired lease on a non-reapable path — delete or relocate by hand
+TRACK-CLOSEOUT-DECOMMISSION-VERDICT: OK reaped=9 files=11 manual=279

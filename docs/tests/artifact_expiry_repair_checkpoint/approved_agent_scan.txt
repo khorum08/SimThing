@@ -1,0 +1,113 @@
+DOCTRINE SCAN REPORT  (commit bc5e7401, 2026-09-15T04:46:39Z)
+  scanner self-test: SKIPPED
+  scan mode: PR delta (c26f0227..bc5e7401)
+  reliable scope: whole-tree
+  heuristic scope: changed files / changed lines
+  --- results ---
+  FIELD-SWEEP-SINGLE-PATH-ALGEBRA  PASS  0  design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; algebra is authored EML data and never an enum/tag/operator match in the sweep path
+  FIELD-SWEEP-SINGLE-PATH-SHADERS  PASS  0  design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; no eighth bespoke field shader in either production shader home beside the exact canonical generic interpreter
+  FIELD-SWEEP-LEGACY-CALLERS  PASS  0  design 0.0.8.7 Phase 5 FIELD-ADJACENCY-GENERATORS-0; the seven retiring operators are migration referees only and have zero compiled production callers
+  FIELD-SWEEP-DENSE-CAP-CROSSING  PASS  0  design 0.0.8.7 Phase 5 FIELD-ADJACENCY-GENERATORS-0; generic and sparse LinkGraph adjacency cannot inherit dense REGION_FIELD theater caps
+  B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
+  FORGE-MINTERS  PASS  0  design §5 forge minters
+  UNSAFE-FN  PASS  0  design §5 unsafe fn
+  UNSAFE-ALLOW-ATTR  PASS  0  design §5 allow unsafe attr
+  UNSAFE-FORBID-ATTR  PASS  0  design §5 forbid unsafe attr
+  DENY-TOML-STUB  PASS  0  design §0.6.6 deny.toml stub
+  SIM-KIND-READ  PASS  0  design §5 sim .kind read
+  SEMANTIC-WORDS  PASS  0  design §5 semantic words below spec
+  SPEC-STRING-CHANNEL  PASS  0  design §5 stringly channel identity
+  ALLOW-SEALED-PRODUCERS  PASS  0  design §5 sealed producer allowlist
+  ALLOW-BUFFER-HANDLES  PASS  0  design §5 buffer handle allowlist
+  ALLOW-KERNEL-SURFACE  PASS  0  design §5 kernel surface allowlist
+  TEST-BUDGET  PASS  0  design §0.9.5 test admission budget
+  SPEC-LOWERER-KIND-READ  PASS  0  ci_screening_surface §12 + design §0A.1; HEURISTIC tripwire: spec/lowering kind read may be legitimate role-resolution, but closed-lowerer hits are higher suspicion because lowerers are constitutionally closed unless a DA-authorized amendment names them
+  GUARD-KABUKI-TRIPWIRE  PASS  0  handoff_template section H + ci_screening_surface section 4; HEURISTIC tripwire for bespoke source-scanning guards and test-side include_str source greps; HC-6: symbol with well-formed FRESH HORIZON-ENTRY(iso-date): consumer/ref is EXEMPT (dated+assessable; unmarked/stale stay FLAGGED; never bare-token forever-pass); HC-8 accepted evasion residue: PRIVATE fn source-scanner or var-bound include_str! evades the pub-fn-anchored arms (DA review is the backstop; regex intentionally NOT widened — would false-fire on legit parsers); legitimate cases route to INSPECT triage, never FAIL
+  EXECUTION-STATUS-UNCLASSIFIED  PASS  0  design 0.0.8.7 §3 Phase 0 EXECUTION-STATUS-TAXONOMY-0; HEURISTIC: execution-flavored driver/kernel surface missing from scripts/ci/execution_status_taxonomy.tsv (delta-scoped on PR)
+  CELL-STORAGE-POLYMORPHISM  PASS  0  design 0.0.8.7 §2 P0(e) fence (i) CELL-STORAGE-POLYMORPHISM; HEURISTIC reach detector for tagged/templated/heterogeneous matrix-cell storage across production crates (workshop excluded)
+  BESPOKE-PATHFINDER  PASS  0  design 0.0.8.7 §4 TRIAD DOORS / P5 PALMA BESPOKE-PATHFINDER; HEURISTIC: A* (BinaryHeap+came_from/g_score/open_set) OR ordinary Dijkstra (dist/distance+prev/predecessor with dijkstra/shortest_path/relax_edge) in production crates
+  BORDER-SERVICE  PASS  0  design 0.0.8.7 §4 TRIAD DOORS / P5 Gu-Yang BORDER-SERVICE; HEURISTIC: border/frontline semantic service machinery (not mere presentation polyline projection/cache); mapeditor included for service-layer reaches
+  OWNER-POLICY-WEIGHT-AUTHORITY-MINT  PASS  0  design 0.0.8.7 §3 Phase 3 FIRST-CITIZEN-SPECIALISTS-0; HEURISTIC: authored clause/scenario-JSON sources minting OWNER_POLICY_WEIGHT_AUTHORITY property id 8_300_318 outside hydration field-economy derivation (hydration-derived dumps excluded)
+  --- summary ---
+  hard failures: 0   inspect flags: 0   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only
+DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+  --- inspect justifications ---
+  justifications file present with 4 entries
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/src/anchor_remap.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/src/cost_band.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/src/evaluate.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/src/execution_posture.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/src/property.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/src/residency_tier.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/tests/band_quantized_draw_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/tests/band_quantized_draw_generation_perf.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/tests/eml_exp_consumer_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/tests/event_generation_stamp_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/tests/owner_channel_intrinsic_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-core/tests/simthing_automaton_intrinsic_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/src/arena_allocation_plan.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/src/arena_registry.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/src/comparative_default_birth.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/src/install.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/src/resource_flow_derivation.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/src/session.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/actionband_field_triad_progress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/actionband_gpu_execution_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/actionband_recursive_composition_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/actionband_semantic_shadow_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/admission_provenance_typed_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/arena_participant_elimination_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/comparative_default_birth_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/contention_conservation_judge_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/continuous_posture_stead_lane_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/eml_resource_class_admission_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/event_generation_stamp_feeder_egress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/field_adjacency_generators_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/field_sweep_n4_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/field_sweep_session_seam_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/gated_rates_eml_rewire_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/grant_disbursement_lane_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/guyang_comparative_projections_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/owner_channel_intrinsic_reduce_up_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/plan_struct_typing_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/residency_tier_vocabulary_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/rf_column_mint_migrate_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/simthing_automaton_rf_reception_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/slot_logical_identity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-driver/tests/write_door_band_delta_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-kernel/src/accumulator_op/session.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-kernel/src/derived_span_projection_tests.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-kernel/src/sealed/band_crossing_delta.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-kernel/src/slot.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-sim/src/anchor_remap_encode.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-sim/src/fission.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-sim/src/tree_mutation.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-sim/tests/band_quantized_draw_production_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-sim/tests/resolution_site_split_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-spec/src/boundary/capability_handler.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-spec/src/compile/region_field_admission.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-spec/src/spec/async_staleness.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-spec/src/spec/owner_channel_rf.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-spec/src/validate.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=crates/simthing-spec/src/validate_order_weight.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/eml_phase5/eml_phase5.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/eml_phase5/eml_phase5_hardcoded.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/multitarget_replay/multitarget_replay_gpu.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/overlay_order/overlay_order_current.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/overlay_order/overlay_order_pivot.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/persistent_bench/persistent_bench_gpu.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/transfer_contention/transfer_contention_gpu.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/weighted_mean/weighted_mean.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/weighted_mean/weighted_mean_current_style.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/archive/0087-workshop-research/weighted_mean/weighted_mean_pivot_style.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_clamped_prototype.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_decayed_normalized_refinement.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_decayed_prototype.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_directed_refinement.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_normalized_prototype.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_normalized_refinement.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_pingpong_refinement.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_prototype.wgsl
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=actionband-workshop-witness file=docs/workshop/archive/field_policy/field_policy_tensor_stencil_raw_additive_prototype.wgsl
+AGENT-SCAN GATE-WIRING NOTICE (DA lane required; clearance will DA-RESERVE): file=scripts/ci/track_closeout.sh
+AGENT-SCAN-VERDICT: FAIL delta_inspect=1 elapsed=93s
