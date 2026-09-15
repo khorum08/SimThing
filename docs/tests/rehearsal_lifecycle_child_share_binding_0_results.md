@@ -75,4 +75,11 @@ target; per-input slots are native) — **no kernel change; containment preserve
 
 ## Clean-checkout proof
 
-CLEANCHECKOUT_PLACEHOLDER
+- commit: `c873c878` (the exact tenth-roll commit)
+- command: fresh `git clone` at that exact commit (canonical LF checkout —
+  `.gitattributes eol=lf` + `core.autocrlf=false` both verified), sibling directory
+  `simthing-e8-roll10-verify`, never %TEMP%;
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: d5fcaf92eda4f724`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced and the qualified witness admitted
+  from the fresh canonical-LF clone.
