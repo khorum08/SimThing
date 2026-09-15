@@ -1,0 +1,21 @@
+Local approved-disposal validation
+Code head: bc5e74017a231e676511de1cd42456496c062032
+Authority: Board 5674704988
+cargo check --tests: PASS, ten affected crates (core, driver, spec, sim, kernel, clausething, embedder, workshop, tools, mapeditor); 1m26s; existing/now-unused helper warnings retained.
+track_closeout.sh --artifact-expiry: ARTIFACT-EXPIRY-VERDICT: INSPECT expired=0 cruft=364 malformed=0
+embedder_guide_exemplars_check.sh --check: PASS
+embedder_guide_exemplars_check.sh --selftest: PASS (live_shape, staircase, door_import, guide_path, rename)
+test_lifecycle_expiry_check.sh --schema: PASS expired=0 audit=0; 1000 live rows.
+test_lifecycle_expiry_check.sh --scheduled: PASS expired=0 audit=54 (existing justified-closed rows).
+lifecycle_schema_pr_gate.sh c26f0227 HEAD: PASS
+track_closeout.sh --deletion-guard c26f0227 HEAD: PASS removed=0 (live inventory deletions; expired pen removal is separately accounted).
+track_closeout.sh --prove: PASS, including carried DA survivor/support/dedup falsifiers and complete disposable build/resolve/check/apply rehearsal battery.
+cargo test -p simthing-embedder --test finance_toy_0 --test network_saturation_triad_0 -- --nocapture: PASS, 3 tests, 0 failed; finance 12.77s, network 3.45s.
+gen_property_admission_inventory.sh --check: PASS, exact ignored generator_cli test, 1 passed.
+gen_specialization_citizen_counts.sh --check: PASS, exact ignored generator_cli test, 1 passed.
+Both generated TSVs and both scripts remain unchanged.
+Full agent_scan.sh --base c26f0227: underlying DOCTRINE-SCAN-VERDICT PASS failures=0 inspect=0 selftest=SKIPPED; AGENT-SCAN-VERDICT FAIL delta_inspect=1 elapsed=93s.
+Agent scan routing residue: 76 FORBIDDEN-EDIT paths under primary actionband-workshop-witness, plus one carried track_closeout.sh gate-wiring notice. The exact approved cleanup does not fit that class; no class/gate code changed to hide the result. Complete output: approved_agent_scan.txt.
+git diff --check c26f0227: PASS after removing empty EOF separators exposed by exact deletions.
+Preservation: PASS; see approved_disposal_verification.txt.
+Status: PROBATION / proof-present / DA-review-pending. No benchmark/current-baseline qualification is claimed from the focused tests.
