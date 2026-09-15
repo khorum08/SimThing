@@ -204,8 +204,15 @@ fn assert_direct_recursive_shape(layout: &ArenaTreeLayout) {
             (parent.participant_slot, parent.cols.intrinsic_flow_sum_col),
             (parent.participant_slot, parent.cols.allocated_flow_col),
             (parent.participant_slot, parent.cols.weight_sum_col),
+            // INDEPENDENT-RESOURCE BINDING LAW (relay 5688590364): PARAM(3)
+            // is the TARGET CHILD'S OWN resolved weight, supplied per
+            // operation — the column-agnostic shared formula owns no arena
+            // column, so independent resources can never alias one weight
+            // column through the register-once tree.
+            (grandchild.participant_slot, grandchild.cols.weight_col),
         ],
-        "PARAM(1) is the exact level-N AllocatedFlow cell, not an intermediary",
+        "PARAM(1) is the exact level-N AllocatedFlow cell, not an intermediary; \
+         PARAM(3) is the target child's own resolved weight",
     );
 
     let propagated = [
