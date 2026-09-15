@@ -65,5 +65,11 @@ Pin chain: `0xb295_851d_f402_d50b` → `0x42a7_338e_0b42_b5be` → `0x6f28_7da9_
 
 ## Clean-checkout proof
 
-Recorded below after the roll commit exists (fresh canonical-LF clone, sibling directory,
-never %TEMP%).
+- commit: `4d4c50c13a8be5d925b3f5d2ac579bc3013e10ac`
+- command: fresh `git clone` at that exact commit (canonical LF checkout — repo
+  `.gitattributes` `* text=auto eol=lf` and `core.autocrlf=false` both verified), sibling
+  directory `simthing-e8-roll9-verify`, never %TEMP%;
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 6fe1d809c05ee0f4`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced and the qualified witness admitted
+  from the fresh canonical-LF clone.
