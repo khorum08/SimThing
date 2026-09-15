@@ -1899,12 +1899,31 @@ def cmd_decommission():
             manual.append((ident, "inline/src or shared file — remove the test by hand, then drop the pen row"))
             kept.append(r)
 
+    # Reaper safety (DA ruling on relay 5673392568): an expired artifact lease on a
+    # Rust test file may auto-delete only against the POST-reap survivor set — no live
+    # inventory row and no parked row that outlives this pass may still reference the
+    # file — and crates/*/tests/support/** is shared support code, never a dedicated
+    # test file, regardless of lease state.
+    def is_shared_support_file(path):
+        return path.startswith("crates/") and "/tests/support/" in path
+
+    surviving_parked_refs = {}
+    for r in kept:
+        surviving_parked_refs[r.get("file", "")] = surviving_parked_refs.get(r.get("file", ""), 0) + 1
+
     new_art, art_rm = [], []
     for r in art_rows:
         due = reap_all or past_wall(r.get("leased_at", ""))
         disp, p = r.get("disposition", ""), r.get("path", "")
         if due and disp == "elevate-code-rehome-pending":
             manual.append((p, "code awaiting rehome — reaping would lose elevated code; rehome or delete by hand"))
+            new_art.append(r)
+        elif due and disp == "lease" and is_dedicated_test_file(p) and is_shared_support_file(p):
+            manual.append((p, "tests/support/** is shared support code — never auto-reaped; delete by hand"))
+            new_art.append(r)
+        elif due and disp == "lease" and is_dedicated_test_file(p) and (
+                live_file_refs.get(p, 0) > 0 or surviving_parked_refs.get(p, 0) > 0):
+            manual.append((p, "surviving live/parked tests still reference this file — dispose of them first"))
             new_art.append(r)
         elif due and disp == "lease" and (is_dedicated_test_file(p) or is_reapable_doc(p)):
             art_rm.append(p)
@@ -1914,8 +1933,12 @@ def cmd_decommission():
         else:
             new_art.append(r)
 
+    # One path may be selected by both the parked-row and artifact-lease accounts;
+    # delete and count it exactly once.
+    rm_all = list(dict.fromkeys(rm_files + art_rm))
+
     if not dry:
-        for f in rm_files + art_rm:
+        for f in rm_all:
             try:
                 subprocess.run(["git", "-C", str(ROOT), "rm", "-q", "--", f], check=True, capture_output=True)
             except (subprocess.CalledProcessError, FileNotFoundError):
@@ -1940,14 +1963,14 @@ def cmd_decommission():
     print(f"  now: {today.isoformat()}  wall: {LEASE_HARD_DAYS}d  "
           f"mode: {'all-parked' if reap_all else 'expired-only'}")
     print(f"  parked rows reaped: {len(reaped_ids)}")
-    print(f"  files deleted: {len(rm_files) + len(art_rm)}")
-    for f in rm_files + art_rm:
+    print(f"  files deleted: {len(rm_all)}")
+    for f in rm_all:
         print(f"    - rm {f}")
     for ident, reason in manual:
         print(f"    ! manual: {ident} — {reason}")
     verdict = "DRY" if dry else "OK"
     print(f"TRACK-CLOSEOUT-DECOMMISSION-VERDICT: {verdict} "
-          f"reaped={len(reaped_ids)} files={len(rm_files) + len(art_rm)} manual={len(manual)}")
+          f"reaped={len(reaped_ids)} files={len(rm_all)} manual={len(manual)}")
     return 0
 
 
@@ -3124,6 +3147,79 @@ def cmd_prove():
               any(r["path"] == "docs/tests/current_evidence_index.md" for r in art_after)
               and "current_evidence_index.md" in r_reap.stdout)
         check("decommission-verdict", "DECOMMISSION-VERDICT: OK reaped=2 files=2 manual=3" in r_reap.stdout)
+
+    # Reaper safety (DA ruling on relay 5673392568): artifact-lease deletion must
+    # respect the post-reap survivor set and never auto-reap tests/support/**.
+    # Pre-fix, mixed.rs / probe.rs / livetest.rs are deleted by their leases: bites.
+    with tempfile.TemporaryDirectory() as stmp:
+        sr = pathlib.Path(stmp)
+        (sr / "scripts/ci").mkdir(parents=True)
+        (sr / "crates/c/tests/support").mkdir(parents=True)
+        shutil.copy(SCRIPT_DIR / "track_closeout.sh", sr / "scripts/ci/track_closeout.sh")
+        for f in ("mixed.rs", "solo.rs", "coexpire.rs", "livetest.rs"):
+            (sr / "crates/c/tests" / f).write_text("#[test]\nfn t() {}\n", encoding="utf-8")
+        (sr / "crates/c/tests/support/probe.rs").write_text("pub fn probe() {}\n", encoding="utf-8")
+
+        def sparked(file, test_name, at):
+            return {"crate": "c", "file": file, "test_name": test_name, "kind": "integration",
+                    "class": "behavior-regression", "superseding_boundary": "B-T5", "verdict": "AUDIT",
+                    "note": "u", "promotion_target": "until-closeout:behavior-regression",
+                    "birth_track": "pre-lifecycle", "dsu_survivals": "0",
+                    "parked_at": at, "closeout_track": "pre-lifecycle", "park_reason": "undecided"}
+        write_tsv(sr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [{
+            "crate": "c", "file": "crates/c/tests/livetest.rs", "test_name": "t", "kind": "integration",
+            "class": "behavior-regression", "superseding_boundary": "B-T5", "verdict": "KEEP",
+            "note": "live", "promotion_target": "until-closeout:behavior-regression",
+            "birth_track": "pre-lifecycle", "dsu_survivals": "0"}])
+        write_tsv(sr / "scripts/ci/test_lifecycle_parked.tsv", PARKED_HEADER, [
+            sparked("crates/c/tests/mixed.rs", "keepme", "2026-07-18"),    # fresh -> survives the pass
+            sparked("crates/c/tests/coexpire.rs", "co", "2026-07-01"),     # expires with its lease
+        ])
+        write_tsv(sr / "scripts/ci/test_lifecycle_parked_boundary.tsv", PARKED_BOUNDARY_HEADER, [])
+        write_tsv(sr / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [
+            {"path": "crates/c/tests/mixed.rs", "leased_at": "2026-07-01",
+             "disposition": "lease", "closeout_track": "t", "note": "expired lease, surviving parked test"},
+            {"path": "crates/c/tests/support/probe.rs", "leased_at": "2026-07-01",
+             "disposition": "lease", "closeout_track": "t", "note": "shared support code"},
+            {"path": "crates/c/tests/solo.rs", "leased_at": "2026-07-01",
+             "disposition": "lease", "closeout_track": "t", "note": "unshared, no rows"},
+            {"path": "crates/c/tests/coexpire.rs", "leased_at": "2026-07-01",
+             "disposition": "lease", "closeout_track": "t", "note": "co-expiring parked row; dedup"},
+            {"path": "crates/c/tests/livetest.rs", "leased_at": "2026-07-01",
+             "disposition": "lease", "closeout_track": "t", "note": "live inventory row"},
+        ])
+
+        def srun(*a, now="2026-07-20"):
+            return subprocess.run([BASH, "scripts/ci/track_closeout.sh", *a],
+                                  capture_output=True, text=True, cwd=str(sr),
+                                  env={**os.environ, "TRACK_CLOSEOUT_NOW": now})
+
+        s_dry = srun("--decommission", "--dry-run")
+        check("reaper-safety-dry-preserves-all",
+              all((sr / "crates/c/tests" / f).exists()
+                  for f in ("mixed.rs", "solo.rs", "coexpire.rs", "livetest.rs"))
+              and (sr / "crates/c/tests/support/probe.rs").exists())
+        check("reaper-safety-dry-verdict",
+              "DECOMMISSION-VERDICT: DRY reaped=1 files=2 manual=3" in s_dry.stdout)
+
+        s_reap = srun("--decommission")
+        check("reaper-safety-preserves-shared-parked-file", (sr / "crates/c/tests/mixed.rs").exists())
+        check("reaper-safety-preserves-support-file", (sr / "crates/c/tests/support/probe.rs").exists())
+        check("reaper-safety-preserves-live-file", (sr / "crates/c/tests/livetest.rs").exists())
+        check("reaper-safety-reaps-unshared-lease", not (sr / "crates/c/tests/solo.rs").exists())
+        check("reaper-safety-reaps-coexpiring-dedup", not (sr / "crates/c/tests/coexpire.rs").exists())
+        _, s_pen = read_tsv(sr / "scripts/ci/test_lifecycle_parked.tsv")
+        s_names = {r["test_name"] for r in s_pen}
+        check("reaper-safety-keeps-surviving-parked-row", "keepme" in s_names and "co" not in s_names)
+        _, s_art = read_tsv(sr / "scripts/ci/closeout_artifacts.tsv")
+        s_paths = {r["path"] for r in s_art}
+        check("reaper-safety-manual-leases-retained",
+              {"crates/c/tests/mixed.rs", "crates/c/tests/support/probe.rs",
+               "crates/c/tests/livetest.rs"} <= s_paths
+              and "crates/c/tests/solo.rs" not in s_paths
+              and "crates/c/tests/coexpire.rs" not in s_paths)
+        check("reaper-safety-verdict",
+              "DECOMMISSION-VERDICT: OK reaped=1 files=2 manual=3" in s_reap.stdout)
 
     # HC-CLOSEOUT-BINDING-REAP-0: closing-track discharged binding rows are reaped;
     # open-track discharged rows are the negative control; pre-fix leaves them (bites).
