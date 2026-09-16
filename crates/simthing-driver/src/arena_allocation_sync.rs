@@ -199,6 +199,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
         need_bindings.iter().map(|b| b.participant_slot).collect();
     let mut combined_cpu = Vec::new();
     let mut max_bands = 0u32;
+    let mut tail_integration_band = 0u32;
     for arena in &plan.arenas {
         let mut authored_weight_slots = authored_weight_slots_base.clone();
         if let Some(overlay_ids) =
@@ -210,9 +211,16 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
                 }
             }
         }
+        // ONE-INTEGRATION-AUTHORITY LAW (DA admission, relay 5690342946): the
+        // per-arena plan carries NO governed integration — embedding the
+        // registry-wide integration once per arena integrated every governed
+        // rate N times for N coexisting arenas (the user arena plus the
+        // built-in residency-row-capacity arena made N >= 2 in every ordinary
+        // session). The single registry-wide integration tail is appended
+        // once, below, after every arena's settlement bands.
         let mut alloc = plan_arena_allocation_with_pressure(
             arena,
-            &governed,
+            &[],
             state.n_slots,
             conserved_progress_bindings,
             active_instances,
@@ -226,7 +234,26 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
         })?;
         append_residual_closure_ops(arena, &mut alloc.cpu_ops);
         max_bands = max_bands.max(alloc.n_bands);
+        tail_integration_band = tail_integration_band.max(alloc.integration_band);
         combined_cpu.extend(alloc.cpu_ops);
+    }
+
+    // The ONE governed integration for the whole session: every governed rate
+    // integrates exactly once per generation, after all arenas' settlement
+    // bands, across all slots — the same coverage the C-7 velocity
+    // accumulator provides when no RF session is active (that dispatch stands
+    // down while this plan runs; see the kernel tick pipeline gate).
+    if !governed.is_empty() {
+        let tail = simthing_gpu::plan_governed_integration_at_band(
+            &governed,
+            state.n_slots,
+            tail_integration_band,
+            None,
+        )
+        .map_err(|error| ResourceFlowSyncError::Allocation(AllocationPlanError::Integration(error)))?;
+        for gpu in &tail.ops {
+            combined_cpu.push(crate::arena_allocation_plan::cpu_op_from_integration_gpu(gpu));
+        }
     }
 
     // RF-2A / RF-5A additive pre-bands (deterministic producer → stage → eval):
@@ -350,13 +377,14 @@ pub fn build_plan_for_tests(
     registry: &DimensionRegistry,
     n_slots: u32,
 ) -> Result<Vec<ArenaAllocationPlan>, HierarchyError> {
-    let governed = build_governed_pairs(registry);
+    // Mirrors the production one-integration-authority law: per-arena plans
+    // carry no governed integration (relay 5690342946).
     execution
         .arenas
         .iter()
         .map(|arena| {
             let mut plan =
-                plan_arena_allocation(arena, &governed, n_slots).map_err(|e| match e {
+                plan_arena_allocation(arena, &[], n_slots).map_err(|e| match e {
                     crate::arena_allocation_plan::AllocationPlanError::Hierarchy(h) => h,
                     _ => HierarchyError::EmptyParticipants {
                         arena: "test".into(),

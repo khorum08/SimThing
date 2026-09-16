@@ -359,8 +359,15 @@ impl Pipelines {
             ],
         });
 
-        let use_accumulator_velocity =
-            state.accumulator_velocity_active && state.accumulator_velocity_bands > 0;
+        // ONE-INTEGRATION-AUTHORITY LAW (relay 5690342946): while a
+        // resource-flow accumulator session is active, the RF banded plan
+        // carries the single registry-wide governed integration tail — the
+        // C-7 velocity dispatch stands down so no governed rate integrates
+        // twice per generation. With no RF session, C-7 remains the one
+        // authority exactly as before.
+        let use_accumulator_velocity = state.accumulator_velocity_active
+            && state.accumulator_velocity_bands > 0
+            && !state.accumulator_resource_flow_active;
         let use_accumulator_intensity =
             state.accumulator_intensity_eml_active && state.accumulator_intensity_eml_bands > 0;
         let transfer_active =
