@@ -84,6 +84,13 @@ pub enum ResourceEconomyCompileError {
     #[error("resource economy host `{entity}` does not own property id {property_id}")]
     HostMissingProperty { entity: String, property_id: u32 },
 
+    #[error(
+        "resource economy property id {property_id} has {owners} live rows; an unqualified \
+         reference cannot select among them — PropertyKey is not row authority; qualify the \
+         reference with its host_entity"
+    )]
+    AmbiguousPropertyRows { property_id: u32, owners: usize },
+
     #[error(transparent)]
     TransferBuilder(#[from] AccumulatorOpBuilderError),
 
@@ -572,12 +579,24 @@ fn ensure_property_known(
 }
 
 /// Resolve a property to the live GPU slot of its owning SimThing node.
+///
+/// EXPLICIT-HOST ROW IDENTITY fence (DA admission, relay 5697721947): when a
+/// property has more than one live row, an unqualified reference refuses
+/// pre-activation instead of selecting a row by first-DFS — PropertyKey is
+/// not row authority. Single-owner resolution is bit-for-bit historical.
 pub fn resolve_live_property_slot(
     property_id: SimPropertyId,
     root: &SimThing,
     allocator: &SlotAllocator,
 ) -> Result<u32, ResourceEconomyCompileError> {
-    let owner = find_property_owner(root, property_id).ok_or(
+    let owners = find_property_owners(root, property_id);
+    if owners.len() > 1 {
+        return Err(ResourceEconomyCompileError::AmbiguousPropertyRows {
+            property_id: property_id.0,
+            owners: owners.len(),
+        });
+    }
+    let owner = owners.first().copied().ok_or(
         ResourceEconomyCompileError::UnknownPropertyOwner {
             property_id: property_id.0,
         },
@@ -603,6 +622,29 @@ pub fn find_property_owner(
         }
     }
     None
+}
+
+/// Every live owner of `property_id`, in DFS order.
+pub fn find_property_owners(
+    root: &SimThing,
+    property_id: SimPropertyId,
+) -> Vec<simthing_core::SimThingId> {
+    let mut owners = Vec::new();
+    collect_property_owners(root, property_id, &mut owners);
+    owners
+}
+
+fn collect_property_owners(
+    node: &SimThing,
+    property_id: SimPropertyId,
+    owners: &mut Vec<simthing_core::SimThingId>,
+) {
+    if node.properties.contains_key(&property_id) {
+        owners.push(node.id);
+    }
+    for child in &node.children {
+        collect_property_owners(child, property_id, owners);
+    }
 }
 
 /// T-3 flat slot convention for unit tests without a live session tree.
@@ -647,5 +689,107 @@ mod tests {
             description: String::new(),
             intensity_labels: vec![],
         })
+    }
+
+    fn two_host_fixture(
+        reverse_children: bool,
+    ) -> (
+        DimensionRegistry,
+        SimThing,
+        SlotAllocator,
+        crate::scenario::Scenario,
+        SimPropertyId,
+        simthing_core::SimThingId,
+        simthing_core::SimThingId,
+    ) {
+        let mut registry = DimensionRegistry::new();
+        let pid = register_amount(&mut registry, "shared");
+        let layout = registry.property(pid).layout.clone();
+        let mut root = SimThing::new(simthing_core::SimThingKind::World, 0);
+        let mut p = SimThing::new(simthing_core::SimThingKind::Cohort, 0);
+        let mut q = SimThing::new(simthing_core::SimThingKind::Cohort, 0);
+        p.add_property(pid, simthing_core::PropertyValue::from_layout(&layout));
+        q.add_property(pid, simthing_core::PropertyValue::from_layout(&layout));
+        let (p_id, q_id) = (p.id, q.id);
+        if reverse_children {
+            root.add_child(q);
+            root.add_child(p);
+        } else {
+            root.add_child(p);
+            root.add_child(q);
+        }
+        let mut allocator = SlotAllocator::new();
+        allocator.install_initial_tree(&root);
+        let mut install_targets = std::collections::HashMap::new();
+        install_targets.insert("p".to_string(), vec![p_id]);
+        install_targets.insert("q".to_string(), vec![q_id]);
+        let scenario = crate::scenario::Scenario {
+            name: "explicit-host-rows".into(),
+            ticks_per_day: 1,
+            max_days: 1,
+            dt: 1.0,
+            n_slots: 8,
+            registry: registry.clone(),
+            root: root.clone(),
+            shadow_seeds: vec![],
+            tick_patches: vec![],
+            install_targets,
+        };
+        (registry, root, allocator, scenario, pid, p_id, q_id)
+    }
+
+    // EXPLICIT-HOST ROW IDENTITY witnesses (DA admission, relay 5697721947).
+    // Negative half: once a property has more than one live row, EVERY
+    // unqualified economy reference (transfers/recipes/emissions/thresholds
+    // all resolve through this one door) refuses pre-activation instead of
+    // selecting a row by first-DFS — PropertyKey is not row authority.
+    #[test]
+    fn multi_row_property_refuses_unqualified_reference_in_both_tree_orders() {
+        for reverse in [false, true] {
+            let (_registry, root, allocator, _scenario, pid, _p, _q) = two_host_fixture(reverse);
+            match resolve_live_property_slot(pid, &root, &allocator) {
+                Err(ResourceEconomyCompileError::AmbiguousPropertyRows { owners, .. }) => {
+                    assert_eq!(owners, 2)
+                }
+                other => panic!("expected AmbiguousPropertyRows, got {other:?}"),
+            }
+            assert_eq!(find_property_owners(&root, pid).len(), 2);
+        }
+    }
+
+    // Positive half: two explicit hosts for ONE property materialize to
+    // DISTINCT live slots, and the binding is independent of physical child
+    // order — the host-qualified materializer remains the row authority.
+    #[test]
+    fn two_explicit_hosts_bind_distinct_slots_in_both_tree_orders() {
+        for reverse in [false, true] {
+            let (_registry, root, allocator, scenario, pid, p_id, q_id) =
+                two_host_fixture(reverse);
+            let p_slot = resolve_entity_hosted_property_slot("p", pid, &scenario, &root, &allocator)
+                .expect("explicit host p resolves");
+            let q_slot = resolve_entity_hosted_property_slot("q", pid, &scenario, &root, &allocator)
+                .expect("explicit host q resolves");
+            assert_ne!(p_slot, q_slot, "distinct hosts bind distinct rows");
+            assert_eq!(Some(p_slot), allocator.slot_of(p_id).map(SlotIndex::raw));
+            assert_eq!(Some(q_slot), allocator.slot_of(q_id).map(SlotIndex::raw));
+        }
+    }
+
+    // Historical single-owner behavior is bit-for-bit preserved: one live
+    // row resolves exactly as before, with no ambiguity refusal.
+    #[test]
+    fn single_owner_unqualified_resolution_is_unchanged() {
+        let mut registry = DimensionRegistry::new();
+        let pid = register_amount(&mut registry, "solo");
+        let layout = registry.property(pid).layout.clone();
+        let mut root = SimThing::new(simthing_core::SimThingKind::World, 0);
+        let mut p = SimThing::new(simthing_core::SimThingKind::Cohort, 0);
+        p.add_property(pid, simthing_core::PropertyValue::from_layout(&layout));
+        let p_id = p.id;
+        root.add_child(p);
+        let mut allocator = SlotAllocator::new();
+        allocator.install_initial_tree(&root);
+        let slot = resolve_live_property_slot(pid, &root, &allocator).expect("single owner");
+        assert_eq!(Some(slot), allocator.slot_of(p_id).map(SlotIndex::raw));
     }
 }

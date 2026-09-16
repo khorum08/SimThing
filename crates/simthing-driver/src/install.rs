@@ -557,25 +557,23 @@ fn ensure_resource_economy_properties(
     scenario: &Scenario,
 ) -> Result<(), InstallError> {
     let placements = resource_economy_property_placements(spec);
-    let mut qualified_hosts = HashMap::new();
+    // EXPLICIT-HOST ROW IDENTITY (DA admission, relay 5697721947): row
+    // identity is `(property, host)`, so multiple DISTINCT explicit hosts for
+    // one property are lawful when each authored `host_entity` resolves
+    // uniquely — the host-qualified materializer already binds every row
+    // through that stronger identity. The RF-5A law "PropertyKey is not row
+    // authority" keeps its anti-ambiguity half below: once a property has
+    // more than one qualified host, no UNQUALIFIED use may select among the
+    // rows by first-DFS.
+    let mut qualified_hosts: HashMap<SimPropertyId, std::collections::BTreeSet<SimThingId>> =
+        HashMap::new();
     for placement in &placements {
         let Some(entity) = placement.host_entity.as_deref() else {
             continue;
         };
         let property_id = resource_economy_property_id(registry, placement)?;
         let host_id = resolve_unique_install_host(scenario, entity, placement.host_span)?;
-        if let Some(previous_host) = qualified_hosts.insert(property_id, host_id) {
-            if previous_host != host_id {
-                return Err(InstallError::NeedBindingInvalid {
-                    binding: "resource_economy".into(),
-                    reason: format!(
-                        "property {}::{} has duplicate/conflicting economy host placement; PropertyKey is not row authority",
-                        placement.key.namespace, placement.key.name
-                    ),
-                    span_token: placement.host_span,
-                });
-            }
-        }
+        qualified_hosts.entry(property_id).or_default().insert(host_id);
     }
 
     for placement in placements {
@@ -583,6 +581,19 @@ fn ensure_resource_economy_properties(
         let host_id = match &placement.host_entity {
             Some(entity) => resolve_unique_install_host(scenario, entity, placement.host_span)?,
             None => {
+                let qualified = qualified_hosts.get(&property_id);
+                if qualified.map_or(false, |hosts| hosts.len() > 1) {
+                    return Err(InstallError::NeedBindingInvalid {
+                        binding: "resource_economy".into(),
+                        reason: format!(
+                            "property {}::{} has {} qualified economy hosts; an unqualified placement cannot select among rows — PropertyKey is not row authority; qualify with host_entity",
+                            placement.key.namespace,
+                            placement.key.name,
+                            qualified.map_or(0, |hosts| hosts.len()),
+                        ),
+                        span_token: placement.host_span,
+                    });
+                }
                 // Unqualified: keep existing host if already placed; else World root.
                 if let Some(existing) =
                     crate::resource_economy_compile::find_property_owner(root, property_id)
