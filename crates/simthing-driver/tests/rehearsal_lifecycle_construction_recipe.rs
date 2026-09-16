@@ -911,3 +911,173 @@ fn ordinary_joint_lifecycle_matrix() {
         println!("LIFECYCLE CASE PASS: {name}");
     }
 }
+
+#[test]
+fn funded_product_cancellation_must_release_placement_and_continue() {
+    let mut failures = Vec::new();
+    // The external control isolates canonical Remove; it is not a funded birth.
+    for funded in [false, true] {
+        for project in 0..2 {
+            for reversed in [false, true] {
+                let hosts = if reversed { ["q", "p"] } else { ["p", "q"] };
+                let (f, spec, pids) = build([4.0, 4.0], reversed, reversed, &hosts);
+                let root = f.scenario.root.id;
+                let ids = f.projects;
+                let mut child = SimThing::new(SimThingKind::Cohort, 0);
+                let child_id = child.id;
+                let component = SimThing::new(SimThingKind::Cohort, 0);
+                let component_id = component.id;
+                child.add_child(component);
+                child.add_property(
+                    pids[2],
+                    PropertyValue::from_layout(&f.scenario.registry.property(pids[2]).layout),
+                );
+                let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+                let initial_bindings = session.proto.allocator.binding_table_snapshot();
+                let initial_live = session.proto.allocator.live_count();
+                let shape = (session.state.n_slots, session.proto.registry.total_columns);
+                let external_child = if funded {
+                    install_birth_on_funded_output(&mut session, ids[project], pids[2], child);
+                    None
+                } else {
+                    Some(child)
+                };
+                stop_joint_sources(&session, root, pids);
+                for generation in 1..=2 {
+                    session.step_once().unwrap();
+                    assert!(!session.proto.root.contains_id(child_id));
+                    assert!(session
+                        .proto
+                        .allocator
+                        .committed_residency_placement(root, child_id)
+                        .is_none());
+                    let expected = if generation == 1 {
+                        [[3.0, 1.0, 0.0], [1.0, 3.0, 0.0]]
+                    } else {
+                        [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]]
+                    };
+                    assert_eq!(
+                        stock(&session, ids, pids, &session.state.read_values()),
+                        expected
+                    );
+                }
+                if let Some(child) = external_child {
+                    session
+                        .tx
+                        .submit_boundary(BoundaryRequest::AddChild {
+                            parent: ids[project],
+                            child,
+                        })
+                        .unwrap();
+                }
+                session
+                    .step_once()
+                    .expect("the repaired funded birth must finish G3");
+                assert!(session.proto.root.contains_id(child_id));
+                assert!(session.proto.root.contains_id(component_id));
+                let placement = session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(root, child_id)
+                    .unwrap();
+                assert_eq!(placement.quantity(), 2);
+                assert_eq!(session.proto.allocator.live_count(), initial_live + 2);
+                let child_slot = session.proto.allocator.slot_of(child_id).unwrap();
+                let component_slot = session.proto.allocator.slot_of(component_id).unwrap();
+                println!("cancel setup funded={funded} project={project} reversed={reversed} g=3 placement={placement:?} slots={child_slot:?}/{component_slot:?}");
+
+                // Fixed authored scrap policy after acquisition: consumed A/B stay
+                // consumed, residual owned WIP stays owned, and there is no refund.
+                // Scalar product output is an accounting receipt, not a reservation.
+                // Readback above is assertion-only, never an economic decision.
+                session
+                    .tx
+                    .submit_boundary(BoundaryRequest::Remove { target: child_id })
+                    .unwrap();
+                let result = session.step_once();
+                let values = session.state.read_values();
+                let remaining = session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(root, child_id);
+                println!("cancel funded={funded} project={project} reversed={reversed} g=4 result={result:?} placement={remaining:?} stock={:?} live={}", stock(&session, ids, pids, &values), session.proto.allocator.live_count());
+                assert!(!session.proto.root.contains_id(child_id));
+                assert!(!session.proto.root.contains_id(component_id));
+                assert_eq!(
+                    session.proto.allocator.binding_table_snapshot(),
+                    initial_bindings
+                );
+                assert_eq!(session.proto.allocator.live_count(), initial_live);
+                assert!(session.proto.allocator.relation_of(child_id).is_none());
+                assert!(session.proto.allocator.relation_of(component_id).is_none());
+                assert_eq!(
+                    (session.state.n_slots, session.proto.registry.total_columns),
+                    shape
+                );
+                assert_eq!(
+                    stock(&session, ids, pids, &values),
+                    [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]]
+                );
+                if remaining.is_some() {
+                    failures.push(format!("funded={funded}/project={project}/reversed={reversed}: removed subtree retains committed placement {remaining:?}"));
+                }
+                if let Err(error) = result {
+                    let before = (
+                        session.coord.tick_index(),
+                        session.coord.day_index(),
+                        session.integration_schedule().entries().len(),
+                        session.proto.allocator.binding_table_snapshot(),
+                        session.action_band_execution_generation(),
+                    );
+                    for attempt in 0..3 {
+                        let retry = session
+                            .step_once()
+                            .expect_err("touched cancellation must remain fail-stop");
+                        println!("cancel retry funded={funded} project={project} reversed={reversed} attempt={attempt}: {retry:?}");
+                        assert!(
+                            matches!(retry, simthing_driver::SessionError::ExecutionIdentity(ref message) if message.contains("fault"))
+                        );
+                        assert_eq!(session.state.read_values(), values);
+                        assert_eq!(
+                            (
+                                session.coord.tick_index(),
+                                session.coord.day_index(),
+                                session.integration_schedule().entries().len(),
+                                session.proto.allocator.binding_table_snapshot(),
+                                session.action_band_execution_generation(),
+                            ),
+                            before
+                        );
+                        assert_eq!(
+                            session
+                                .proto
+                                .allocator
+                                .committed_residency_placement(root, child_id),
+                            remaining
+                        );
+                    }
+                    failures.push(format!("funded={funded}/project={project}/reversed={reversed}: canonical cancellation cannot finish: {error:?}"));
+                } else {
+                    for generation in 5..=6 {
+                        session
+                            .step_once()
+                            .expect("successful cancellation must leave a usable session");
+                        assert_eq!(
+                            stock(&session, ids, pids, &session.state.read_values()),
+                            [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]]
+                        );
+                        assert_eq!(
+                            session.proto.allocator.binding_table_snapshot(),
+                            initial_bindings
+                        );
+                        println!("cancel continuation funded={funded} project={project} reversed={reversed} g={generation}: healthy");
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "funded cancellation/release required success: {failures:?}"
+    );
+}

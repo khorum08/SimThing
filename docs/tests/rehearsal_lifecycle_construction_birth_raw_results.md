@@ -1,3 +1,5 @@
+> HISTORICAL: the first-birth failure below is repaired by #2067 at 6dbab071be7afd3967c63663badcb9067e94ac22. All ten unchanged Leaf-A tests, including first birth and G4/G5 continuation, passed on the synchronized branch. Current funded-cancellation findings are in [release results](rehearsal_lifecycle_construction_release_results.md). The original packet below is preserved.
+
 # Construction Leaf A — funded structural continuation raw packet
 
 Authority and interpretation: [birth results](rehearsal_lifecycle_construction_birth_results.md).
