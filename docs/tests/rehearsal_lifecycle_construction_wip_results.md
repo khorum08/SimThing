@@ -22,7 +22,7 @@ remains CLOSED.** Neither PASS-MODEL-1 nor FAIL-MODEL-1 is warranted.
    expectations and passed **2/0/0**: A alone, B alone, both arena orders, both
    physical child orders, and ordinary `open_from_spec + step_once`.
 3. The next owned-stock prerequisite now executes through the same ordinary
-   entry. New stock tests report **1 passed / 3 failed / 0 ignored**, exit 101.
+   entry. New stock tests report **1 passed / 2 failed / 0 ignored**, exit 101.
    All failures retain required-success assertions; no expected-panic or skip.
 
 Reference tuple: NVIDIA GeForce RTX 4080 Laptop GPU / Vulkan / NVIDIA 595.79;

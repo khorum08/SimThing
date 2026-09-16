@@ -288,21 +288,15 @@ fn leaf_residual_must_settle_as_owned_balance_for_each_resource() {
                 let actual = component(&f, reverse_arenas);
                 println!("component {names:?} children_reversed={reverse_children} arenas_reversed={reverse_arenas}: {actual:?}; expected={:?}", expected(&names));
                 if actual != expected(&names) {
-                    failures.push((names.clone(), reverse_children, reverse_arenas, actual));
+                    failures.push(format!(
+                        "component {names:?}/{reverse_children}/{reverse_arenas}: {actual:?}"
+                    ));
                 }
             }
         }
     }
-    assert!(
-        failures.is_empty(),
-        "RF leaf residual did not become owned Balance: {failures:?}"
-    );
-}
-
-#[test]
-fn ordinary_session_must_settle_leaf_wip_without_host_correction() {
+    // Same required stock law through ordinary ingress, before the one final assertion.
     let original = fixture(&["a", "b"], false, false);
-    let mut failures = Vec::new();
     for reverse_children in [false, true] {
         let mut f = original.clone();
         if reverse_children {
@@ -312,7 +306,9 @@ fn ordinary_session_must_settle_leaf_wip_without_host_correction() {
             let actual = ordinary(f.clone(), reverse_arenas);
             println!("ordinary children_reversed={reverse_children} arenas_reversed={reverse_arenas}: {actual:?}; expected={:?}", expected(&["a", "b"]));
             if actual != expected(&["a", "b"]) {
-                failures.push((reverse_children, reverse_arenas, actual));
+                failures.push(format!(
+                    "ordinary {reverse_children}/{reverse_arenas}: {actual:?}"
+                ));
             }
         }
     }
