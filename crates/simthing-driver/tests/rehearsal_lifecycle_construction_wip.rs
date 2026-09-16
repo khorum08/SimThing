@@ -242,22 +242,95 @@ fn parent_surplus_integrates_through_existing_balance_door() {
 
 #[test]
 fn seeded_leaf_rate_integrates_once_in_one_ordinary_generation() {
-    // Diagnostic initial-rate control ONLY: never a delivered-material claim.
-    // It also guards against disguising missing settlement by copying flow to rate.
-    let f = fixture(&["a"], true, true);
-    let expected = vec![[[0.0, 0.0, 0.0], [0.0, 0.5, 0.5], [0.0, 0.0, 0.0]]];
-    let component_result = component(&f, false);
-    println!("seeded rate component: {component_result:?}");
-    assert_eq!(
-        component_result, expected,
-        "standalone governed integration control"
+    // DA 5690839905: a settlement-owned leaf rate is derived, not freely seeded.
+    // This diagnostic host is created AFTER residency RF installation and carries
+    // only a free governed property. It participates in NO resource-flow arena.
+    let mut f = fixture(&["a"], true, false);
+    simthing_driver::resident_clearing_runtime::install_default_resident_rf_property(
+        &mut f.scenario.registry,
+        &mut f.scenario.root,
     );
-    let actual = ordinary(f, false);
-    println!("seeded rate ordinary: {actual:?}; expected={expected:?}");
-    assert_eq!(
-        actual, expected,
-        "one dt=1 generation must integrate rate 0.5 exactly once"
+    let field = |name: &str| SubFieldSpec {
+        role: role(name),
+        width: 1,
+        clamp: ClampBehavior::Unbounded,
+        velocity_max: None,
+        default: 0.0,
+        display_name: name.into(),
+        display_range: None,
+        governed_by: None,
+        reduction_override: None,
+        soft_aggregate_guard: None,
+        accumulator_spec: None,
+    };
+    let mut balance = field("balance");
+    balance.governed_by = Some(role("balance_rate"));
+    balance.accumulator_spec = Some(AccumulatorSpec {
+        role: AccumulatorRole::Balance(BalanceSpec::default()),
+        log_tier: LogTier::Summary,
+    });
+    let pid = compile_property(
+        &PropertySpec {
+            admission_disposition: Default::default(),
+            id: "free_rate".into(),
+            namespace: "leaf_a".into(),
+            name: "free_rate".into(),
+            display_name: "free rate".into(),
+            description: String::new(),
+            sub_fields: vec![field("balance_rate"), balance],
+        },
+        &mut f.scenario.registry,
+    )
+    .unwrap()
+    .0;
+    let mut host = SimThing::new(SimThingKind::Cohort, 0);
+    let id = host.id;
+    let layout = &f.scenario.registry.property(pid).layout;
+    let mut value = PropertyValue::from_layout(layout);
+    value.set_role(&role("balance_rate"), layout, 0.5);
+    host.add_property(pid, value);
+    f.scenario.root.add_child(host);
+    let mut allocator = SlotAllocator::new();
+    allocator.install_initial_tree(&f.scenario.root).unwrap();
+    let mode = GameModeSpec {
+        id: "construction-free-rate-diagnostic".into(),
+        resource_flow: Some(admitted(&f, &allocator, false)),
+        ..Default::default()
+    };
+    let mut session = SimSession::open_from_spec(f.scenario, &mode).unwrap();
+    let plan = simthing_driver::build_execution_plan(
+        &session.proto.registry,
+        &session.spec_state.arena_registry,
+    )
+    .unwrap();
+    assert!(
+        plan.arenas.iter().all(|arena| arena
+            .iter_all()
+            .iter()
+            .all(|node| node.hosted_simthing_id != id)),
+        "free-rate host must not belong to any arena"
     );
+    let slot = session.proto.allocator.slot_of(id).unwrap().as_usize();
+    let cols = ["balance_rate", "balance"].map(|name| {
+        session
+            .proto
+            .registry
+            .column_range(pid)
+            .col_for_role(&role(name), &session.proto.registry.property(pid).layout)
+            .unwrap()
+    });
+    for generation in 1..=2 {
+        session.step_once().unwrap();
+        let values = session.state.read_values();
+        let actual =
+            cols.map(|col| values[slot * session.proto.registry.total_columns + col.raw()]);
+        println!("non-arena free-rate generation={generation}: {actual:?}");
+        assert_eq!(
+            actual,
+            [0.5, 0.5 * generation as f32],
+            "free rate integrates exactly once per dt=1 generation"
+        );
+    }
 }
 
 fn expected(names: &[&str]) -> Snapshot {

@@ -1,3 +1,5 @@
+> Historical pre-eleventh-roll evidence. #2065 repairs leaf settlement and integration multiplicity. Current stock tests are GREEN after the authorized non-arena diagnostic correction. See [recipe/admission results](rehearsal_lifecycle_construction_recipe_results.md) for the next blocker. Evidence below remains as recorded.
+
 # Construction Leaf A — canonical leaf stock settlement blocker
 
 **PROBATION / blocker-proof-present / BLOCKED / OPEN / UNMERGED.**
