@@ -61,4 +61,9 @@ self-invalidated the binding table at its first funded birth.
 
 ## Clean-checkout proof
 
-CLEANCHECKOUT_PLACEHOLDER
+- commit: `1affcb6b` (the exact twelfth-roll commit)
+- command: fresh `git clone` at that exact commit (canonical LF checkout), sibling
+  directory `simthing-e8-roll12-verify`, never %TEMP%;
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 67ffbfdfe25a1d4e`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced from the fresh canonical-LF clone.
