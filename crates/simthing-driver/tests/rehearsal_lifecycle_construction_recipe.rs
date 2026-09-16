@@ -463,7 +463,6 @@ fn stop_joint_sources(
         .collect()
 }
 
-#[test]
 fn joint_projects_preserve_partial_wip_and_consume_only_complete_owned_inputs() {
     for pulse in [[1.0, 1.0], [1.0, 0.0], [4.0, 4.0]] {
         for children in [false, true] {
@@ -505,7 +504,6 @@ fn joint_projects_preserve_partial_wip_and_consume_only_complete_owned_inputs() 
     }
 }
 
-#[test]
 fn cancelled_partial_wip_survives_recovery_reparent_and_restart() {
     for cancelled in [0, 1] {
         for reversed in [false, true] {
@@ -754,7 +752,6 @@ fn install_birth_on_funded_output(
         .unwrap();
 }
 
-#[test]
 fn first_funded_structural_birth_must_complete_and_leave_ordinary_session_usable() {
     let mut failures = Vec::new();
     for pulse in [[1.0, 1.0], [4.0, 4.0]] {
@@ -844,7 +841,6 @@ fn first_funded_structural_birth_must_complete_and_leave_ordinary_session_usable
     );
 }
 
-#[test]
 fn ordinary_add_child_control_without_actionband_can_finish_and_continue() {
     let (f, spec, pids) = build([4.0, 4.0], false, false, &["p", "q"]);
     let parent = f.scenario.root.id;
@@ -886,5 +882,32 @@ fn ordinary_add_child_control_without_actionband_can_finish_and_continue() {
             stock(&session, ids, pids, &session.state.read_values()),
             [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]]
         );
+    }
+}
+
+#[test]
+fn ordinary_joint_lifecycle_matrix() {
+    let cases: &[(&str, fn())] = &[
+        (
+            "joint material accounting",
+            joint_projects_preserve_partial_wip_and_consume_only_complete_owned_inputs,
+        ),
+        (
+            "partial cancellation and restart",
+            cancelled_partial_wip_survives_recovery_reparent_and_restart,
+        ),
+        (
+            "external AddChild isolation control",
+            ordinary_add_child_control_without_actionband_can_finish_and_continue,
+        ),
+        (
+            "funded structural boundary required success",
+            first_funded_structural_birth_must_complete_and_leave_ordinary_session_usable,
+        ),
+    ];
+    for (name, run) in cases {
+        println!("LIFECYCLE CASE START: {name}");
+        run();
+        println!("LIFECYCLE CASE PASS: {name}");
     }
 }

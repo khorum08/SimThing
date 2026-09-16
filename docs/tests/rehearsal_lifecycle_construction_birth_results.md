@@ -20,7 +20,7 @@ qualified ingress (1/0/0), byte-unchanged independent allocation (2/0/0), WIP an
 exactly-once integration (3/0/0), then the unchanged recipe file (3/0/0). All
 **9 prerequisite tests passed**, including all eight joint-host admission cases.
 The original three recipe tests and all earlier prerequisite test files retain
-their semantics and source bytes. New tests are appended to the recipe file.
+their semantics and source bytes. The new table-driven lifecycle test is appended to the recipe file.
 
 Reference tuple: NVIDIA GeForce RTX 4080 Laptop GPU / Vulkan / NVIDIA 595.79,
 rustc 1.95.0, LLVM 22.1.2, `simthing-gpu/eml-resource-profiling`.
@@ -99,8 +99,12 @@ That control isolates the frozen ActionBand check; it is not offered as an
 alternative construction mechanism.
 
 The required-success assertion stays **RED** (no ignore/expected-failure wrapper).
-The full recipe file now has seven tests: six GREEN, one RED. Together with the
-six preceding ingress/allocation/WIP tests, the focused matrix is 12 GREEN / 1 RED.
+The four continuation cases run in one table-driven test: joint accounting,
+cancellation/restart and the external AddChild control pass; funded birth remains
+RED. The full recipe file has four tests: three GREEN, one RED. Together with the
+six preceding ingress/allocation/WIP tests, the focused total is 9 GREEN / 1 RED.
+An initial seven-test grouping caused TEST-BUDGET INSPECT; consolidation preserves
+every assertion and prior test, without a scanner exception or file split.
 
 ## Exact seam and routing
 
@@ -158,7 +162,7 @@ head, local/hosted reports and fresh post-final-body clearance are recorded on
 PR #2062 and the Board return. `coverage_basis: FAIL`, `ci_green: NO` preserve the
 real required-success failure even when hosted Doctrine passes.
 
-This continuation appends four tests, adds this evidence pair, marks old recipe
+This continuation appends one table-driven test with four cases, adds this evidence pair, marks old recipe
 admission evidence historical, and updates the test inventory. Relative to repaired
 master the leaf remains rehearsal tests / evidence docs / inventory only. No
 production, Cargo, scenario, UI, kernel/WGSL, sealed-source, gate or router edits.

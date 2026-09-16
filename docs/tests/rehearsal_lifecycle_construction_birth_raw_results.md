@@ -411,3 +411,9 @@ Original scratch captures remain `recipe-continuation12.txt`, `cancellation12.tx
 and `birth12.txt`; these intermediate fixture failures are not Model-1 verdicts.
 The final required-success structural witness remains RED for the actual
 production composition defect. No existing test was made ignored or expected-fail.
+
+Final harness accounting: the four new functions above became four subcases of
+`ordinary_joint_lifecycle_matrix` after the initial TEST-BUDGET INSPECT on seven
+test attributes in the recipe file. All assertions and original tests remain.
+Final recipe aggregate is 3 passed / 1 failed; whole focused suite 9 passed / 1 failed.
+Development logs retain their original individual-test grouping.
