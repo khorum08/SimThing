@@ -93,4 +93,9 @@ multiplicity check is clean. No law is weakened here; the choice belongs to the 
 
 ## Clean-checkout proof
 
-CLEANCHECKOUT_PLACEHOLDER
+- commit: `b228e4f0` (the exact eleventh-roll commit)
+- command: fresh `git clone` at that exact commit (canonical LF checkout), sibling
+  directory `simthing-e8-roll11-verify`, never %TEMP%;
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: f65dd84eae5040c6`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced from the fresh canonical-LF clone.
