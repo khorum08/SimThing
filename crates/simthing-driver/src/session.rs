@@ -115,6 +115,10 @@ pub enum ActionBandExecutionIngressError {
     #[error("ActionBand dispatch is stale because the object binding table changed (tree growth or epoch rebind)")]
     BindingTableStale,
     #[error(
+        "ActionBand dispatch refused: bound identity {id} was remapped/removed from the binding table; installed commitments never survive a rebind of their own footprint"
+    )]
+    BoundIdentityRemapped { id: u64 },
+    #[error(
         "ActionBand dispatch is stale because the admitted registry grew or changed activation"
     )]
     RegistryStale,
@@ -377,9 +381,77 @@ pub struct SimSession {
 
 struct SessionActionBandExecution {
     dispatch: crate::CrossingConsequenceDispatch,
+    /// The ACCEPTED ingress shape: frozen at tick-zero install, advanced ONLY
+    /// by [`SimSession::accept_action_band_boundary_binding_table`] when the
+    /// canonical boundary transition just executed lawfully grew the tree
+    /// (BOUND-SESSION STRUCTURAL LIFECYCLE, DA admission relay 5704549307).
+    /// Every guard between boundaries compares whole-shape equality against
+    /// THIS baseline, so foreign drift still refuses before the next hot cycle.
     admitted_shape: ActionBandIngressShape,
+    /// Binding-table footprint actually owned by the installed commitments —
+    /// the identities of the admitted active instances, resolved through the
+    /// tick-zero snapshot (existing admitted artifacts; no shadow registry).
+    /// Remapping/removal of one of THESE is refused with its own typed error.
+    bound_identities: std::collections::BTreeSet<simthing_core::SimThingId>,
     conserved_progress_bindings: Vec<crate::CompiledActionBandConservedProgressBinding>,
     active_instances: Vec<crate::ActionBandActiveInstance>,
+}
+
+/// Pure boundary-acceptance law (BOUND-SESSION STRUCTURAL LIFECYCLE, relay
+/// 5704549307). Given the accepted baseline shape, the current shape, the
+/// installed bound footprint, and whether the canonical boundary transition
+/// just executed actually performed accepted structural growth, decide whether
+/// the current shape may become the new accepted baseline.
+///
+/// - Non-binding fences (registry columns/properties/activation, coord/state
+///   dims, resident shape) must be EXACTLY unchanged — growth never lawfully
+///   moves them (preallocated capacity law).
+/// - Every accepted binding row must be present, identically, in the current
+///   table: removal or remap of a bound-footprint identity refuses with
+///   [`ActionBandExecutionIngressError::BoundIdentityRemapped`]; of any other
+///   pre-existing row with [`ActionBandExecutionIngressError::BindingTableStale`].
+/// - Rows present only in the current table are ADDITIVE and lawful ONLY when
+///   the boundary evidence shows accepted growth; otherwise stale.
+/// - Newly added rows acquire no ActionBand enrollment here — instances,
+///   consequences and dispatch are untouched.
+fn adjudicate_action_band_boundary_binding_table(
+    accepted: &ActionBandIngressShape,
+    current: &ActionBandIngressShape,
+    bound_identities: &std::collections::BTreeSet<simthing_core::SimThingId>,
+    boundary_performed_accepted_growth: bool,
+) -> Result<(), ActionBandExecutionIngressError> {
+    if current.registry_columns != accepted.registry_columns
+        || current.registry_properties != accepted.registry_properties
+        || current.registry_active != accepted.registry_active
+    {
+        return Err(ActionBandExecutionIngressError::RegistryStale);
+    }
+    if current.coord_slots != accepted.coord_slots
+        || current.coord_dims != accepted.coord_dims
+        || current.state_slots != accepted.state_slots
+        || current.state_dims != accepted.state_dims
+        || current.resident_values_len != accepted.resident_values_len
+    {
+        return Err(ActionBandExecutionIngressError::DimensionShapeStale);
+    }
+    for (id, slot) in accepted.binding_table.iter() {
+        match current.binding_table.get(id) {
+            Some(current_slot) if current_slot == slot => {}
+            _ => {
+                return Err(if bound_identities.contains(id) {
+                    ActionBandExecutionIngressError::BoundIdentityRemapped { id: u64::from(id.raw()) }
+                } else {
+                    ActionBandExecutionIngressError::BindingTableStale
+                });
+            }
+        }
+    }
+    if current.binding_table.len() > accepted.binding_table.len()
+        && !boundary_performed_accepted_growth
+    {
+        return Err(ActionBandExecutionIngressError::BindingTableStale);
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -586,9 +658,24 @@ impl SimSession {
             allocation_generation,
             &weight_overlay_targets,
         )?;
+        // Bound footprint: the identities of the admitted active instances,
+        // resolved through the tick-zero snapshot's slot mapping — existing
+        // admitted artifacts only (relay 5704549307 rule 3).
+        let instance_slots: std::collections::BTreeSet<u32> = active_instances
+            .iter()
+            .map(|instance| instance.slot().raw())
+            .collect();
+        let bound_identities: std::collections::BTreeSet<simthing_core::SimThingId> =
+            admitted_shape
+                .binding_table
+                .iter()
+                .filter(|(_, slot)| instance_slots.contains(&slot.raw()))
+                .map(|(id, _)| *id)
+                .collect();
         self.action_band_execution = Some(SessionActionBandExecution {
             dispatch,
             admitted_shape,
+            bound_identities,
             conserved_progress_bindings,
             active_instances,
         });
@@ -602,12 +689,49 @@ impl SimSession {
             .map(|installed| installed.dispatch.generation())
     }
 
+    /// BOUND-SESSION STRUCTURAL LIFECYCLE (DA admission, relay 5704549307):
+    /// accept the binding table produced by the canonical boundary transition
+    /// JUST executed, when and only when its delta is lawful additive growth
+    /// over an unchanged bound footprint. Called exclusively from
+    /// [`Self::dispatch_action_band_boundary`], synchronously after the
+    /// boundary — nothing else runs in between, so the observed delta IS that
+    /// transition's work. Any drift between boundaries still refuses against
+    /// the accepted baseline in [`Self::ensure_action_band_ingress_current`].
+    fn accept_action_band_boundary_binding_table(
+        &mut self,
+        outcome: &BoundaryOutcome,
+    ) -> Result<(), ActionBandExecutionIngressError> {
+        let Some(installed) = self.action_band_execution.as_ref() else {
+            return Ok(());
+        };
+        let current = self.current_action_band_ingress_shape();
+        if current == installed.admitted_shape {
+            return Ok(());
+        }
+        let boundary_performed_accepted_growth = outcome
+            .growth_residency_facts
+            .iter()
+            .any(|fact| matches!(fact, simthing_sim::RecordedGrowthResidencyFact::Accepted(_)))
+            || !outcome.fission.fission_pairs.is_empty();
+        adjudicate_action_band_boundary_binding_table(
+            &installed.admitted_shape,
+            &current,
+            &installed.bound_identities,
+            boundary_performed_accepted_growth,
+        )?;
+        self.action_band_execution
+            .as_mut()
+            .expect("checked installed above")
+            .admitted_shape = current;
+        Ok(())
+    }
+
     fn dispatch_action_band_boundary(
         &mut self,
         outcome: &BoundaryOutcome,
         summary: &mut RunSummary,
     ) -> Result<(), SessionError> {
-        self.ensure_action_band_ingress_current()?;
+        self.accept_action_band_boundary_binding_table(outcome)?;
         let Some(installed) = self.action_band_execution.as_mut() else {
             return Ok(());
         };
@@ -2537,4 +2661,114 @@ mod continuous_posture_session_proofs {
         SimSession::open(scenario).expect("session open requires a supported live GPU")
     }
 
+}
+
+// BOUND-SESSION STRUCTURAL LIFECYCLE witnesses (DA admission, relay
+// 5704549307): the pure boundary-acceptance law, exercised branch by branch.
+#[cfg(test)]
+mod bound_lifecycle_acceptance_proofs {
+    use super::*;
+    use simthing_core::{SimThingId, SlotIndex};
+    use std::collections::BTreeSet;
+
+    fn shape(rows: &[(u64, u32)]) -> ActionBandIngressShape {
+        ActionBandIngressShape {
+            binding_table: rows
+                .iter()
+                .map(|&(id, slot)| (SimThingId::from_session_raw(id as u32), SlotIndex::new(slot)))
+                .collect(),
+            registry_columns: 8,
+            registry_properties: 3,
+            registry_active: vec![true, true, true],
+            coord_slots: 16,
+            coord_dims: 8,
+            state_slots: 16,
+            state_dims: 8,
+            resident_values_len: 128,
+        }
+    }
+
+    fn bound(ids: &[u64]) -> BTreeSet<SimThingId> {
+        ids.iter().map(|&id| SimThingId::from_session_raw(id as u32)).collect()
+    }
+
+    #[test]
+    fn additive_row_from_accepted_growth_is_lawful_and_without_growth_is_stale() {
+        let accepted = shape(&[(1, 0), (2, 1)]);
+        let current = shape(&[(1, 0), (2, 1), (7, 5)]);
+        assert!(adjudicate_action_band_boundary_binding_table(
+            &accepted, &current, &bound(&[2]), true
+        )
+        .is_ok());
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted, &current, &bound(&[2]), false
+            ),
+            Err(ActionBandExecutionIngressError::BindingTableStale)
+        ));
+    }
+
+    #[test]
+    fn bound_identity_remap_or_removal_refuses_with_its_own_type_even_during_growth() {
+        let accepted = shape(&[(1, 0), (2, 1)]);
+        let remapped = shape(&[(1, 0), (2, 4), (7, 5)]);
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted, &remapped, &bound(&[2]), true
+            ),
+            Err(ActionBandExecutionIngressError::BoundIdentityRemapped { id: 2 })
+        ));
+        let removed = shape(&[(1, 0), (7, 5)]);
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted, &removed, &bound(&[2]), true
+            ),
+            Err(ActionBandExecutionIngressError::BoundIdentityRemapped { id: 2 })
+        ));
+    }
+
+    #[test]
+    fn unbound_preexisting_row_change_is_stale_even_during_growth() {
+        let accepted = shape(&[(1, 0), (2, 1)]);
+        let drifted = shape(&[(1, 3), (2, 1), (7, 5)]);
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted, &drifted, &bound(&[2]), true
+            ),
+            Err(ActionBandExecutionIngressError::BindingTableStale)
+        ));
+    }
+
+    #[test]
+    fn registry_and_dimension_fences_refuse_typed_even_with_growth_evidence() {
+        let accepted = shape(&[(1, 0)]);
+        let mut registry_grew = shape(&[(1, 0), (7, 5)]);
+        registry_grew.registry_properties = 4;
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted, &registry_grew, &bound(&[1]), true
+            ),
+            Err(ActionBandExecutionIngressError::RegistryStale)
+        ));
+        let mut dims_grew = shape(&[(1, 0), (7, 5)]);
+        dims_grew.state_slots = 32;
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted, &dims_grew, &bound(&[1]), true
+            ),
+            Err(ActionBandExecutionIngressError::DimensionShapeStale)
+        ));
+    }
+
+    #[test]
+    fn identical_shape_is_always_lawful() {
+        let accepted = shape(&[(1, 0), (2, 1)]);
+        assert!(adjudicate_action_band_boundary_binding_table(
+            &accepted,
+            &accepted.clone(),
+            &bound(&[2]),
+            false
+        )
+        .is_ok());
+    }
 }
