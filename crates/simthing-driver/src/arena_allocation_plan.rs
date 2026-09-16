@@ -259,7 +259,7 @@ fn append_immediate_flow_pressure_ops(
     Ok(())
 }
 
-fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> AccumulatorOp {
+pub(crate) fn cpu_op_from_integration_gpu(gpu: &simthing_gpu::AccumulatorOpGpu) -> AccumulatorOp {
     let encoded_targets = [
         (gpu.target0_slot, gpu.target0_col),
         (gpu.target1_slot, gpu.target1_col),
@@ -305,15 +305,19 @@ pub(crate) fn append_residual_closure_ops(
     let seed_band = layout.band_layout.integration_band - 4;
     let add_allocated_band = seed_band + 1;
     let sum_children_band = seed_band + 3;
-    for parent in layout
-        .iter_all()
-        .into_iter()
-        .filter(|node| node.is_interior())
-    {
+    // SETTLEMENT RESIDUAL LAW (DA admission, relay 5690342946): EVERY
+    // balance-governed participant that lawfully owns residual work receives
+    // the one admitted residual semantics — seed from its own budget, add its
+    // own AllocatedFlow, subtract what it disbursed to children. A LEAF
+    // disburses nothing and its `intrinsic_flow_sum_col` is never produced,
+    // so its budget is its own `intrinsic_flow_col` and no subtraction op is
+    // planned. Interior participants take the byte-identical historical path.
+    for parent in layout.iter_all() {
         let Some(rate_col) = parent.cols.balance_governing_col else {
             continue;
         };
-        let budget_intrinsic_col = if parent.depth == 0 {
+        let is_leaf = parent.children.is_empty();
+        let budget_intrinsic_col = if parent.depth == 0 || is_leaf {
             parent.cols.intrinsic_flow_col
         } else {
             parent.cols.intrinsic_flow_sum_col
@@ -336,14 +340,16 @@ pub(crate) fn append_residual_closure_ops(
             ConsumeMode::AddToTarget,
             ScaleSpec::Identity,
         ));
-        ops_cpu.extend(sum_accumulation_ops(
-            parent,
-            parent.participant_slot.raw(),
-            parent.cols.allocated_flow_col,
-            rate_col,
-            sum_children_band,
-            ScaleSpec::Constant(-1.0),
-        ));
+        if !is_leaf {
+            ops_cpu.extend(sum_accumulation_ops(
+                parent,
+                parent.participant_slot.raw(),
+                parent.cols.allocated_flow_col,
+                rate_col,
+                sum_children_band,
+                ScaleSpec::Constant(-1.0),
+            ));
+        }
     }
 }
 
@@ -663,6 +669,71 @@ mod tests {
             vec![root],
         )
         .unwrap()
+    }
+
+    fn cols_governed(base: usize) -> NodeColumnRefs {
+        let mut c = cols_shifted(base);
+        c.balance_governing_col =
+            Some(ColumnIndex::from_raw_for_oracle_or_rehearsal(base + 10));
+        c
+    }
+
+    // SETTLEMENT RESIDUAL LAW witness (DA admission, relay 5690342946): a
+    // balance-governed LEAF receives the one admitted residual semantics —
+    // seed from its OWN intrinsic column (its sum column is never produced),
+    // add its own AllocatedFlow, and NO child-subtraction op — while the
+    // interior keeps the byte-identical historical three-op shape.
+    #[test]
+    fn balance_governed_leaves_receive_residual_closure() {
+        let c = cols_governed(0);
+        let layout = d2_layout_for(0, "governed", 1, c);
+        let mut ops = Vec::new();
+        append_residual_closure_ops(&layout, &mut ops);
+        let rate = c.balance_governing_col.unwrap();
+        let leaf_slot = layout.participant_roots[0].children[0].participant_slot;
+        let root_slot = layout.participant_roots[0].participant_slot;
+        let to_rate_at = |slot: SlotIndex| {
+            ops.iter()
+                .filter(|op| op.targets == vec![(slot, rate)])
+                .collect::<Vec<_>>()
+        };
+        let leaf_ops = to_rate_at(leaf_slot);
+        assert_eq!(leaf_ops.len(), 2, "leaf: seed + add-allocated, no subtraction");
+        assert!(
+            leaf_ops.iter().all(|op| !matches!(op.scale, ScaleSpec::Constant(s) if s < 0.0)),
+            "leaf residual must have no child-subtraction op"
+        );
+        assert!(
+            leaf_ops.iter().any(|op| matches!(
+                &op.source,
+                SourceSpec::SlotValue { slot, col } if *slot == leaf_slot && *col == c.intrinsic_flow_col
+            )),
+            "leaf budget seeds from its OWN intrinsic column, never the unproduced sum"
+        );
+        let root_ops = to_rate_at(root_slot);
+        assert!(
+            root_ops.len() >= 3,
+            "interior keeps the historical seed + add + subtraction shape"
+        );
+    }
+
+    // ONE-INTEGRATION-AUTHORITY LAW witness (DA admission, relay 5690342946):
+    // an arena plan built the way the production sync builds it (empty
+    // governed set) carries ZERO governed-integration ops — the single
+    // registry-wide integration tail is the sync's, appended exactly once.
+    // Pre-repair, each arena embedded the full registry-wide integration,
+    // multiplying every governed rate by the arena count (the ordinary
+    // session always holds the user arena PLUS residency-row-capacity).
+    #[test]
+    fn arena_plans_carry_no_governed_integration() {
+        let layout = d2_layout_for(0, "minerals", 1, cols());
+        let plan = plan_arena_allocation(&layout, &[], 256).expect("plan");
+        assert!(
+            plan.cpu_ops
+                .iter()
+                .all(|op| !matches!(op.combine, CombineFn::IntegrateWithClamp { .. })),
+            "per-arena plans must not embed governed integration"
+        );
     }
 
     // INDEPENDENT-RESOURCE BINDING LAW witness (DA admission, relay
