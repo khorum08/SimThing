@@ -505,6 +505,10 @@ fn disburse_op(
         // Declared input order is the EML PARAM order. The parent's live
         // AllocatedFlow is PARAM(1), consumed directly by the same allocator
         // operation that writes the child level; no propagated copy is read.
+        // PARAM(3) is the target child's OWN currently-resolved weight column
+        // (INDEPENDENT-RESOURCE BINDING LAW, relay 5688590364): the shared
+        // column-agnostic formula receives it per-operation, so independent
+        // resources never alias one arena's weight column.
         source: SourceSpec::ConjunctiveCrossing {
             inputs: vec![
                 InputSpec {
@@ -520,6 +524,11 @@ fn disburse_op(
                 InputSpec {
                     slot: parent.participant_slot,
                     col: parent_weight_sum_col,
+                    unit_cost: 1.0,
+                },
+                InputSpec {
+                    slot: child.participant_slot,
+                    col: child.cols.weight_col,
                     unit_cost: 1.0,
                 },
             ],
@@ -603,6 +612,108 @@ mod tests {
         )
         .unwrap()
     }
+    fn cols_shifted(base: usize) -> NodeColumnRefs {
+        fn col(n: usize) -> ColumnIndex {
+            ColumnIndex::from_raw_for_oracle_or_rehearsal(n)
+        }
+        NodeColumnRefs {
+            intrinsic_flow_col: col(base),
+            intrinsic_flow_sum_col: col(base + 4),
+            allocated_flow_col: col(base + 1),
+            balance_col: Some(col(base + 3)),
+            balance_governing_col: None,
+            weight_col: col(base + 2),
+            weight_sum_col: col(base + 5),
+            propagated_intrinsic_flow_col: col(base + 6),
+            propagated_allocated_flow_col: col(base + 7),
+            propagated_weight_sum_col: col(base + 8),
+            hosted_simthing_id_col: col(base + 9),
+        }
+    }
+
+    fn d2_layout_for(arena_idx: u32, name: &str, prop: u32, c: NodeColumnRefs) -> ArenaTreeLayout {
+        let root = HierarchyNode {
+            participant_slot: SlotIndex::new(10),
+            hosted_simthing_id: Default::default(),
+            depth: 0,
+            children: vec![HierarchyNode {
+                participant_slot: SlotIndex::new(11),
+                hosted_simthing_id: Default::default(),
+                depth: 1,
+                children: vec![],
+                cols: c,
+            }],
+            cols: c,
+        };
+        build_custom_layout(
+            arena_idx,
+            &GpuArenaDescriptor {
+                name: name.into(),
+                flow_property_id: SimPropertyId(prop),
+                balance_property_id: None,
+                max_participants: 8,
+                max_coupling_fanout: 4,
+                max_orderband_depth: 16,
+                fission_policy: Default::default(),
+                participant_range: (0, 0),
+                wildcard_max_expansion: None,
+                reserved_orderband_depth: 0,
+            },
+            c,
+            vec![root],
+        )
+        .unwrap()
+    }
+
+    // INDEPENDENT-RESOURCE BINDING LAW witness (DA admission, relay
+    // 5688590364): with two distinct resource column layouts in ONE session,
+    // every disbursement operation supplies the TARGET CHILD'S OWN resolved
+    // weight column as the fourth admitted input (PARAM 3), in either
+    // planning order. The outlawed defect — one arena's absolute weight
+    // column aliased into every arena's child-share formula through the
+    // register-once global tree — cannot recur because the shared formula
+    // owns no column at all (see child_share_eml witness) and the binding
+    // below is per-operation from each arena's own layout.
+    #[test]
+    fn independent_resource_layouts_bind_their_own_child_weight_in_both_orders() {
+        let a = d2_layout_for(0, "minerals", 1, cols());
+        let b = d2_layout_for(1, "energy", 2, cols_shifted(20));
+        for order in [[&a, &b], [&b, &a]] {
+            for layout in order {
+                let plan = plan_arena_allocation_with_pressure(
+                    layout,
+                    &[],
+                    16,
+                    &[],
+                    &[],
+                    GenerationStamp::new(0),
+                    GenerationStamp::new(1),
+                    &std::collections::BTreeSet::new(),
+                )
+                .expect("plan");
+                let expected_weight_col = layout.participant_roots[0].children[0].cols.weight_col;
+                let child_slot = layout.participant_roots[0].children[0].participant_slot;
+                let disburse: Vec<_> = plan
+                    .cpu_ops
+                    .iter()
+                    .filter(|op| {
+                        matches!(op.combine, CombineFn::EvalEML { tree_id }
+                            if tree_id == child_share_tree_id().0)
+                    })
+                    .collect();
+                assert!(!disburse.is_empty(), "d2 layout must emit a disbursement");
+                for op in disburse {
+                    let SourceSpec::ConjunctiveCrossing { inputs } = &op.source else {
+                        panic!("disbursement must be a conjunctive crossing");
+                    };
+                    assert_eq!(inputs.len(), 4, "child weight must ride as the fourth input");
+                    assert_eq!(inputs[3].col, expected_weight_col, "own arena weight column");
+                    assert_eq!(inputs[3].slot, child_slot, "evaluated at the target child slot");
+                }
+            }
+        }
+    }
+
     #[test]
     fn interior_authored_weight_survives_the_pressure_upsweep() {
         // INTERIOR-POLICY COMPOSITION LAW witness (DA admission 2026-09-10,

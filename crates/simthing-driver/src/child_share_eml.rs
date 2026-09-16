@@ -2,12 +2,11 @@
 
 use simthing_core::eml_nodes::{self, EmlNode};
 use simthing_core::{
-    ColumnIndex, EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta,
-    EmlRegistryError, EmlTreeId,
+    EmlConsumerMask, EmlExecutionClass, EmlExpressionRegistry, EmlFormulaMeta, EmlRegistryError,
+    EmlTreeId,
 };
-use simthing_gpu::encode_column;
 
-use crate::arena_hierarchy::{NodeColumnRefs, CHILD_SHARE_FORMULA_TREE_ID};
+use crate::arena_hierarchy::CHILD_SHARE_FORMULA_TREE_ID;
 
 pub fn child_share_tree_id() -> EmlTreeId {
     EmlTreeId(CHILD_SHARE_FORMULA_TREE_ID)
@@ -18,17 +17,6 @@ fn lit(v: f32) -> EmlNode {
         opcode: eml_nodes::opcode::LITERAL_F32,
         flags: 0,
         a: v.to_bits(),
-        b: 0,
-        c: 0,
-        d: 0,
-    }
-}
-
-fn slot(col: ColumnIndex) -> EmlNode {
-    EmlNode {
-        opcode: eml_nodes::opcode::SLOT_VALUE,
-        flags: 0,
-        a: encode_column(col),
         b: 0,
         c: 0,
         d: 0,
@@ -59,12 +47,15 @@ fn unary(opcode: u32) -> EmlNode {
 
 /// Postfix tree: `select(pWS > 0, (pIF + pAF) * w / pWS, 0)` — 13 nodes.
 ///
-/// The three parent operands arrive directly through the operation's admitted
-/// input list as `PARAM(0..=2)`. `SLOT_VALUE(weight_col)` is evaluated at the
-/// target child slot. In particular, `PARAM(1)` is the parent's live
-/// `AllocatedFlow`; no propagated economic copy exists between recursive
-/// levels.
-pub fn compile_child_share_formula_nodes(cols: NodeColumnRefs) -> Vec<EmlNode> {
+/// All four operands arrive directly through the operation's admitted input
+/// list as `PARAM(0..=3)`. `PARAM(1)` is the parent's live `AllocatedFlow`;
+/// no propagated economic copy exists between recursive levels. `PARAM(3)` is
+/// the target child's own currently-resolved `AllocatorWeight`, supplied by
+/// each `disburse_op`'s input list — INDEPENDENT-RESOURCE BINDING LAW (DA
+/// admission, relay 5688590364): the shared formula owns no absolute arena
+/// column, so independent resources in one EML registry can never alias one
+/// child-share weight column regardless of arena registration order.
+pub fn compile_child_share_formula_nodes() -> Vec<EmlNode> {
     vec![
         param(2),
         lit(0.0),
@@ -72,7 +63,7 @@ pub fn compile_child_share_formula_nodes(cols: NodeColumnRefs) -> Vec<EmlNode> {
         param(0),
         param(1),
         unary(eml_nodes::opcode::ADD),
-        slot(cols.weight_col),
+        param(3),
         unary(eml_nodes::opcode::MUL),
         param(2),
         EmlNode {
@@ -107,16 +98,18 @@ pub fn child_share_formula_meta() -> EmlFormulaMeta {
     }
 }
 
-/// Register once per session when cols are resolved for an arena flow property.
+/// Register once per session. The formula is column-agnostic (all operands
+/// arrive as PARAMs from each operation's admitted input list), so a single
+/// generic registration serves every arena and rebinding on layout change is
+/// structurally unnecessary.
 pub fn register_child_share_formula(
     registry: &mut EmlExpressionRegistry,
-    cols: NodeColumnRefs,
 ) -> Result<(), EmlRegistryError> {
     let id = child_share_tree_id();
     if registry.get(id).is_some() {
         return Ok(());
     }
-    let nodes = compile_child_share_formula_nodes(cols);
+    let nodes = compile_child_share_formula_nodes();
     let mut meta = child_share_formula_meta();
     meta.node_count = nodes.len() as u32;
     registry.register_formula(id, meta, nodes)
@@ -135,25 +128,25 @@ pub fn child_share_cpu(p_if: f32, p_af: f32, w: f32, p_ws: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::arena_hierarchy::NodeColumnRefs;
 
-    fn sample_cols() -> NodeColumnRefs {
-        fn col(n: usize) -> ColumnIndex {
-            ColumnIndex::from_raw_for_oracle_or_rehearsal(n)
-        }
-        NodeColumnRefs {
-            intrinsic_flow_col: col(0),
-            intrinsic_flow_sum_col: col(4),
-            allocated_flow_col: col(1),
-            balance_col: Some(col(3)),
-            balance_governing_col: None,
-            weight_col: col(2),
-            weight_sum_col: col(5),
-            propagated_intrinsic_flow_col: col(6),
-            propagated_allocated_flow_col: col(7),
-            propagated_weight_sum_col: col(8),
-            hosted_simthing_id_col: col(9),
-        }
+    // INDEPENDENT-RESOURCE BINDING LAW witness: the compiled formula owns no
+    // absolute column — every operand is a PARAM fed by the operation's
+    // admitted input list, and the child weight is PARAM(3) exactly.
+    #[test]
+    fn child_share_formula_is_column_agnostic_with_child_weight_as_param_3() {
+        let nodes = compile_child_share_formula_nodes();
+        assert!(
+            nodes
+                .iter()
+                .all(|n| n.opcode != eml_nodes::opcode::SLOT_VALUE),
+            "child-share formula must not bake any absolute arena column"
+        );
+        assert!(
+            nodes
+                .iter()
+                .any(|n| n.opcode == eml_nodes::opcode::PARAM && n.a == 3),
+            "target child's own weight must arrive as PARAM(3)"
+        );
     }
 
     #[test]
