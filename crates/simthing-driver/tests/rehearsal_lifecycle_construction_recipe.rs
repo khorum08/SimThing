@@ -428,3 +428,463 @@ fn unresolved_or_ambiguous_recipe_host_still_refuses_with_provenance() {
         }
     }
 }
+
+// Continuation after #2066. Existing prerequisite tests above remain unchanged.
+fn stop_joint_sources(
+    session: &SimSession,
+    parent: SimThingId,
+    pids: [SimPropertyId; 3],
+) -> Vec<OverlayId> {
+    pids[..2]
+        .iter()
+        .map(|pid| {
+            let id = OverlayId::new();
+            session
+                .tx
+                .submit_boundary(BoundaryRequest::AttachOverlay {
+                    target: parent,
+                    source_generation: GenerationStamp::new(0),
+                    overlay: Overlay {
+                        id,
+                        kind: OverlayKind::Policy,
+                        source: OverlaySource::System,
+                        origin: parent,
+                        affects: vec![parent],
+                        transform: PropertyTransformDelta {
+                            property_id: *pid,
+                            sub_field_deltas: vec![(role("flow"), TransformOp::multiply(0.0))],
+                        },
+                        lifecycle: OverlayLifecycle::UntilDissolved,
+                    },
+                })
+                .unwrap();
+            id
+        })
+        .collect()
+}
+
+#[test]
+fn joint_projects_preserve_partial_wip_and_consume_only_complete_owned_inputs() {
+    for pulse in [[1.0, 1.0], [1.0, 0.0], [4.0, 4.0]] {
+        for children in [false, true] {
+            for arenas in [false, true] {
+                for hosts in [["p", "q"], ["q", "p"]] {
+                    let (f, spec, pids) = build(pulse, children, arenas, &hosts);
+                    let ids = f.projects;
+                    let parent = f.scenario.root.id;
+                    let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+                    stop_joint_sources(&session, parent, pids);
+                    for generation in 1..=5 {
+                        session.step_once().expect("joint ordinary generation");
+                        let actual = stock(&session, ids, pids, &session.state.read_values());
+                        let mut expected = [
+                            [pulse[0] * 0.75, pulse[1] * 0.25, 0.0],
+                            [pulse[0] * 0.25, pulse[1] * 0.75, 0.0],
+                        ];
+                        if pulse == [4.0, 4.0] && generation >= 2 {
+                            for row in &mut expected {
+                                row[0] -= 1.0;
+                                row[1] -= 1.0;
+                                row[2] = 1.0;
+                            }
+                        }
+                        println!("joint pulse={pulse:?} children={children} arenas={arenas} hosts={hosts:?} g={generation}: {actual:?}");
+                        assert_eq!(actual, expected);
+                        let made = actual[0][2] + actual[1][2];
+                        assert_eq!(
+                            [
+                                actual[0][0] + actual[1][0] + made,
+                                actual[0][1] + actual[1][1] + made
+                            ],
+                            pulse
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn cancelled_partial_wip_survives_recovery_reparent_and_restart() {
+    for cancelled in [0, 1] {
+        for reversed in [false, true] {
+            let hosts = if reversed { ["q", "p"] } else { ["p", "q"] };
+            let (mut f, mut spec, pids) = build([1.0, 1.0], reversed, reversed, &hosts);
+            // Authored cancellation disposition: keep the whole owned WIP host
+            // alive in recovery storage. Its identity/stock/residency are retained;
+            // no product-placement commitment has been acquired at this stage.
+            let depot = SimThing::new(SimThingKind::Location, 0);
+            let depot_id = depot.id;
+            let parent = f.scenario.root.id;
+            f.scenario.root.add_child(depot);
+            simthing_driver::resident_clearing_runtime::install_default_resident_rf_property(
+                &mut f.scenario.registry,
+                &mut f.scenario.root,
+            );
+            let mut allocator = SlotAllocator::new();
+            allocator.install_initial_tree(&f.scenario.root).unwrap();
+            spec.resource_flow = Some(admitted(&f, &allocator, reversed));
+            let ids = f.projects;
+            let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+            let stops = stop_joint_sources(&session, parent, pids);
+            session.step_once().unwrap();
+            let expected = [[0.75, 0.25, 0.0], [0.25, 0.75, 0.0]];
+            assert_eq!(
+                stock(&session, ids, pids, &session.state.read_values()),
+                expected
+            );
+            let slots = ids.map(|id| session.proto.allocator.slot_of(id).unwrap());
+            session
+                .tx
+                .submit_boundary(BoundaryRequest::Reparent {
+                    child: ids[cancelled],
+                    new_parent: depot_id,
+                })
+                .unwrap();
+            for generation in 2..=3 {
+                let result = session.step_once();
+                println!("cancel project={cancelled} reversed={reversed} g={generation} result={result:?}");
+                result.expect("ordinary cancellation/recovery boundary");
+                assert_eq!(
+                    stock(&session, ids, pids, &session.state.read_values()),
+                    expected
+                );
+                assert_eq!(
+                    ids.map(|id| session.proto.allocator.slot_of(id).unwrap()),
+                    slots
+                );
+                assert_eq!(
+                    session.proto.root.child_id(depot_id, 0),
+                    Some(ids[cancelled])
+                );
+            }
+            session
+                .tx
+                .submit_boundary(BoundaryRequest::Reparent {
+                    child: ids[cancelled],
+                    new_parent: parent,
+                })
+                .unwrap();
+            for id in stops {
+                session
+                    .tx
+                    .submit_boundary(BoundaryRequest::SuspendOverlay {
+                        target: parent,
+                        overlay_id: id,
+                    })
+                    .unwrap();
+            }
+            // Suspending a transform does not invert its past value write.
+            // Restart explicitly re-authors source FLOW (never WIP stock).
+            for pid in &pids[..2] {
+                session
+                    .tx
+                    .submit_boundary(BoundaryRequest::AttachOverlay {
+                        target: parent,
+                        source_generation: GenerationStamp::new(3),
+                        overlay: Overlay {
+                            id: OverlayId::new(),
+                            kind: OverlayKind::Policy,
+                            source: OverlaySource::System,
+                            origin: parent,
+                            affects: vec![parent],
+                            transform: PropertyTransformDelta {
+                                property_id: *pid,
+                                sub_field_deltas: vec![(role("flow"), TransformOp::set(1.0))],
+                            },
+                            lifecycle: OverlayLifecycle::UntilDissolved,
+                        },
+                    })
+                    .unwrap();
+            }
+            session.step_once().expect("restart boundary");
+            assert_eq!(
+                stock(&session, ids, pids, &session.state.read_values()),
+                expected
+            );
+            // The root policy propagates: restart authors flow=1 on root AND
+            // both project producers. Each generation supplies 3A+3B; RF adds
+            // (1.75,1.25) to P and (1.25,1.75) to Q after recipe consumption.
+            // This is explicit new supply, never a refund or stock patch.
+            for generation in 5..=8 {
+                session.step_once().expect("ordinary restarted generation");
+                let actual = stock(&session, ids, pids, &session.state.read_values());
+                let expected = match generation {
+                    5 => [[2.5, 1.5, 0.0], [1.5, 2.5, 0.0]],
+                    6 => [[3.25, 1.75, 1.0], [1.75, 3.25, 1.0]],
+                    7 => [[4.0, 2.0, 2.0], [2.0, 4.0, 2.0]],
+                    8 => [[3.75, 1.25, 4.0], [1.25, 3.75, 4.0]],
+                    _ => unreachable!(),
+                };
+                let delivered = 1.0 + 3.0 * (generation - 4) as f32;
+                let made = actual[0][2] + actual[1][2];
+                assert_eq!(
+                    [
+                        actual[0][0] + actual[1][0] + made,
+                        actual[0][1] + actual[1][1] + made
+                    ],
+                    [delivered; 2]
+                );
+                println!(
+                    "restart project={cancelled} reversed={reversed} g={generation}: {actual:?}"
+                );
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+}
+
+fn install_birth_on_funded_output(
+    session: &mut SimSession,
+    project: SimThingId,
+    product: SimPropertyId,
+    child: SimThing,
+) {
+    use simthing_core::{
+        Direction, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExpressionRegistry,
+        ThresholdDirection,
+    };
+    use simthing_driver::{
+        compile_crossing_consequence_session, ActionBandActiveInstance,
+        ActionBandNativeLaneAdmission, StructuralAuthorization,
+    };
+    use simthing_sim::{CostBandSemantic, ThresholdRegistry, VelocityAlertRegistration};
+    use simthing_spec::{
+        ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
+        ActionBandChannelKind, ActionBandSessionBuildDoor, ActionBandSessionSpec,
+        ActionBandTargetSpec, ActionBandTemplateSpec, ScalarBoundDirection,
+    };
+    let col = session
+        .proto
+        .registry
+        .column_range(product)
+        .col_for_role(
+            &role("balance"),
+            &session.proto.registry.property(product).layout,
+        )
+        .unwrap();
+    let slot = session.proto.allocator.slot_of(project).unwrap();
+    session
+        .proto
+        .register_velocity_alert(VelocityAlertRegistration {
+            sim_thing_id: project,
+            property_id: product,
+            sub_field: role("balance"),
+            threshold: 0.5,
+            direction: Direction::Rising,
+            cost_band: CostBandSemantic::observation(),
+        });
+    session
+        .proto
+        .initial_gpu_sync(&session.coord, &mut session.state)
+        .unwrap();
+    // Phase-5 crossing is strict >; integral recipe output crosses 0.5 on its first complete unit.
+    let thresholds = vec![EmitOnThresholdRegistration {
+        slot,
+        col,
+        threshold: 0.5,
+        direction: ThresholdDirection::Upward,
+        event_kind: 0,
+        buffer: EmitOnThresholdBuffer::Values,
+    }];
+    let eml = EmlExpressionRegistry::new();
+    let spec = ActionBandSessionSpec {
+        budget: ActionBandAdmissionBudgetSpec {
+            axis_channel_count: 1,
+            dependency_binding_count: 0,
+            storage_rows: 1,
+            eml_program_count: 0,
+            emission_binding_count: 1,
+        },
+        templates: vec![ActionBandTemplateSpec {
+            id: "funded-first-birth".into(),
+            label: None,
+            axis_channels: vec![ActionBandChannelBindingSpec {
+                column: col.raw_u32(),
+                kind: ActionBandChannelKind::Primitive,
+            }],
+            target: ActionBandTargetSpec::ScalarBound {
+                channel: col.raw_u32(),
+                bound: 0.5,
+                direction: ScalarBoundDirection::AtLeast,
+            },
+            velocity: None,
+            bands: vec![ActionBandBandSpec {
+                threshold_registration_index: 0,
+                eml_program: None,
+                emission_binding_indices: vec![0],
+            }],
+            subordinate_template_ids: vec![],
+            max_active_subordinates: 0,
+            reserved_instance_rows: 1,
+            requirement_semantics: Default::default(),
+        }],
+    };
+    let frozen = ActionBandSessionBuildDoor::new()
+        .admit_once_at_session_build(&spec, &session.proto.registry, &eml, &thresholds)
+        .unwrap()
+        .clone();
+    let lanes = ActionBandNativeLaneAdmission::from_existing_surfaces(
+        &session.proto.registry,
+        &[],
+        &[],
+        &thresholds,
+        &ThresholdRegistry::new(),
+    );
+    let consequence = StructuralAuthorization::admit(BoundaryRequest::AddChild {
+        parent: project,
+        child,
+    })
+    .unwrap();
+    let commitments = compile_crossing_consequence_session(
+        &frozen,
+        &eml,
+        &[consequence],
+        &[ActionBandActiveInstance::new(
+            frozen.templates()[0].index(),
+            slot,
+            [0.0; 4],
+        )],
+        &lanes,
+    )
+    .unwrap();
+    session
+        .install_action_band_commitments(commitments)
+        .unwrap();
+}
+
+#[test]
+fn first_funded_structural_birth_must_complete_and_leave_ordinary_session_usable() {
+    let mut failures = Vec::new();
+    for pulse in [[1.0, 1.0], [4.0, 4.0]] {
+        for reversed in [false, true] {
+            let hosts = if reversed { ["q", "p"] } else { ["p", "q"] };
+            let (f, spec, pids) = build(pulse, reversed, reversed, &hosts);
+            let parent = f.scenario.root.id;
+            let ids = f.projects;
+            let mut child = SimThing::new(SimThingKind::Cohort, 0);
+            let child_id = child.id;
+            let component = SimThing::new(SimThingKind::Cohort, 0);
+            let component_id = component.id;
+            child.add_child(component);
+            child.add_property(
+                pids[2],
+                PropertyValue::from_layout(&f.scenario.registry.property(pids[2]).layout),
+            );
+            let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+            install_birth_on_funded_output(&mut session, ids[0], pids[2], child);
+            stop_joint_sources(&session, parent, pids);
+            let columns = session.proto.registry.total_columns;
+            let n_slots = session.state.n_slots;
+            for generation in 1..=5 {
+                let result = session.step_once();
+                let values = session.state.read_values();
+                let actual = stock(&session, ids, pids, &values);
+                let born = session.proto.root.contains_id(child_id);
+                let placed = session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(parent, child_id)
+                    .is_some();
+                println!("birth pulse={pulse:?} reversed={reversed} g={generation} result={result:?} stock={actual:?} born={born} component={} placed={placed} action_generation={:?}", session.proto.root.contains_id(component_id), session.action_band_execution_generation());
+                assert_eq!(session.proto.registry.total_columns, columns);
+                assert_eq!(
+                    session.state.n_slots, n_slots,
+                    "preallocated shape never resizes"
+                );
+                if let Err(error) = result {
+                    // Diagnose the touched-generation failure without repairing or
+                    // rolling back any state. Required success assertion remains RED.
+                    let before = (
+                        session.coord.tick_index(),
+                        session.coord.day_index(),
+                        session.integration_schedule().entries().len(),
+                        session.proto.allocator.binding_table_snapshot(),
+                    );
+                    for attempt in 0..3 {
+                        let retry = session
+                            .step_once()
+                            .expect_err("faulted generation must not retry economics");
+                        println!("birth retry {attempt}: {retry:?}");
+                        assert!(
+                            matches!(retry, simthing_driver::SessionError::ExecutionIdentity(ref message) if message.contains("fault"))
+                        );
+                        assert_eq!(session.state.read_values(), values);
+                        assert_eq!(
+                            (
+                                session.coord.tick_index(),
+                                session.coord.day_index(),
+                                session.integration_schedule().entries().len(),
+                                session.proto.allocator.binding_table_snapshot()
+                            ),
+                            before
+                        );
+                    }
+                    failures.push(format!("pulse={pulse:?}/reversed={reversed}/g={generation}: {error:?}; born={born}; placed={placed}"));
+                    break;
+                }
+                if pulse == [1.0, 1.0] {
+                    assert!(
+                        !born && !placed,
+                        "incomplete inputs cannot mint a structural product"
+                    );
+                    assert_eq!(actual, [[0.75, 0.25, 0.0], [0.25, 0.75, 0.0]]);
+                } else if generation >= 3 {
+                    assert!(born && placed);
+                    assert!(session.proto.root.contains_id(component_id));
+                    assert_eq!(actual, [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]]);
+                }
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "funded structural boundary cannot finish: {failures:?}"
+    );
+}
+
+#[test]
+fn ordinary_add_child_control_without_actionband_can_finish_and_continue() {
+    let (f, spec, pids) = build([4.0, 4.0], false, false, &["p", "q"]);
+    let parent = f.scenario.root.id;
+    let ids = f.projects;
+    let mut child = SimThing::new(SimThingKind::Cohort, 0);
+    let child_id = child.id;
+    let component = SimThing::new(SimThingKind::Cohort, 0);
+    let component_id = component.id;
+    child.add_child(component);
+    child.add_property(
+        pids[2],
+        PropertyValue::from_layout(&f.scenario.registry.property(pids[2]).layout),
+    );
+    let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+    stop_joint_sources(&session, parent, pids);
+    session.step_once().unwrap();
+    session.step_once().unwrap();
+    // Diagnostic only: fixed external boundary request, no ActionBand installed.
+    // This control is NOT a funded construction path or a substitute solution.
+    session
+        .tx
+        .submit_boundary(BoundaryRequest::AddChild {
+            parent: ids[0],
+            child,
+        })
+        .unwrap();
+    for generation in 3..=4 {
+        let result = session.step_once();
+        println!("external AddChild control g={generation}: {result:?}");
+        result.expect("ordinary AddChild without the frozen ActionBand should remain usable");
+        assert!(session.proto.root.contains_id(child_id));
+        assert!(session.proto.root.contains_id(component_id));
+        assert!(session
+            .proto
+            .allocator
+            .committed_residency_placement(parent, child_id)
+            .is_some());
+        assert_eq!(
+            stock(&session, ids, pids, &session.state.read_values()),
+            [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]]
+        );
+    }
+}

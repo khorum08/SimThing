@@ -1,3 +1,7 @@
+> HISTORICAL packet at 045b42a3. The explicit-host admission defect was repaired by #2066.
+> Current continuation and separate first-birth blocker: [birth results](rehearsal_lifecycle_construction_birth_results.md).
+> Original evidence below is retained unchanged.
+
 # Construction Leaf A — explicit recipe-host admission blocker
 
 **PROBATION / blocker-proof-present / BLOCKED / OPEN / UNMERGED.**

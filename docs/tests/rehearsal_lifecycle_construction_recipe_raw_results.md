@@ -1,3 +1,7 @@
+> HISTORICAL packet at 045b42a3. The explicit-host admission defect was repaired by #2066.
+> Current continuation and separate first-birth blocker: [birth results](rehearsal_lifecycle_construction_birth_results.md).
+> Original evidence below is retained unchanged.
+
 # Construction Leaf A — eleventh-roll recipe/admission raw observations
 
 Base: `ec078b3095b19218c2d50b0b9a7e607967f029c1`. Order: ingress → unchanged allocation → stock/authorized diagnostic → recipes. Interpretations and exact commands are in [the current results](rehearsal_lifecycle_construction_recipe_results.md); final-head reruns are attested by the PR and Board return.
