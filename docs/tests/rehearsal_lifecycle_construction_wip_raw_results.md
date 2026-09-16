@@ -57,7 +57,7 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 ## Canonical stock settlement
 
 ```text
-running 4 tests
+running 3 tests
 test leaf_residual_must_settle_as_owned_balance_for_each_resource ... component ["a"] children_reversed=false arenas_reversed=false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]]]
 component ["a"] children_reversed=false arenas_reversed=true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]]]
 component ["a"] children_reversed=true arenas_reversed=false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]]]
@@ -70,18 +70,14 @@ component ["a", "b"] children_reversed=false arenas_reversed=false: [[[0.0, 0.0,
 component ["a", "b"] children_reversed=false arenas_reversed=true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
 component ["a", "b"] children_reversed=true arenas_reversed=false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
 component ["a", "b"] children_reversed=true arenas_reversed=true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
-
-thread 'leaf_residual_must_settle_as_owned_balance_for_each_resource' (19568) panicked at crates\simthing-driver\tests\rehearsal_lifecycle_construction_wip.rs:296:5:
-RF leaf residual did not become owned Balance: [(["a"], false, false, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]), (["a"], false, true, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]), (["a"], true, false, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]), (["a"], true, true, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]), (["b"], false, false, [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (["b"], false, true, [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (["b"], true, false, [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (["b"], true, true, [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (["a", "b"], false, false, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (["a", "b"], false, true, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (["a", "b"], true, false, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (["a", "b"], true, true, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]])]
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-FAILED
-test ordinary_session_must_settle_leaf_wip_without_host_correction ... ordinary children_reversed=false arenas_reversed=false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
+ordinary children_reversed=false arenas_reversed=false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
 ordinary children_reversed=false arenas_reversed=true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
 ordinary children_reversed=true arenas_reversed=false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
 ordinary children_reversed=true arenas_reversed=true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.75, 0.75, 0.75], [0.25, 0.25, 0.25]], [[0.0, 0.0, 0.0], [0.25, 0.25, 0.25], [0.75, 0.75, 0.75]]]
 
-thread 'ordinary_session_must_settle_leaf_wip_without_host_correction' (32956) panicked at crates\simthing-driver\tests\rehearsal_lifecycle_construction_wip.rs:319:5:
-ordinary delivered flow never settled into project-owned WIP: [(false, false, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (false, true, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (true, false, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]), (true, true, [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]])]
+thread 'leaf_residual_must_settle_as_owned_balance_for_each_resource' (2844) panicked at crates\simthing-driver\tests\rehearsal_lifecycle_construction_wip.rs:315:5:
+ordinary delivered flow never settled into project-owned WIP: ["component [\"a\"]/false/false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]", "component [\"a\"]/false/true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]", "component [\"a\"]/true/false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]", "component [\"a\"]/true/true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]]]", "component [\"b\"]/false/false: [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "component [\"b\"]/false/true: [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "component [\"b\"]/true/false: [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "component [\"b\"]/true/true: [[[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "component [\"a\", \"b\"]/false/false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "component [\"a\", \"b\"]/false/true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "component [\"a\", \"b\"]/true/false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "component [\"a\", \"b\"]/true/true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "ordinary false/false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "ordinary false/true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "ordinary true/false: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]", "ordinary true/true: [[[0.0, 0.0, 0.0], [0.75, 0.0, 0.0], [0.25, 0.0, 0.0]], [[0.0, 0.0, 0.0], [0.25, 0.0, 0.0], [0.75, 0.0, 0.0]]]"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 FAILED
 test parent_surplus_integrates_through_existing_balance_door ... parent surplus control ordinary=false: [[[0.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]]
 parent surplus control ordinary=true: [[[0.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]]
@@ -89,7 +85,7 @@ ok
 test seeded_leaf_rate_integrates_once_in_one_ordinary_generation ... seeded rate component: [[[0.0, 0.0, 0.0], [0.0, 0.5, 0.5], [0.0, 0.0, 0.0]]]
 seeded rate ordinary: [[[0.0, 0.0, 0.0], [0.0, 0.5, 1.5], [0.0, 0.0, 0.0]]]; expected=[[[0.0, 0.0, 0.0], [0.0, 0.5, 0.5], [0.0, 0.0, 0.0]]]
 
-thread 'seeded_leaf_rate_integrates_once_in_one_ordinary_generation' (31436) panicked at crates\simthing-driver\tests\rehearsal_lifecycle_construction_wip.rs:257:5:
+thread 'seeded_leaf_rate_integrates_once_in_one_ordinary_generation' (32940) panicked at crates\simthing-driver\tests\rehearsal_lifecycle_construction_wip.rs:257:5:
 assertion `left == right` failed: one dt=1 generation must integrate rate 0.5 exactly once
   left: [[[0.0, 0.0, 0.0], [0.0, 0.5, 1.5], [0.0, 0.0, 0.0]]]
  right: [[[0.0, 0.0, 0.0], [0.0, 0.5, 0.5], [0.0, 0.0, 0.0]]]
@@ -99,10 +95,9 @@ failures:
 
 failures:
     leaf_residual_must_settle_as_owned_balance_for_each_resource
-    ordinary_session_must_settle_leaf_wip_without_host_correction
     seeded_leaf_rate_integrates_once_in_one_ordinary_generation
 
-test result: FAILED. 1 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.29s
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.01s
 
 error: test failed, to rerun pass `-p simthing-driver --test rehearsal_lifecycle_construction_wip`
 ```
