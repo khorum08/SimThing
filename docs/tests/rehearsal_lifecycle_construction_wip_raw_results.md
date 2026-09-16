@@ -1,3 +1,5 @@
+> Historical pre-eleventh-roll evidence. #2065 repairs leaf settlement and integration multiplicity. Current stock tests are GREEN after the authorized non-arena diagnostic correction. See [recipe/admission results](rehearsal_lifecycle_construction_recipe_results.md) for the next blocker. Evidence below remains as recorded.
+
 # Construction Leaf A — tenth-roll raw observations
 
 Base: `72d3c338ce91a47af17cfed5420b316a2484ede4`. Execution order: ingress, unchanged allocation, stock settlement. Commands, interpretation, fixture provenance and lifecycle limitations are in [the WIP results](rehearsal_lifecycle_construction_wip_results.md). Final committed-head reruns are attested by the PR validation and Board return.
