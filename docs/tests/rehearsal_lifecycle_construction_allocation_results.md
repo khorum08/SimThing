@@ -1,3 +1,5 @@
+> Historical pre-tenth-roll evidence. #2064 repairs the independent-resource binding defect; the unchanged discriminator is now GREEN. Current Leaf A status and the next stock-settlement blocker are in [the WIP results](rehearsal_lifecycle_construction_wip_results.md). The evidence below is preserved as recorded.
+
 # Construction Leaf A — independent-resource binding blocker
 
 Status: **PROBATION / blocker-proof-present / BLOCKED / OPEN / UNMERGED**.
