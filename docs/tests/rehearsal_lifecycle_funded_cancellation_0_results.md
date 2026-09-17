@@ -65,4 +65,9 @@ registry/dimension/resident fences exact (B6); mixed add+remove needs BOTH proof
 
 ## Clean-checkout proof
 
-CLEANCHECKOUT_PLACEHOLDER
+- commit: `c10e2e9a` (the exact thirteenth-roll commit)
+- command: fresh `git clone` at that exact commit (canonical LF checkout), sibling
+  directory `simthing-e8-roll13-verify`, never %TEMP%;
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: ec5a2a30afaee795`; referee
+  `1 passed; 0 failed` — pinned fingerprint reproduced from the fresh canonical-LF clone.
