@@ -1196,3 +1196,594 @@ fn canonical_multi_remove_must_preserve_requested_identities() {
         "canonical identity-based cancellation required success: {failures:?}"
     );
 }
+
+fn install_funded_birth_sequence(
+    session: &mut SimSession,
+    project: SimThingId,
+    product: SimPropertyId,
+    children: Vec<SimThing>,
+) {
+    use simthing_core::{
+        Direction, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExpressionRegistry,
+        ThresholdDirection,
+    };
+    use simthing_driver::{
+        compile_crossing_consequence_session, ActionBandActiveInstance,
+        ActionBandNativeLaneAdmission, StructuralAuthorization,
+    };
+    use simthing_sim::{CostBandSemantic, ThresholdRegistry, VelocityAlertRegistration};
+    use simthing_spec::{
+        ActionBandAdmissionBudgetSpec, ActionBandBandSpec, ActionBandChannelBindingSpec,
+        ActionBandChannelKind, ActionBandSessionBuildDoor, ActionBandSessionSpec,
+        ActionBandTargetSpec, ActionBandTemplateSpec, ScalarBoundDirection,
+    };
+    let col = session
+        .proto
+        .registry
+        .column_range(product)
+        .col_for_role(
+            &role("balance"),
+            &session.proto.registry.property(product).layout,
+        )
+        .unwrap();
+    let slot = session.proto.allocator.slot_of(project).unwrap();
+    let mut thresholds = Vec::new();
+    for index in 0..children.len() {
+        let threshold = index as f32 + 0.5;
+        session
+            .proto
+            .register_velocity_alert(VelocityAlertRegistration {
+                sim_thing_id: project,
+                property_id: product,
+                sub_field: role("balance"),
+                threshold,
+                direction: Direction::Rising,
+                cost_band: CostBandSemantic::observation(),
+            });
+        thresholds.push(EmitOnThresholdRegistration {
+            slot,
+            col,
+            threshold,
+            direction: ThresholdDirection::Upward,
+            event_kind: index as u32,
+            buffer: EmitOnThresholdBuffer::Values,
+        });
+    }
+    session
+        .proto
+        .initial_gpu_sync(&session.coord, &mut session.state)
+        .unwrap();
+    let eml = EmlExpressionRegistry::new();
+    let spec = ActionBandSessionSpec {
+        budget: ActionBandAdmissionBudgetSpec {
+            axis_channel_count: 1,
+            dependency_binding_count: 0,
+            storage_rows: children.len() as u32,
+            eml_program_count: 0,
+            emission_binding_count: children.len() as u32,
+        },
+        templates: (0..children.len())
+            .map(|index| ActionBandTemplateSpec {
+                id: format!("funded-distinct-birth-{index}"),
+                label: None,
+                axis_channels: vec![ActionBandChannelBindingSpec {
+                    column: col.raw_u32(),
+                    kind: ActionBandChannelKind::Primitive,
+                }],
+                target: ActionBandTargetSpec::ScalarBound {
+                    channel: col.raw_u32(),
+                    bound: index as f32 + 0.5,
+                    direction: ScalarBoundDirection::AtLeast,
+                },
+                velocity: None,
+                bands: vec![ActionBandBandSpec {
+                    threshold_registration_index: index as u32,
+                    eml_program: None,
+                    emission_binding_indices: vec![index as u32],
+                }],
+                subordinate_template_ids: vec![],
+                max_active_subordinates: 0,
+                reserved_instance_rows: 1,
+                requirement_semantics: Default::default(),
+            })
+            .collect(),
+    };
+    let frozen = ActionBandSessionBuildDoor::new()
+        .admit_once_at_session_build(&spec, &session.proto.registry, &eml, &thresholds)
+        .unwrap()
+        .clone();
+    let lanes = ActionBandNativeLaneAdmission::from_existing_surfaces(
+        &session.proto.registry,
+        &[],
+        &[],
+        &thresholds,
+        &ThresholdRegistry::new(),
+    );
+    let consequences = children
+        .into_iter()
+        .map(|child| {
+            StructuralAuthorization::admit(BoundaryRequest::AddChild {
+                parent: project,
+                child,
+            })
+            .unwrap()
+        })
+        .collect::<Vec<_>>();
+    let active = frozen
+        .templates()
+        .iter()
+        .map(|template| ActionBandActiveInstance::new(template.index(), slot, [0.0; 4]))
+        .collect::<Vec<_>>();
+    let commitments =
+        compile_crossing_consequence_session(&frozen, &eml, &consequences, &active, &lanes)
+            .unwrap();
+    session
+        .install_action_band_commitments(commitments)
+        .unwrap();
+}
+
+fn replace_authored_source_flow(
+    session: &SimSession,
+    root: SimThingId,
+    pids: [SimPropertyId; 3],
+    previous: Vec<OverlayId>,
+    generation: u32,
+    flow: f32,
+) -> Vec<OverlayId> {
+    for overlay_id in previous {
+        session
+            .tx
+            .submit_boundary(BoundaryRequest::SuspendOverlay {
+                target: root,
+                overlay_id,
+            })
+            .unwrap();
+    }
+    pids[..2]
+        .iter()
+        .map(|pid| {
+            let id = OverlayId::new();
+            session
+                .tx
+                .submit_boundary(BoundaryRequest::AttachOverlay {
+                    target: root,
+                    source_generation: GenerationStamp::new(generation - 1),
+                    overlay: Overlay {
+                        id,
+                        kind: OverlayKind::Policy,
+                        source: OverlaySource::System,
+                        origin: root,
+                        affects: vec![root],
+                        transform: PropertyTransformDelta {
+                            property_id: *pid,
+                            sub_field_deltas: vec![(role("flow"), TransformOp::set(flow))],
+                        },
+                        lifecycle: OverlayLifecycle::UntilDissolved,
+                    },
+                })
+                .unwrap();
+            id
+        })
+        .collect()
+}
+
+#[test]
+fn ordinary_funded_placement_and_restart_matrix() {
+    let mut failures = Vec::new();
+    use simthing_core::ObjectResidencyRelation;
+    use simthing_sim::{
+        BoundaryDeltaEntry, OrdinaryGrowthRefusalReason, RecordedGrowthResidencyFact,
+    };
+    for project in 0..2 {
+        for reversed in [false, true] {
+            let hosts = if reversed { ["q", "p"] } else { ["p", "q"] };
+            let (mut f, mut spec, pids) = build([4.0, 4.0], reversed, reversed, &hosts);
+            let root = f.scenario.root.id;
+            let ids = f.projects;
+            // Fully occupied eight-row world. Fixed authored removals at G1
+            // leave two separated holes: enough total grant, no two-row extent.
+            let blockers = (0..5)
+                .map(|_| SimThing::new(SimThingKind::Cohort, 0))
+                .collect::<Vec<_>>();
+            let blocker_ids = blockers.iter().map(|node| node.id).collect::<Vec<_>>();
+            for blocker in blockers {
+                f.scenario.root.add_child(blocker);
+            }
+            f.scenario.n_slots = 8;
+            simthing_driver::resident_clearing_runtime::install_default_resident_rf_property(
+                &mut f.scenario.registry,
+                &mut f.scenario.root,
+            );
+            let mut initial = SlotAllocator::new();
+            initial.install_initial_tree(&f.scenario.root).unwrap();
+            spec.resource_flow = Some(admitted(&f, &initial, reversed));
+            let layout = f.scenario.registry.property(pids[2]).layout.clone();
+            let mut products = Vec::new();
+            let mut profiles = Vec::new();
+            for ordinal in 0..3 {
+                let mut product = SimThing::new(SimThingKind::Cohort, 0);
+                let mut component = SimThing::new(SimThingKind::Cohort, 0);
+                for (node, base) in [(&mut product, 7.0), (&mut component, 9.0)] {
+                    let mut value = PropertyValue::from_layout(&layout);
+                    value.set_role(&role("balance"), &layout, base + ordinal as f32);
+                    node.add_property(pids[2], value);
+                }
+                let overlay_id = OverlayId::new();
+                product.overlays.push(Overlay {
+                    id: overlay_id,
+                    kind: OverlayKind::Policy,
+                    source: OverlaySource::System,
+                    origin: product.id,
+                    affects: vec![product.id],
+                    transform: PropertyTransformDelta {
+                        property_id: pids[2],
+                        sub_field_deltas: vec![(
+                            role("balance"),
+                            TransformOp::set(17.0 + ordinal as f32),
+                        )],
+                    },
+                    lifecycle: OverlayLifecycle::UntilDissolved,
+                });
+                profiles.push((product.id, component.id, overlay_id));
+                product.add_child(component);
+                products.push(product);
+            }
+            let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+            install_funded_birth_sequence(&mut session, ids[project], pids[2], products);
+            let mut source_overlays = stop_joint_sources(&session, root, pids);
+            for target in [blocker_ids[0], blocker_ids[2]] {
+                session
+                    .tx
+                    .submit_boundary(BoundaryRequest::Remove { target })
+                    .unwrap();
+            }
+            let shape = (session.state.n_slots, session.proto.registry.total_columns);
+            let bound_slots = ids.map(|id| session.proto.allocator.slot_of(id).unwrap());
+            let mut first_success_placement = None;
+            for generation in 1..=14 {
+                // A fixed authored script, independent of all readback. Failed
+                // placement scraps its already-consumed recipe inputs (no refund).
+                // Restart pays new A/B; the old refused candidate never retries.
+                if generation == 4 {
+                    for target in [blocker_ids[1], blocker_ids[3], blocker_ids[4]] {
+                        session
+                            .tx
+                            .submit_boundary(BoundaryRequest::Remove { target })
+                            .unwrap();
+                    }
+                }
+                if generation == 9 {
+                    session
+                        .tx
+                        .submit_boundary(BoundaryRequest::Remove {
+                            target: profiles[1].0,
+                        })
+                        .unwrap();
+                }
+                if [4, 5, 9, 10].contains(&generation) {
+                    let flow = if generation == 4 || generation == 9 {
+                        1.0
+                    } else {
+                        0.0
+                    };
+                    source_overlays = replace_authored_source_flow(
+                        &session,
+                        root,
+                        pids,
+                        source_overlays,
+                        generation,
+                        flow,
+                    );
+                }
+                let result = session.step_once();
+                let values = session.state.read_values();
+                let actual = stock(&session, ids, pids, &values);
+                println!("placement/restart project={project} reversed={reversed} g={generation} result={result:?} stock={actual:?} capacity={} live={} present={:?} action_generation={:?}", session.proto.allocator.growth_capacity_available(root), session.proto.allocator.live_count(), profiles.iter().map(|(id,_,_)| session.proto.root.contains_id(*id)).collect::<Vec<_>>(), session.action_band_execution_generation());
+                if let Err(ref error) = result {
+                    let before = (
+                        session.coord.tick_index(),
+                        session.coord.day_index(),
+                        session.integration_schedule().entries().len(),
+                        session.proto.allocator.binding_table_snapshot(),
+                        session.action_band_execution_generation(),
+                    );
+                    for attempt in 0..3 {
+                        let retry = session
+                            .step_once()
+                            .expect_err("touched generation stays fail-stop");
+                        println!("placement/restart fault={error:?} retry={attempt}: {retry:?}");
+                        assert!(
+                            matches!(retry, simthing_driver::SessionError::ExecutionIdentity(ref message) if message.contains("fault"))
+                        );
+                        assert_eq!(session.state.read_values(), values);
+                        assert_eq!(
+                            (
+                                session.coord.tick_index(),
+                                session.coord.day_index(),
+                                session.integration_schedule().entries().len(),
+                                session.proto.allocator.binding_table_snapshot(),
+                                session.action_band_execution_generation()
+                            ),
+                            before
+                        );
+                    }
+                }
+                if let Err(error) = result {
+                    failures.push(format!("placement/restart project={project} reversed={reversed} g={generation}: {error:?}"));
+                    break;
+                }
+                for (index, id) in blocker_ids.iter().enumerate() {
+                    let present = generation < 4 && index != 0 && index != 2;
+                    assert_eq!(
+                        session.proto.root.contains_id(*id),
+                        present,
+                        "exact blocker identity"
+                    );
+                    assert_eq!(session.proto.allocator.slot_of(*id).is_some(), present);
+                }
+                if generation == 4 || generation == 9 {
+                    assert_eq!(session.proto.allocator.growth_capacity_available(root), 5);
+                }
+                assert_eq!(
+                    (session.state.n_slots, session.proto.registry.total_columns),
+                    shape
+                );
+                assert_eq!(
+                    ids.map(|id| session.proto.allocator.slot_of(id).unwrap()),
+                    bound_slots
+                );
+                let expected = match generation {
+                    1 => [[3.0, 1.0, 0.0], [1.0, 3.0, 0.0]],
+                    2..=4 => [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]],
+                    5 => [[3.75, 1.25, 1.0], [1.25, 3.75, 1.0]],
+                    6..=9 => [[2.75, 0.25, 2.0], [0.25, 2.75, 2.0]],
+                    10 => [[4.5, 1.5, 2.0], [1.5, 4.5, 2.0]],
+                    _ => [[3.5, 0.5, 3.0], [0.5, 3.5, 3.0]],
+                };
+                assert_eq!(actual, expected);
+                let supplied = 4.0
+                    + if generation >= 5 { 3.0 } else { 0.0 }
+                    + if generation >= 10 { 3.0 } else { 0.0 };
+                for resource in 0..2 {
+                    assert_eq!(
+                        actual[0][resource] + actual[1][resource] + actual[0][2] + actual[1][2],
+                        supplied
+                    );
+                }
+                let entries = session.proto.take_delta_log();
+                let refusals = entries
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        BoundaryDeltaEntry::GrowthResidencyRefused {
+                            fact: RecordedGrowthResidencyFact::Refused(refusal),
+                        } => Some(refusal),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                if generation == 3 {
+                    assert_eq!(refusals.len(), 1);
+                    let refusal = refusals[0];
+                    println!("typed placement refusal: {refusal:?}");
+                    assert_eq!(refusal.candidate().grantee(), profiles[0].0);
+                    assert_eq!(refusal.attempted_generation().get(), 3);
+                    assert_eq!(refusal.revalue_generation().get(), 4);
+                    let OrdinaryGrowthRefusalReason::Placement(placement_refusal) =
+                        refusal.reason()
+                    else {
+                        panic!("fragmentation must be a typed placement refusal: {refusal:?}");
+                    };
+                    assert!(matches!(
+                        placement_refusal.reason(),
+                        simthing_gpu::ResidencyPlacementRefusalReason::NoContiguousExtent {
+                            quantity: 2,
+                            ..
+                        }
+                    ));
+                    assert_eq!(placement_refusal.retained_unmet_quantity(), 2);
+                    assert!(refusal.market_grant_key().is_some());
+                    assert_eq!(session.proto.allocator.growth_capacity_available(root), 2);
+                } else {
+                    assert!(refusals.is_empty());
+                }
+                assert!(!session.proto.root.contains_id(profiles[0].0));
+                assert!(!session.proto.root.contains_id(profiles[0].1));
+                assert!(session.proto.allocator.slot_of(profiles[0].1).is_none());
+                assert!(session.proto.allocator.relation_of(profiles[0].0).is_none());
+                assert!(session.proto.allocator.relation_of(profiles[0].1).is_none());
+                assert!(session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(root, profiles[0].0)
+                    .is_none());
+                assert!(session.proto.allocator.slot_of(profiles[0].0).is_none());
+                for ordinal in 1..=2 {
+                    let (id, component, overlay) = profiles[ordinal];
+                    let born_now = generation == if ordinal == 1 { 7 } else { 12 };
+                    let present = if ordinal == 1 {
+                        (7..9).contains(&generation)
+                    } else {
+                        generation >= 12
+                    };
+                    assert_eq!(session.proto.root.contains_id(id), present);
+                    assert_eq!(session.proto.root.contains_id(component), present);
+                    if present {
+                        let snapshot = session.proto.root.snapshot_node(id).unwrap();
+                        assert_eq!(snapshot.children, vec![component]);
+                        assert!(snapshot.property_ids.contains(&pids[2]));
+                        assert!(snapshot.overlay_ids.contains(&overlay));
+                        assert_eq!(
+                            session.proto.allocator.relation_of(id),
+                            Some(ObjectResidencyRelation::ChildOf(ids[project]))
+                        );
+                        assert_eq!(
+                            session.proto.allocator.relation_of(component),
+                            Some(ObjectResidencyRelation::ChildOf(id))
+                        );
+                        let placement = session
+                            .proto
+                            .allocator
+                            .committed_residency_placement(root, id)
+                            .unwrap();
+                        assert_eq!(placement.quantity(), 2);
+                        if born_now {
+                            assert!(entries.iter().any(|entry| matches!(entry, BoundaryDeltaEntry::SimThingAdded { parent, node, residency } if *parent == ids[project] && node.id() == id && residency.placement() == placement)));
+                            println!("fresh completion ordinal={ordinal} id={id:?} component={component:?} overlay={overlay:?} placement={placement:?}");
+                            if ordinal == 1 {
+                                first_success_placement = Some(placement);
+                            } else {
+                                let prior = first_success_placement.unwrap();
+                                assert_eq!(
+                                    placement.extent(),
+                                    prior.extent(),
+                                    "freed capacity reused"
+                                );
+                                assert_ne!(
+                                    placement.identity(),
+                                    prior.identity(),
+                                    "fresh grant and grantee"
+                                );
+                            }
+                        } else {
+                            let col = session
+                                .proto
+                                .registry
+                                .column_range(pids[2])
+                                .col_for_role(&role("balance"), &layout)
+                                .unwrap();
+                            for observed in [id, component] {
+                                let slot = session.proto.allocator.slot_of(observed).unwrap();
+                                let value =
+                                    values[slot.as_usize() * shape.1 + col.raw_u32() as usize];
+                                println!(
+                                    "fresh observation id={observed:?} slot={slot:?} value={value}"
+                                );
+                                assert_eq!(value, 17.0 + ordinal as f32);
+                            }
+                        }
+                    } else {
+                        assert!(session.proto.allocator.slot_of(id).is_none());
+                        assert!(session.proto.allocator.slot_of(component).is_none());
+                        assert!(session
+                            .proto
+                            .allocator
+                            .committed_residency_placement(root, id)
+                            .is_none());
+                    }
+                }
+            }
+            assert_ne!(profiles[1].0, profiles[2].0);
+            assert_ne!(profiles[1].1, profiles[2].1);
+            assert_ne!(profiles[1].2, profiles[2].2);
+        }
+    }
+    separated_funded_crossings_without_placement_refusal(&mut failures);
+    assert!(
+        failures.is_empty(),
+        "ordinary funded continuation cannot finish: {failures:?}"
+    );
+}
+
+// Isolation control: the same separated recipe crossings with ample contiguous
+// capacity and no removal, fragmentation, refusal, or cancellation. Both births
+// must complete through the installed structural door; errors remain failures.
+fn separated_funded_crossings_without_placement_refusal(failures: &mut Vec<String>) {
+    for project in 0..2 {
+        for reversed in [false, true] {
+            let hosts = if reversed { ["q", "p"] } else { ["p", "q"] };
+            let (f, spec, pids) = build([4.0, 4.0], reversed, reversed, &hosts);
+            let root = f.scenario.root.id;
+            let ids = f.projects;
+            let mut children = Vec::new();
+            let mut products = Vec::new();
+            for _ in 0..2 {
+                let mut child = SimThing::new(SimThingKind::Cohort, 0);
+                child.add_property(
+                    pids[2],
+                    PropertyValue::from_layout(&f.scenario.registry.property(pids[2]).layout),
+                );
+                child.add_child(SimThing::new(SimThingKind::Cohort, 0));
+                products.push(child.id);
+                children.push(child);
+            }
+            let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+            install_funded_birth_sequence(&mut session, ids[project], pids[2], children);
+            let mut source_overlays = stop_joint_sources(&session, root, pids);
+            for generation in 1..=8 {
+                if generation == 4 || generation == 5 {
+                    source_overlays = replace_authored_source_flow(
+                        &session,
+                        root,
+                        pids,
+                        source_overlays,
+                        generation,
+                        if generation == 4 { 1.0 } else { 0.0 },
+                    );
+                }
+                let result = session.step_once();
+                let values = session.state.read_values();
+                let actual = stock(&session, ids, pids, &values);
+                println!("no-refusal control project={project} reversed={reversed} g={generation} result={result:?} stock={actual:?} action_generation={:?}", session.action_band_execution_generation());
+                let expected = match generation {
+                    1 => [[3.0, 1.0, 0.0], [1.0, 3.0, 0.0]],
+                    2..=4 => [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]],
+                    5 => [[3.75, 1.25, 1.0], [1.25, 3.75, 1.0]],
+                    _ => [[2.75, 0.25, 2.0], [0.25, 2.75, 2.0]],
+                };
+                assert_eq!(actual, expected);
+                assert!(!session.proto.delta_log().iter().any(|entry| matches!(
+                    entry,
+                    simthing_sim::BoundaryDeltaEntry::GrowthResidencyRefused { .. }
+                )));
+                assert_eq!(session.proto.root.contains_id(products[0]), generation >= 3);
+                assert_eq!(
+                    session
+                        .proto
+                        .allocator
+                        .committed_residency_placement(root, products[0])
+                        .is_some(),
+                    generation >= 3
+                );
+                assert_eq!(session.proto.root.contains_id(products[1]), generation >= 7);
+                if let Err(error) = result {
+                    let before = (
+                        session.coord.tick_index(),
+                        session.coord.day_index(),
+                        session.integration_schedule().entries().len(),
+                        session.proto.allocator.binding_table_snapshot(),
+                        session.action_band_execution_generation(),
+                        session
+                            .proto
+                            .allocator
+                            .committed_residency_placement(root, products[0]),
+                    );
+                    for attempt in 0..3 {
+                        let retry = session
+                            .step_once()
+                            .expect_err("touched control generation stays fail-stop");
+                        println!("no-refusal control retry={attempt}: {retry:?}");
+                        assert!(
+                            matches!(retry, simthing_driver::SessionError::ExecutionIdentity(ref message) if message.contains("fault"))
+                        );
+                        assert_eq!(session.state.read_values(), values);
+                        assert_eq!(
+                            (
+                                session.coord.tick_index(),
+                                session.coord.day_index(),
+                                session.integration_schedule().entries().len(),
+                                session.proto.allocator.binding_table_snapshot(),
+                                session.action_band_execution_generation(),
+                                session
+                                    .proto
+                                    .allocator
+                                    .committed_residency_placement(root, products[0])
+                            ),
+                            before
+                        );
+                    }
+                    failures.push(format!("no-refusal control project={project} reversed={reversed} g={generation}: {error:?}"));
+                    break;
+                }
+            }
+        }
+    }
+}
