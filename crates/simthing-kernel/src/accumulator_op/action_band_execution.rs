@@ -483,23 +483,28 @@ impl ActionBandExecutionPlan {
         let mut joined = Vec::new();
         for delta in deltas {
             for (band_index, band) in self.bands.iter().enumerate() {
-                if band.threshold_registration != delta.reg_idx() {
-                    continue;
-                }
                 let admitted = self.admitted_band_thresholds.get(band_index).ok_or(
                     ActionBandExecutionError::MissingAdmittedThresholdDefinition {
                         band_index: band_index as u32,
                     },
                 )?;
+                // DEFINITION is authority; the registration index is not.
+                // A crossing carrying the admitted definition joins wherever
+                // the rebuild placed it (index-order independent). A crossing
+                // arriving at the frozen band's registration index WITHOUT
+                // that definition is the redefinition case and fails closed.
                 if !admitted.admits(delta) {
-                    return Err(
-                        ActionBandExecutionError::FrozenThresholdDefinitionStale {
-                            band_index: band_index as u32,
-                            admitted_threshold_bits: admitted.threshold_bits,
-                            observed_threshold_bits: delta.threshold().to_bits(),
-                            registration_index: delta.reg_idx(),
-                        },
-                    );
+                    if band.threshold_registration == delta.reg_idx() {
+                        return Err(
+                            ActionBandExecutionError::FrozenThresholdDefinitionStale {
+                                band_index: band_index as u32,
+                                admitted_threshold_bits: admitted.threshold_bits,
+                                observed_threshold_bits: delta.threshold().to_bits(),
+                                registration_index: delta.reg_idx(),
+                            },
+                        );
+                    }
+                    continue;
                 }
                 for (instance_row, instance) in self.active_instances.iter().enumerate() {
                     let template = &self.templates[instance.template_index as usize];
