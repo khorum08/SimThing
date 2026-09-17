@@ -99,6 +99,7 @@ TRACK-CLOSEOUT PROVE
   PASS bounded-renewal-refuses-invalid-date
   PASS bounded-renewal-refuses-duplicate
   PASS bounded-renewal-refuses-no-survival-increment
+  PASS bounded-renewal-refuses-fourth-renewal-without-promotion
   PASS decommission-dry-verdict
   PASS decommission-dry-noop
   PASS decommission-reaps-dedicated-file

@@ -69,7 +69,7 @@ Model 2 remains CLOSED. #2068 must not merge separately.
 ## Proof
 
 - Nine affected/carried crates: `cargo check --locked ... --tests` PASS after full restoration.
-- `track_closeout.sh --prove`: **147 checks PASS**, including the disposable
+- `track_closeout.sh --prove`: **148 checks PASS**, including the disposable
   build/resolve/check/apply rehearsal and new deadline/closeout/refusal cases.
 - Current artifact expiry: **PASS expired=0 cruft=0 malformed=0**.
 - Current reaper dry run: **reaped=0 files=0 manual=0**.

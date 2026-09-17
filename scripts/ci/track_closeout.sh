@@ -354,8 +354,8 @@ def parked_renewal(row: dict, today: _dt.date) -> dict | None:
         raise ValueError("bounded renewal must start after parking, not in the future, and last at most five days")
     if renewal["closeout"] != "next-rung-or-workplan":
         raise ValueError("bounded renewal must expire at the next rung or workplan closeout")
-    if int(row.get("dsu_survivals", "0")) < 1:
-        raise ValueError("bounded renewal requires a dsu_survivals increment")
+    if not 1 <= int(row.get("dsu_survivals", "0")) <= 3:
+        raise ValueError("bounded renewal requires a survival increment; a fourth renewal needs promotion evaluation")
     return renewal
 
 
@@ -3245,6 +3245,9 @@ def cmd_prove():
         no_bump = renewed_pen_row()
         no_bump["dsu_survivals"] = "0"
         variants.append(("no-survival-increment", no_bump))
+        fourth = renewed_pen_row()
+        fourth["dsu_survivals"] = "4"
+        variants.append(("fourth-renewal-without-promotion", fourth))
         for label, row in variants:
             write_tsv(pen, PARKED_HEADER, [row])
             before = pen.read_bytes()
