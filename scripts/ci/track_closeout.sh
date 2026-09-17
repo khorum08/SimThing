@@ -74,6 +74,7 @@ import csv
 import datetime as _dt
 import hashlib
 import io
+import json
 import os
 import pathlib
 import re
@@ -147,6 +148,8 @@ DISPOSITIONS = {
 # Wall-clock lease policy (real-time, not survival-count).
 LEASE_CRUFT_DAYS = 3
 LEASE_HARD_DAYS = 7
+BOUNDED_RENEWAL_DAYS = 5
+BOUNDED_RENEWAL_MARKER = "bounded-renewal:"
 
 DOC_EXTENSIONS = {".md", ".tsv"}
 DOC_ARCHIVE_PREFIX = "docs/archive/"
@@ -327,6 +330,60 @@ def now_date() -> _dt.date:
     if override:
         return _dt.date.fromisoformat(override)
     return _dt.datetime.now(_dt.timezone.utc).date()
+
+
+def parked_renewal(row: dict, today: _dt.date) -> dict | None:
+    """A named consumer may retain a pen identity only until the first closeout
+    or its explicit (at most five UTC calendar days) deadline. Original parking
+    provenance stays intact; ordinary seven-day leases are unchanged.
+    """
+    reason = row.get("park_reason", "")
+    if BOUNDED_RENEWAL_MARKER not in reason:
+        return None
+    if reason.count(BOUNDED_RENEWAL_MARKER) != 1:
+        raise ValueError("duplicate bounded renewal")
+    renewal = json.loads(reason.split(BOUNDED_RENEWAL_MARKER, 1)[1].strip())
+    fields = {"renewed_on", "expires_on", "closeout", "consumer", "authority"}
+    if (not isinstance(renewal, dict) or set(renewal) != fields
+            or any(not isinstance(v, str) or not v.strip() for v in renewal.values())):
+        raise ValueError("bounded renewal requires dates, consumer, authority and closeout")
+    start = _dt.date.fromisoformat(renewal["renewed_on"])
+    end = _dt.date.fromisoformat(renewal["expires_on"])
+    parked = _dt.date.fromisoformat(row.get("parked_at", ""))
+    if parked > start or start > today or not 0 < (end - start).days <= BOUNDED_RENEWAL_DAYS:
+        raise ValueError("bounded renewal must start after parking, not in the future, and last at most five days")
+    if renewal["closeout"] != "next-rung-or-workplan":
+        raise ValueError("bounded renewal must expire at the next rung or workplan closeout")
+    if not 1 <= int(row.get("dsu_survivals", "0")) <= 3:
+        raise ValueError("bounded renewal requires a survival increment; a fourth renewal needs promotion evaluation")
+    return renewal
+
+
+def parked_reap_due(row: dict, today: _dt.date) -> bool:
+    renewal = parked_renewal(row, today)
+    if renewal is not None:
+        return today >= _dt.date.fromisoformat(renewal["expires_on"])
+    return (today - _dt.date.fromisoformat(row.get("parked_at", ""))).days >= LEASE_HARD_DAYS
+
+
+def parked_closeout_failures() -> list[str]:
+    """Preflight only: a closeout cannot silently carry a bounded renewal on.
+    Reaping/renewal remains an explicit disposition, never an automatic deletion
+    of shared source or a fixture still consumed by a gate.
+    """
+    _, parked = read_tsv(PARKED)
+    due, errors = [], []
+    for row in parked:
+        try:
+            if parked_renewal(row, now_date()) is not None:
+                due.append("::".join(row[k] for k in ("crate", "file", "test_name", "kind")))
+        except (ValueError, TypeError) as error:
+            errors.append(f"invalid bounded renewal for {row.get('file')}: {error}")
+    if due:
+        errors.append(f"REAP DUE: {len(due)} bounded-renewal proof(s) reach their next lawful "
+                      "rung/workplan closeout. Explicitly disposition before closing; "
+                      f"first identities: {'; '.join(due[:3])}")
+    return errors
 
 
 def is_durable(row: dict) -> bool:
@@ -1428,6 +1485,13 @@ def cmd_apply():
     # closing track only (preflight; zero writes). Other open/parked tracks' rows stay.
     binding_plan = plan_binding_reap(track_source)
 
+    renewal_failures = parked_closeout_failures()
+    if renewal_failures:
+        for failure in renewal_failures:
+            print(f"  - {failure}")
+        print("TRACK-CLOSEOUT-APPLY-VERDICT: FAIL(bounded-renewal-reap-due)")
+        return 1
+
     art_hdr, art_rows = read_tsv(ARTIFACT_LEDGER)
     if art_hdr is None:
         art_rows = []
@@ -1813,15 +1877,22 @@ def cmd_artifact_expiry():
     today = now_date()
     cruft, expired, bad = [], [], []
 
-    def account(ident, date_str):
+    def account(ident, date_str, parked_row=None):
         try:
             leased = _dt.date.fromisoformat(date_str)
-        except ValueError:
-            bad.append(ident)
+            renewal = parked_renewal(parked_row, today) if parked_row is not None else None
+        except (ValueError, TypeError) as error:
+            bad.append(f"{ident}: {error}")
+            return
+        if renewal is not None:
+            if parked_reap_due(parked_row, today):
+                expired.append((ident, f"bounded renewal due {renewal['expires_on']}"))
+            elif (today - _dt.date.fromisoformat(renewal['renewed_on'])).days >= LEASE_CRUFT_DAYS:
+                cruft.append((ident, (today - _dt.date.fromisoformat(renewal['renewed_on'])).days))
             return
         age = (today - leased).days
         if age >= LEASE_HARD_DAYS:
-            expired.append((ident, age))
+            expired.append((ident, f"{age}d >= {LEASE_HARD_DAYS}d, must delete or elevate"))
         elif age >= LEASE_CRUFT_DAYS:
             cruft.append((ident, age))
 
@@ -1830,12 +1901,12 @@ def cmd_artifact_expiry():
     for row in parked:
         ident = "::".join((row.get("crate", ""), row.get("file", ""),
                            row.get("test_name", ""), row.get("kind", "")))
-        account(f"parked:{ident}", row.get("parked_at", ""))
+        account(f"parked:{ident}", row.get("parked_at", ""), row)
 
     print("TRACK-CLOSEOUT ARTIFACT-EXPIRY (wall-clock)")
     print(f"  leased artifacts: {len(rows)}  parked rows: {len(parked)}  now: {today.isoformat()}")
-    for path, age in expired:
-        print(f"  - EXPIRED ({age}d >= {LEASE_HARD_DAYS}d, must delete or elevate): {path}")
+    for path, reason in expired:
+        print(f"  - EXPIRED ({reason}): {path}")
     for path, age in cruft:
         print(f"  - CRUFT ({age}d >= {LEASE_CRUFT_DAYS}d): {path}")
     for path in bad:
@@ -1867,6 +1938,16 @@ def cmd_decommission():
     art_rows = art_rows or []
     _, inv = read_tsv(INVENTORY)
 
+    # Validate every renewal before planning or applying any removal. Invalid
+    # metadata must never turn a retained live consumer into an expired lease.
+    for row in parked:
+        try:
+            parked_renewal(row, today)
+        except (ValueError, TypeError) as error:
+            print(f"TRACK-CLOSEOUT-DECOMMISSION-VERDICT: FAIL invalid-bounded-renewal "
+                  f"file={row.get('file')} reason={error}")
+            return 1
+
     live_file_refs = {}
     for r in inv:
         live_file_refs[r["file"]] = live_file_refs.get(r["file"], 0) + 1
@@ -1886,7 +1967,11 @@ def cmd_decommission():
     reaped_ids, rm_files, manual, kept = set(), [], [], []
     for r in parked:
         ident = "::".join((r["crate"], r["file"], r["test_name"], r["kind"]))
-        if not (reap_all or past_wall(r.get("parked_at", ""))):
+        try:
+            due = parked_reap_due(r, today)
+        except ValueError:
+            due = False  # legacy malformed dates retain the existing refusal
+        if not (reap_all or due):
             kept.append(r)
             continue
         tn, f = r.get("test_name", ""), r.get("file", "")
@@ -2069,6 +2154,19 @@ def cmd_prove():
             print(f"  FAIL {label}")
         else:
             print(f"  PASS {label}")
+
+    def renewed_pen_row(file="crates/c/tests/retained.rs", kind="integration"):
+        return {
+            "crate": "c", "file": file, "test_name": "retained", "kind": kind,
+            "class": "behavior-regression", "superseding_boundary": "B", "verdict": "KEEP",
+            "note": "downstream-utility: current consumer", "promotion_target": "until-closeout:behavior-regression",
+            "birth_track": "pre-lifecycle", "dsu_survivals": "1", "parked_at": "2026-07-01",
+            "closeout_track": "pre-lifecycle", "park_reason": BOUNDED_RENEWAL_MARKER + json.dumps({
+                "renewed_on": "2026-07-20", "expires_on": "2026-07-25",
+                "closeout": "next-rung-or-workplan", "consumer": "current consumer",
+                "authority": "Owner fixture ruling",
+            }),
+        }
 
     def first_payload_line(path: pathlib.Path) -> str:
         for line in norm_bytes(path.read_bytes()).splitlines():
@@ -2268,6 +2366,39 @@ def cmd_prove():
         check("closeout-deletes-block",
               "TRACK-CLOSEOUT-APPLY-VERDICT:" in r_close.stdout
               and PARK_BEGIN not in norm_bytes((cr / "docs/min_track.md").read_bytes()))
+
+    # Bounded renewal must bite at EITHER closeout door before any mutation,
+    # even four days before the wall. Other rungclose checks are sandbox stubs;
+    # production still executes their real gates unchanged.
+    with tempfile.TemporaryDirectory() as btmp:
+        br = pathlib.Path(btmp)
+        write_min_closeout_sandbox(br, parked_status=False)
+        write_tsv(br / "scripts/ci/test_lifecycle_parked.tsv", PARKED_HEADER, [renewed_pen_row()])
+        before = {str(p.relative_to(br)): p.read_bytes() for p in br.rglob("*") if p.is_file()}
+        env = {**os.environ, "TRACK_CLOSEOUT_NOW": "2026-07-21", "TRACK_CLOSEOUT_SKIP_CARGO": "1"}
+        blocked = subprocess.run(
+            [BASH, "scripts/ci/track_closeout.sh", "--apply", "docs/tests/min-track_closeout_manifest.tsv"],
+            cwd=str(br), capture_output=True, text=True, env=env)
+        check("bounded-renewal-workplan-closeout-refuses-before-wall",
+              blocked.returncode == 1 and "FAIL(bounded-renewal-reap-due)" in blocked.stdout)
+        check("bounded-renewal-workplan-refusal-is-readonly",
+              all((br / path).read_bytes() == data for path, data in before.items()))
+        (br / "docs/rungs.md").write_text(
+            "| # | Rung | Deliverable | Exit proof | Graduation | Status |\n"
+            "|---|---|---|---|---|---|\n"
+            "| 1 | `TEST-0` | scope | proof | D | DA-GRADUATED / merged #1 @ abcdef0 |\n",
+            encoding="utf-8")
+        (br / "scripts/ci/gen_orientation.sh").write_text("echo PASS\n", encoding="utf-8")
+        (br / "scripts/ci/test_lifecycle_expiry_check.sh").write_text(
+            "echo 'LIFECYCLE-EXPIRY-VERDICT: PASS expired=0'\n", encoding="utf-8")
+        cmd = [BASH, "scripts/ci/track_closeout.sh", "--rungclose", "TEST-0", "--workplan", "docs/rungs.md"]
+        blocked_rung = subprocess.run(cmd, cwd=str(br), capture_output=True, text=True, env=env)
+        check("bounded-renewal-rung-closeout-refuses-before-wall",
+              blocked_rung.returncode == 1 and "1 bounded-renewal proof(s)" in blocked_rung.stdout)
+        write_tsv(br / "scripts/ci/test_lifecycle_parked.tsv", PARKED_HEADER, [])
+        cleared_rung = subprocess.run(cmd, cwd=str(br), capture_output=True, text=True, env=env)
+        check("bounded-renewal-disposition-clears-rung-closeout",
+              cleared_rung.returncode == 0 and "RUNGCLOSE-VERDICT: PASS" in cleared_rung.stdout)
 
     # full build -> check -> apply roundtrip in a sandbox
     with tempfile.TemporaryDirectory() as tmp:
@@ -3063,6 +3194,70 @@ def cmd_prove():
         check("deletion-guard-unlisted-open-track-deletion-fails",
               "DELETION-GUARD-VERDICT: FAIL unauthorized=1" in r_del_unlist.stdout)
 
+    # The same five-day wall controls expiry and actual reaping; malformed
+    # metadata is a hard refusal with zero deletion, never a silent extension.
+    with tempfile.TemporaryDirectory() as rtmp:
+        rr = pathlib.Path(rtmp)
+        (rr / "scripts/ci").mkdir(parents=True)
+        (rr / "crates/c/tests").mkdir(parents=True)
+        shutil.copy(SCRIPT_DIR / "track_closeout.sh", rr / "scripts/ci/track_closeout.sh")
+        target = rr / "crates/c/tests/retained.rs"
+        target.write_text("#[test]\nfn retained() {}\n", encoding="utf-8")
+        write_tsv(rr / "scripts/ci/test_inventory.tsv", INVENTORY_HEADER, [])
+        write_tsv(rr / "scripts/ci/closeout_artifacts.tsv", ARTIFACT_LEDGER_HEADER, [])
+        pen = rr / "scripts/ci/test_lifecycle_parked.tsv"
+        write_tsv(pen, PARKED_HEADER, [renewed_pen_row()])
+        def renewal_run(*args, now="2026-07-24"):
+            return subprocess.run([BASH, "scripts/ci/track_closeout.sh", *args],
+                                  cwd=str(rr), capture_output=True, text=True,
+                                  env={**os.environ, "TRACK_CLOSEOUT_NOW": now})
+        before = pen.read_bytes()
+        expiry = renewal_run("--artifact-expiry")
+        kept = renewal_run("--decommission")
+        check("bounded-renewal-preserves-until-day-five",
+              expiry.returncode == 0 and "expired=0" in expiry.stdout and kept.returncode == 0
+              and "reaped=0 files=0 manual=0" in kept.stdout and target.exists()
+              and pen.read_bytes() == before)
+        expiry = renewal_run("--artifact-expiry", now="2026-07-25")
+        check("bounded-renewal-expires-exactly-day-five",
+              expiry.returncode == 1 and "expired=1" in expiry.stdout)
+        reaped = renewal_run("--decommission", now="2026-07-25")
+        check("bounded-renewal-reaps-safe-orphan-at-deadline",
+              reaped.returncode == 0 and not target.exists() and len(read_tsv(pen)[1]) == 0)
+        target.write_text("#[test]\nfn retained() {}\n", encoding="utf-8")
+        variants = []
+        for label, change in [
+            ("six-days", {"expires_on": "2026-07-26"}),
+            ("missing-consumer", {"consumer": ""}),
+            ("missing-authority", {"authority": ""}),
+            ("no-closeout", {"closeout": "never"}),
+            ("future-start", {"renewed_on": "2026-07-25", "expires_on": "2026-07-30"}),
+            ("invalid-date", {"expires_on": "not-a-date"}),
+        ]:
+            row = renewed_pen_row()
+            payload = json.loads(row["park_reason"].split(BOUNDED_RENEWAL_MARKER)[1])
+            payload.update(change)
+            row["park_reason"] = BOUNDED_RENEWAL_MARKER + json.dumps(payload)
+            variants.append((label, row))
+        duplicate = renewed_pen_row()
+        duplicate["park_reason"] += BOUNDED_RENEWAL_MARKER + "{}"
+        variants.append(("duplicate", duplicate))
+        no_bump = renewed_pen_row()
+        no_bump["dsu_survivals"] = "0"
+        variants.append(("no-survival-increment", no_bump))
+        fourth = renewed_pen_row()
+        fourth["dsu_survivals"] = "4"
+        variants.append(("fourth-renewal-without-promotion", fourth))
+        for label, row in variants:
+            write_tsv(pen, PARKED_HEADER, [row])
+            before = pen.read_bytes()
+            expiry = renewal_run("--artifact-expiry")
+            refused = renewal_run("--decommission")
+            check("bounded-renewal-refuses-" + label,
+                  expiry.returncode == 1 and "malformed=1" in expiry.stdout
+                  and refused.returncode == 1 and "invalid-bounded-renewal" in refused.stdout
+                  and target.exists() and pen.read_bytes() == before)
+
     # decommission reaper: deletes only unambiguously-safe expired assets; refuses the rest.
     with tempfile.TemporaryDirectory() as rtmp:
         rr = pathlib.Path(rtmp)
@@ -3704,6 +3899,9 @@ def cmd_rungclose() -> int:
                 "load-bearing one with a 'downstream-utility: <consumer>' note and a "
                 "dsu_survivals bump. A 4th renewal demands a promotion evaluation."
             )
+
+    if not failures:
+        failures.extend(parked_closeout_failures())
 
     if failures:
         for f in failures:

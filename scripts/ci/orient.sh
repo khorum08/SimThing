@@ -334,53 +334,55 @@ run_selftest() {
 }
 
 run_cold_start_spine_role_selftest() {
+  # Consume complete output: grep -q can close a pipe before printf finishes,
+  # making pipefail report a false missing-anchor failure on larger digests.
   local failures=0
   local out
   local role
   for role in coding orchestrator da; do
     out="$(emit_orientation "$role" || true)"
-    if ! printf '%s\n' "$out" | grep -qF "## Cold-Start Spine (constitutional pointers)"; then
+    if ! grep -F "## Cold-Start Spine (constitutional pointers)" >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_missing_section"
       failures=$((failures + 1))
       continue
     fi
-    if ! printf '%s\n' "$out" | grep -qF "anchor_query.sh"; then
+    if ! grep -F "anchor_query.sh" >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_missing_entrypoint"
       failures=$((failures + 1))
     fi
-    if ! printf '%s\n' "$out" | grep -qF "field-policy-time-decisions"; then
+    if ! grep -F "field-policy-time-decisions" >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_missing_field_policy"
       failures=$((failures + 1))
     fi
-    if ! printf '%s\n' "$out" | grep -qF "spec-fidelity-anti-ceremony"; then
+    if ! grep -F "spec-fidelity-anti-ceremony" >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_missing_spec_fidelity"
       failures=$((failures + 1))
     fi
-    if ! printf '%s\n' "$out" | grep -qF "founding-ontology-invariants"; then
+    if ! grep -F "founding-ontology-invariants" >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_missing_ontology"
       failures=$((failures + 1))
     fi
-    if ! printf '%s\n' "$out" | grep -qF "drift-detectors-six-line"; then
+    if ! grep -F "drift-detectors-six-line" >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_missing_drift"
       failures=$((failures + 1))
     fi
-    if printf '%s\n' "$out" | grep -qE '## 8\. Time, decisions|### 0\.6 Specification Fidelity|## 9\. The drift detectors'; then
+    if grep -E '## 8\. Time, decisions|### 0\.6 Specification Fidelity|## 9\. The drift detectors' >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_forbidden_prose"
       failures=$((failures + 1))
     fi
   done
   out="$(emit_orientation coding || true)"
-  if ! printf '%s\n' "$out" | grep -qF "Role routing (coding)"; then
+  if ! grep -F "Role routing (coding)" >/dev/null <<<"$out"; then
     echo "FAIL cold_start_spine_coding_routing"
     failures=$((failures + 1))
   fi
   out="$(emit_orientation orchestrator || true)"
-  if ! printf '%s\n' "$out" | grep -qF "Clearance Report sticky"; then
+  if ! grep -F "Clearance Report sticky" >/dev/null <<<"$out"; then
     echo "FAIL cold_start_spine_orchestrator_sticky"
     failures=$((failures + 1))
   fi
   out="$(emit_orientation da || true)"
-  if ! printf '%s\n' "$out" | grep -qF "da_treeverify"; then
+  if ! grep -F "da_treeverify" >/dev/null <<<"$out"; then
     echo "FAIL cold_start_spine_da_audit"
     failures=$((failures + 1))
   fi
@@ -459,9 +461,9 @@ run_rule_stamp_selftest() {
 run_since_selftest() {
   local receipt current stale
   unset ORIENT_PRECEDENTED_CLASSES_TSV ORIENT_BINDING_CONDITIONS_TSV ORIENT_DOCTRINE_ANCHORS_TSV
-  receipt="$(emit_orientation coding | awk '/^ORIENT-RECEIPT:/ {print $2; exit}')"
-  current="$(emit_since coding "$receipt" | head -n 1)"
-  stale="$(emit_since coding 000000000000 | head -n 1)"
+  receipt="$(emit_orientation coding | awk '/^ORIENT-RECEIPT:/ && !seen {print $2; seen=1}')"
+  current="$(emit_since coding "$receipt" | sed -n '1p')"
+  stale="$(emit_since coding 000000000000 | sed -n '1p')"
   if [[ "$current" != "ORIENT-SINCE-VERDICT: CURRENT" ]]; then
     echo "FAIL orient_since_current"
     return 1
@@ -479,11 +481,11 @@ run_orient_selftest_fixture() {
   local fix="${COLD_START_FIXTURES}/${name}"
   [[ -d "$fix" ]] || { echo "missing fixture: $name" >&2; return 1; }
   local expected
-  expected="$(tr -d '\r' <"${fix}/expected_result.txt" | head -n 1)"
+  expected="$(tr -d '\r' <"${fix}/expected_result.txt" | sed -n '1p')"
   local role
-  role="$(tr -d '\r' <"${fix}/role.txt" | head -n 1)"
+  role="$(tr -d '\r' <"${fix}/role.txt" | sed -n '1p')"
   local got
-  got="$(emit_orientation "$role" "$fix" | head -n 1)"
+  got="$(emit_orientation "$role" "$fix" | sed -n '1p')"
   if [[ "$got" == "$expected" ]]; then
     echo "PASS ${name}"
     return 0

@@ -498,6 +498,38 @@ impl ResidencyPlacementBook {
             .collect()
     }
 
+    /// CANONICAL FUNDED CANCELLATION (DA admission, relay 5705632907):
+    /// retire EXACTLY the placement commitments owned by a canonically
+    /// removed subtree — every commitment whose grantee is a removed
+    /// identity (freeing its extent inside the surviving granter's level),
+    /// every committed level whose granter is removed (the subtree's own
+    /// grants die with it), and every root extent a removed granter
+    /// declared. Keyed by identity, never by slot number; parent and
+    /// sibling commitments are untouched; no broad capacity reset; freed
+    /// extents become reusable because later admission consults only the
+    /// surviving `committed` rows.
+    pub(crate) fn retire_placements_for_removed(
+        &mut self,
+        removed: &std::collections::BTreeSet<SimThingId>,
+    ) -> u32 {
+        let mut retired = 0u32;
+        for level in self.committed.values_mut() {
+            for id in removed {
+                if level.remove(id).is_some() {
+                    retired += 1;
+                }
+            }
+        }
+        for id in removed {
+            if let Some(level) = self.committed.remove(id) {
+                retired += level.len() as u32;
+            }
+            self.root_extents.remove(id);
+        }
+        self.committed.retain(|_, level| !level.is_empty());
+        retired
+    }
+
     /// Authoritative replay consumes the recorded placement product.  It
     /// never calls the oracle or mints a fresh identity; exact conflicts in
     /// the recording fail closed.
@@ -811,6 +843,74 @@ mod tests {
             quantity: length,
             committed_generation: GenerationStamp::new(4),
         }
+    }
+
+    // CANONICAL FUNDED CANCELLATION witnesses (DA admission, relay
+    // 5705632907): retirement is identity-keyed and exact — the removed
+    // subtree's own commitments retire (as grantee AND as granter, root
+    // extents included), siblings/parents survive untouched, unrelated
+    // removal retires nothing, and the freed extent is genuinely reusable.
+    #[test]
+    fn removed_subtree_retires_exactly_its_placements_and_frees_the_extent() {
+        let granter = SimThingId::from_session_raw(10);
+        let mut book = ResidencyPlacementBook::default();
+        let level = book.committed.entry(granter).or_default();
+        level.insert(SimThingId::from_session_raw(11), placement(10, 11, 1, 0, 2));
+        level.insert(SimThingId::from_session_raw(12), placement(10, 12, 2, 3, 2));
+        // The removed child is itself a granter with its own level + extent.
+        book.committed
+            .entry(SimThingId::from_session_raw(11))
+            .or_default()
+            .insert(SimThingId::from_session_raw(21), placement(11, 21, 3, 0, 1));
+        book.root_extents.insert(
+            SimThingId::from_session_raw(11),
+            ResidencyExtent::try_new(0, 4).unwrap(),
+        );
+
+        let removed: std::collections::BTreeSet<_> = [
+            SimThingId::from_session_raw(11),
+            SimThingId::from_session_raw(21),
+        ]
+        .into_iter()
+        .collect();
+        assert_eq!(book.retire_placements_for_removed(&removed), 2);
+        assert!(book.placement(granter, SimThingId::from_session_raw(11)).is_none());
+        assert_eq!(
+            book.placement(granter, SimThingId::from_session_raw(12)),
+            Some(placement(10, 12, 2, 3, 2)),
+            "sibling commitment survives untouched"
+        );
+        assert!(book.committed.get(&SimThingId::from_session_raw(11)).is_none());
+        assert!(book.root_extent(SimThingId::from_session_raw(11)).is_none());
+
+        // Reuse: the freed [0,2) extent admits a NEW grantee without overlap,
+        // and the surviving level still audits clean against its extent.
+        book.committed
+            .entry(granter)
+            .or_default()
+            .insert(SimThingId::from_session_raw(30), placement(10, 30, 9, 0, 2));
+        let mut schedule = IntegrationSchedule::new();
+        book.audit_level(
+            granter,
+            ResidencyExtent::try_new(0, 8).unwrap(),
+            GenerationStamp::new(9),
+            &mut schedule,
+        )
+        .expect("freed extent is reusable by a subsequent authorized placement");
+    }
+
+    #[test]
+    fn unrelated_removal_retires_no_placement_state() {
+        let granter = SimThingId::from_session_raw(10);
+        let mut book = ResidencyPlacementBook::default();
+        book.committed
+            .entry(granter)
+            .or_default()
+            .insert(SimThingId::from_session_raw(11), placement(10, 11, 1, 0, 2));
+        let removed: std::collections::BTreeSet<_> =
+            [SimThingId::from_session_raw(99)].into_iter().collect();
+        assert_eq!(book.retire_placements_for_removed(&removed), 0);
+        assert!(book.placement(granter, SimThingId::from_session_raw(11)).is_some());
     }
 
     #[test]
