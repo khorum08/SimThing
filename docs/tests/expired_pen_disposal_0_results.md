@@ -48,6 +48,12 @@ The existing `track_closeout.sh` now recognizes this opt-in record:
 The gate-code companion is necessary to enforce the Owner's shorter, event-bounded
 renewal. It is DA-reserved and remains unmerged. No gate has been weakened or suppressed.
 
+The first hosted gate run exposed an existing orientation-selftest pipe failure:
+`printf | grep -q` under `pipefail` reported a false missing drift anchor after the
+reader exited early. The selftest now consumes the complete stream; assertions and
+receipt derivation are unchanged. Hosted run `35168228505` records the original
+Linux failure; Windows did not reproduce it. The corrected local selftest passes.
+
 ## Scope and preservation
 
 | Account | Result |
@@ -78,6 +84,8 @@ Model 2 remains CLOSED. #2068 must not merge separately.
 - Lifecycle schema and scheduled checks: PASS; existing 54 closed-track audit rows unchanged.
 - Scenario residue: existing 47 advisory DEAD-EXPORT entries; no DEAD-TARGET or new residue.
 - `git diff --check`: PASS. No source delta after the carried integration commit.
+- Carried cancellation acceptance law: 9/9 PASS; exact placement battery: 3/3 PASS;
+  profiled qualification mutation battery: 4/4 PASS.
 
 Further SHA-bound execution and hosted gate evidence are recorded at PR/Board return.
 Historical #2068 GPU evidence is not represented as a new execution of this branch.
