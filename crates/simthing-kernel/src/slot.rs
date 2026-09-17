@@ -395,6 +395,20 @@ impl SlotAllocator {
         self.residency_placements.ensure_active()
     }
 
+    /// CANONICAL FUNDED CANCELLATION (DA admission, relay 5705632907): retire
+    /// exactly the committed residency placements owned by a canonically
+    /// removed subtree, in the same boundary lifecycle that retires its slots
+    /// and relations. Returns the number of commitments retired. Identity-
+    /// keyed; unrelated/parent/sibling placement state is untouched, and the
+    /// freed extents are immediately reusable by later authorized placement.
+    pub fn retire_residency_placements_for_removed(
+        &mut self,
+        removed: &std::collections::BTreeSet<SimThingId>,
+    ) -> u32 {
+        self.residency_placements
+            .retire_placements_for_removed(removed)
+    }
+
     /// Audit only `granter`'s direct placements against its own containing extent.
     pub fn audit_residency_level(
         &mut self,

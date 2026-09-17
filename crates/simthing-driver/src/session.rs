@@ -414,11 +414,22 @@ struct SessionActionBandExecution {
 ///   the boundary evidence shows accepted growth; otherwise stale.
 /// - Newly added rows acquire no ActionBand enrollment here — instances,
 ///   consequences and dispatch are untouched.
+/// CANONICAL SHRINK successor (DA admission, relay 5705632907), symmetric to
+/// the growth clause: an accepted row missing from the current table is
+/// lawful ONLY when the canonical boundary transition just executed carries
+/// structural-removal (tombstone) evidence for that exact identity, and the
+/// identity is not part of the tick-zero bound footprint (bound removal stays
+/// typed `BoundIdentityRemapped` even with removal evidence). A SURVIVING row
+/// that changed its mapping is never lawful. Foreign disappearance without
+/// same-boundary removal evidence stays stale. Mixed add+remove boundaries
+/// are lawful only when every addition has growth evidence AND every removal
+/// has tombstone evidence.
 fn adjudicate_action_band_boundary_binding_table(
     accepted: &ActionBandIngressShape,
     current: &ActionBandIngressShape,
     bound_identities: &std::collections::BTreeSet<simthing_core::SimThingId>,
     boundary_performed_accepted_growth: bool,
+    boundary_removed_identities: &std::collections::BTreeSet<simthing_core::SimThingId>,
 ) -> Result<(), ActionBandExecutionIngressError> {
     if current.registry_columns != accepted.registry_columns
         || current.registry_properties != accepted.registry_properties
@@ -434,21 +445,30 @@ fn adjudicate_action_band_boundary_binding_table(
     {
         return Err(ActionBandExecutionIngressError::DimensionShapeStale);
     }
+    let mut survivors = 0usize;
     for (id, slot) in accepted.binding_table.iter() {
         match current.binding_table.get(id) {
-            Some(current_slot) if current_slot == slot => {}
-            _ => {
+            Some(current_slot) if current_slot == slot => survivors += 1,
+            Some(_) => {
                 return Err(if bound_identities.contains(id) {
                     ActionBandExecutionIngressError::BoundIdentityRemapped { id: u64::from(id.raw()) }
                 } else {
                     ActionBandExecutionIngressError::BindingTableStale
                 });
             }
+            None => {
+                if bound_identities.contains(id) {
+                    return Err(ActionBandExecutionIngressError::BoundIdentityRemapped {
+                        id: u64::from(id.raw()),
+                    });
+                }
+                if !boundary_removed_identities.contains(id) {
+                    return Err(ActionBandExecutionIngressError::BindingTableStale);
+                }
+            }
         }
     }
-    if current.binding_table.len() > accepted.binding_table.len()
-        && !boundary_performed_accepted_growth
-    {
+    if current.binding_table.len() > survivors && !boundary_performed_accepted_growth {
         return Err(ActionBandExecutionIngressError::BindingTableStale);
     }
     Ok(())
@@ -713,11 +733,16 @@ impl SimSession {
             .iter()
             .any(|fact| matches!(fact, simthing_sim::RecordedGrowthResidencyFact::Accepted(_)))
             || !outcome.fission.fission_pairs.is_empty();
+        // CANONICAL SHRINK evidence (relay 5705632907): the identities this
+        // exact boundary tombstoned through the canonical maintainer path.
+        let boundary_removed_identities: std::collections::BTreeSet<_> =
+            outcome.maintainer.tombstoned.iter().copied().collect();
         adjudicate_action_band_boundary_binding_table(
             &installed.admitted_shape,
             &current,
             &installed.bound_identities,
             boundary_performed_accepted_growth,
+            &boundary_removed_identities,
         )?;
         self.action_band_execution
             .as_mut()
@@ -2692,18 +2717,113 @@ mod bound_lifecycle_acceptance_proofs {
         ids.iter().map(|&id| SimThingId::from_session_raw(id as u32)).collect()
     }
 
+    fn none() -> BTreeSet<SimThingId> {
+        BTreeSet::new()
+    }
+
+    // CANONICAL SHRINK witnesses (DA admission, relay 5705632907).
+    #[test]
+    fn canonical_removal_evidence_admits_unbound_shrink_and_its_absence_is_stale() {
+        let accepted = shape(&[(1, 0), (2, 1), (9, 6)]);
+        let shrunk = shape(&[(1, 0), (2, 1)]);
+        assert!(adjudicate_action_band_boundary_binding_table(
+            &accepted,
+            &shrunk,
+            &bound(&[2]),
+            false,
+            &bound(&[9])
+        )
+        .is_ok());
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted,
+                &shrunk,
+                &bound(&[2]),
+                false,
+                &none()
+            ),
+            Err(ActionBandExecutionIngressError::BindingTableStale)
+        ));
+    }
+
+    #[test]
+    fn bound_identity_removal_stays_typed_even_with_removal_evidence() {
+        let accepted = shape(&[(1, 0), (2, 1)]);
+        let shrunk = shape(&[(1, 0)]);
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted,
+                &shrunk,
+                &bound(&[2]),
+                false,
+                &bound(&[2])
+            ),
+            Err(ActionBandExecutionIngressError::BoundIdentityRemapped { id: 2 })
+        ));
+    }
+
+    #[test]
+    fn surviving_remap_stays_stale_even_with_removal_evidence_present() {
+        let accepted = shape(&[(1, 0), (2, 1), (9, 6)]);
+        let drifted = shape(&[(1, 3), (2, 1)]);
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted,
+                &drifted,
+                &bound(&[2]),
+                false,
+                &bound(&[9])
+            ),
+            Err(ActionBandExecutionIngressError::BindingTableStale)
+        ));
+    }
+
+    #[test]
+    fn mixed_add_remove_needs_both_evidence_classes() {
+        let accepted = shape(&[(1, 0), (2, 1), (9, 6)]);
+        let mixed = shape(&[(1, 0), (2, 1), (7, 5)]);
+        assert!(adjudicate_action_band_boundary_binding_table(
+            &accepted,
+            &mixed,
+            &bound(&[2]),
+            true,
+            &bound(&[9])
+        )
+        .is_ok());
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted,
+                &mixed,
+                &bound(&[2]),
+                false,
+                &bound(&[9])
+            ),
+            Err(ActionBandExecutionIngressError::BindingTableStale)
+        ));
+        assert!(matches!(
+            adjudicate_action_band_boundary_binding_table(
+                &accepted,
+                &mixed,
+                &bound(&[2]),
+                true,
+                &none()
+            ),
+            Err(ActionBandExecutionIngressError::BindingTableStale)
+        ));
+    }
+
     #[test]
     fn additive_row_from_accepted_growth_is_lawful_and_without_growth_is_stale() {
         let accepted = shape(&[(1, 0), (2, 1)]);
         let current = shape(&[(1, 0), (2, 1), (7, 5)]);
         assert!(adjudicate_action_band_boundary_binding_table(
-            &accepted, &current, &bound(&[2]), true
-        )
+            &accepted, &current, &bound(&[2]), true,
+            &none()        )
         .is_ok());
         assert!(matches!(
             adjudicate_action_band_boundary_binding_table(
-                &accepted, &current, &bound(&[2]), false
-            ),
+                &accepted, &current, &bound(&[2]), false,
+            &none()            ),
             Err(ActionBandExecutionIngressError::BindingTableStale)
         ));
     }
@@ -2714,15 +2834,15 @@ mod bound_lifecycle_acceptance_proofs {
         let remapped = shape(&[(1, 0), (2, 4), (7, 5)]);
         assert!(matches!(
             adjudicate_action_band_boundary_binding_table(
-                &accepted, &remapped, &bound(&[2]), true
-            ),
+                &accepted, &remapped, &bound(&[2]), true,
+            &none()            ),
             Err(ActionBandExecutionIngressError::BoundIdentityRemapped { id: 2 })
         ));
         let removed = shape(&[(1, 0), (7, 5)]);
         assert!(matches!(
             adjudicate_action_band_boundary_binding_table(
-                &accepted, &removed, &bound(&[2]), true
-            ),
+                &accepted, &removed, &bound(&[2]), true,
+            &none()            ),
             Err(ActionBandExecutionIngressError::BoundIdentityRemapped { id: 2 })
         ));
     }
@@ -2733,8 +2853,8 @@ mod bound_lifecycle_acceptance_proofs {
         let drifted = shape(&[(1, 3), (2, 1), (7, 5)]);
         assert!(matches!(
             adjudicate_action_band_boundary_binding_table(
-                &accepted, &drifted, &bound(&[2]), true
-            ),
+                &accepted, &drifted, &bound(&[2]), true,
+            &none()            ),
             Err(ActionBandExecutionIngressError::BindingTableStale)
         ));
     }
@@ -2746,16 +2866,16 @@ mod bound_lifecycle_acceptance_proofs {
         registry_grew.registry_properties = 4;
         assert!(matches!(
             adjudicate_action_band_boundary_binding_table(
-                &accepted, &registry_grew, &bound(&[1]), true
-            ),
+                &accepted, &registry_grew, &bound(&[1]), true,
+            &none()            ),
             Err(ActionBandExecutionIngressError::RegistryStale)
         ));
         let mut dims_grew = shape(&[(1, 0), (7, 5)]);
         dims_grew.state_slots = 32;
         assert!(matches!(
             adjudicate_action_band_boundary_binding_table(
-                &accepted, &dims_grew, &bound(&[1]), true
-            ),
+                &accepted, &dims_grew, &bound(&[1]), true,
+            &none()            ),
             Err(ActionBandExecutionIngressError::DimensionShapeStale)
         ));
     }
@@ -2767,8 +2887,8 @@ mod bound_lifecycle_acceptance_proofs {
             &accepted,
             &accepted.clone(),
             &bound(&[2]),
-            false
-        )
+            false,
+            &none()        )
         .is_ok());
     }
 }
