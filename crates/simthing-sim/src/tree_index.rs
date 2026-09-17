@@ -39,7 +39,9 @@ pub fn node_at_path_mut<'a>(root: &'a mut SimThing, path: &[usize]) -> Option<&'
     Some(node)
 }
 
-/// Detach the subtree at `path`. Returns `None` for the root path.
+/// Detach the subtree at `path`. Returns `None` for the root path or a stale
+/// out-of-bounds index — never panics (STRUCTURAL IDENTITY LAW, relay
+/// 5707155261: paths are hints; a shifted index must not abort the boundary).
 pub fn detach_at_path(root: &mut SimThing, path: &[usize]) -> Option<SimThing> {
     if path.is_empty() {
         return None;
@@ -47,7 +49,49 @@ pub fn detach_at_path(root: &mut SimThing, path: &[usize]) -> Option<SimThing> {
     let (parent_path, idx) = path.split_at(path.len().checked_sub(1)?);
     let idx = *idx.first()?;
     let parent = node_at_path_mut(root, parent_path)?;
+    if idx >= parent.children.len() {
+        return None;
+    }
     Some(parent.children.remove(idx))
+}
+
+/// STRUCTURAL IDENTITY LAW (DA admission, relay 5707155261): `SimThingId` is
+/// the ONLY mutation authority; a cached child-index path is an acceleration
+/// hint. The hint is honored only when the node it currently reaches still
+/// carries the requested identity; otherwise resolution falls back to the
+/// CURRENT tree by identity. A stale hint therefore never detaches a
+/// different identity and never panics on a shifted index.
+pub fn detach_by_identity(
+    root: &mut SimThing,
+    target: SimThingId,
+    hint: Option<&[usize]>,
+) -> Option<SimThing> {
+    if let Some(path) = hint {
+        if !path.is_empty() {
+            let (parent_path, idx) = path.split_at(path.len() - 1);
+            let idx = idx[0];
+            if let Some(parent) = node_at_path_mut(root, parent_path) {
+                if parent.children.get(idx).map(|child| child.id) == Some(target) {
+                    return Some(parent.children.remove(idx));
+                }
+            }
+        }
+        // Stale hint: fall through to identity resolution below.
+    }
+    detach_subtree_by_identity(root, target)
+}
+
+/// Identity-walk detach against the CURRENT tree; the authoritative slow path.
+pub fn detach_subtree_by_identity(root: &mut SimThing, target: SimThingId) -> Option<SimThing> {
+    if let Some(pos) = root.children.iter().position(|child| child.id == target) {
+        return Some(root.children.remove(pos));
+    }
+    for child in &mut root.children {
+        if let Some(found) = detach_subtree_by_identity(child, target) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 /// Child-index paths in depth-first pre-order (shorter paths before deeper ones).
