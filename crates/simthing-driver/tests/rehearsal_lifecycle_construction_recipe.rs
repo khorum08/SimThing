@@ -1081,3 +1081,118 @@ fn funded_product_cancellation_must_release_placement_and_continue() {
         "funded cancellation/release required success: {failures:?}"
     );
 }
+
+#[test]
+fn canonical_multi_remove_must_preserve_requested_identities() {
+    let mut failures = Vec::new();
+    // These requests commute by identity. Reversed request orders are controls,
+    // not a repair or an instruction to sort around a broken mutation boundary.
+    for indices in [[0, 2], [2, 0], [3, 4], [4, 3]] {
+        let (mut f, mut spec, pids) = build([4.0, 4.0], false, false, &["p", "q"]);
+        let root = f.scenario.root.id;
+        let projects = f.projects;
+        let siblings = (0..5)
+            .map(|_| SimThing::new(SimThingKind::Cohort, 0))
+            .collect::<Vec<_>>();
+        let sibling_ids = siblings.iter().map(|node| node.id).collect::<Vec<_>>();
+        for sibling in siblings {
+            f.scenario.root.add_child(sibling);
+        }
+        simthing_driver::resident_clearing_runtime::install_default_resident_rf_property(
+            &mut f.scenario.registry,
+            &mut f.scenario.root,
+        );
+        let mut allocator = SlotAllocator::new();
+        allocator.install_initial_tree(&f.scenario.root).unwrap();
+        spec.resource_flow = Some(admitted(&f, &allocator, false));
+        let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+        let initial = session.proto.allocator.binding_table_snapshot();
+        let capacity = session.proto.allocator.growth_capacity_available(root);
+        let requested = indices.map(|index| sibling_ids[index]);
+        stop_joint_sources(&session, root, pids);
+        for target in requested {
+            session
+                .tx
+                .submit_boundary(BoundaryRequest::Remove { target })
+                .unwrap();
+        }
+        // Catch only to collect every diagnostic/control and inspect fail-stop.
+        // A panic is always retained as a failed required-success obligation.
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| session.step_once()));
+        let actual_removed = sibling_ids
+            .iter()
+            .copied()
+            .filter(|id| !session.proto.root.contains_id(*id))
+            .collect::<Vec<_>>();
+        println!("multi-remove indices={indices:?} requested={requested:?} actual_removed={actual_removed:?}");
+        for (id, slot) in &initial {
+            let should_survive = !requested.contains(id);
+            if session.proto.root.contains_id(*id) != should_survive
+                || session.proto.allocator.slot_of(*id) != should_survive.then_some(*slot)
+            {
+                failures.push(format!("indices={indices:?}: wrong identity disposition id={id:?}, requested={requested:?}, actual_removed={actual_removed:?}"));
+            }
+        }
+        match result {
+            Ok(Ok(step)) => {
+                println!("multi-remove indices={indices:?}: completed {step:?}");
+                assert_eq!(
+                    stock(&session, projects, pids, &session.state.read_values()),
+                    [[3.0, 1.0, 0.0], [1.0, 3.0, 0.0]]
+                );
+                assert_eq!(
+                    session.proto.allocator.growth_capacity_available(root),
+                    capacity + 2
+                );
+            }
+            error => {
+                let detail = match error {
+                    Ok(Err(error)) => format!("returned {error:?}"),
+                    Err(payload) => format!(
+                        "panicked: {}",
+                        payload
+                            .downcast_ref::<String>()
+                            .map(String::as_str)
+                            .or_else(|| payload.downcast_ref::<&str>().copied())
+                            .unwrap_or("non-string panic")
+                    ),
+                    Ok(Ok(_)) => unreachable!(),
+                };
+                println!("multi-remove indices={indices:?}: {detail}");
+                failures.push(format!("indices={indices:?}: {detail}"));
+                let values = session.state.read_values();
+                let before = (
+                    session.coord.tick_index(),
+                    session.coord.day_index(),
+                    session.integration_schedule().entries().len(),
+                    session.proto.allocator.binding_table_snapshot(),
+                    session.proto.root.direct_child_ids(),
+                );
+                for attempt in 0..3 {
+                    let retry = session
+                        .step_once()
+                        .expect_err("unfinished economic boundary remains fail-stop");
+                    println!("multi-remove retry indices={indices:?} attempt={attempt}: {retry:?}");
+                    assert!(
+                        matches!(retry, simthing_driver::SessionError::ExecutionIdentity(ref message) if message.contains("fault"))
+                    );
+                    assert_eq!(session.state.read_values(), values);
+                    assert_eq!(
+                        (
+                            session.coord.tick_index(),
+                            session.coord.day_index(),
+                            session.integration_schedule().entries().len(),
+                            session.proto.allocator.binding_table_snapshot(),
+                            session.proto.root.direct_child_ids(),
+                        ),
+                        before
+                    );
+                }
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "canonical identity-based cancellation required success: {failures:?}"
+    );
+}
