@@ -492,6 +492,12 @@ fn apply_remove(
     for slot in allocator.release_subtree(&subtree) {
         zero_shadow_row(values_shadow, n_dims, slot.raw());
     }
+    // CANONICAL FUNDED CANCELLATION (DA admission, relay 5705632907): the
+    // same canonical boundary lifecycle that retires the subtree's slots and
+    // relations retires its acquired committed residency placements —
+    // identity-keyed, siblings/parents untouched, freed extents reusable.
+    let removed_set: std::collections::BTreeSet<_> = removed_ids.iter().copied().collect();
+    allocator.retire_residency_placements_for_removed(&removed_set);
     out.tombstoned.extend(removed_ids);
     out.removes += 1;
 }
