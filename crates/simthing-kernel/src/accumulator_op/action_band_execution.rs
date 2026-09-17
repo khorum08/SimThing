@@ -251,6 +251,43 @@ pub struct ActionBandExecutionBucket {
     pub band_indices: Vec<u32>,
 }
 
+/// FROZEN THRESHOLD-DEFINITION PROVENANCE (DA admission, relay 5721882717).
+///
+/// The exact threshold DEFINITION a band bound at tick-zero admission. This is
+/// CPU-side plan metadata only — it is deliberately not part of the `Pod` GPU
+/// band row, so the GPU ABI is unchanged. Registration indices are ephemeral
+/// registry positions; this record is the meaning they stood for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AdmittedBandThresholdDefinition {
+    pub threshold_bits: u32,
+    pub slot: u32,
+    pub col: u32,
+    pub event_kind: u32,
+    /// `true` when the admitted registration fires on upward crossings,
+    /// `false` when it fires on downward crossings; an `Either` registration
+    /// admits both and sets both flags.
+    pub admits_rising: bool,
+    pub admits_falling: bool,
+}
+
+impl AdmittedBandThresholdDefinition {
+    /// A sealed crossing carries its own definition; it is the SAME admitted
+    /// threshold only when every meaning-bearing field agrees. Direction is
+    /// compared by admissibility so an `Either` registration keeps accepting
+    /// both of its own crossings.
+    fn admits(&self, delta: &BandCrossingDelta) -> bool {
+        let direction_ok = match delta.direction() {
+            BandCrossingDirection::Rising => self.admits_rising,
+            BandCrossingDirection::Falling => self.admits_falling,
+        };
+        direction_ok
+            && self.threshold_bits == delta.threshold().to_bits()
+            && self.slot == delta.slot().raw()
+            && self.col == delta.col().raw() as u32
+            && self.event_kind == delta.event_kind()
+    }
+}
+
 /// Immutable, domain-free GPU tables compiled from the frozen admission product.
 #[derive(Clone, Debug)]
 pub struct ActionBandExecutionPlan {
@@ -258,6 +295,9 @@ pub struct ActionBandExecutionPlan {
     target_channels: Vec<u32>,
     target_data: Vec<f32>,
     bands: Vec<ActionBandBandGpu>,
+    /// Parallel to `bands`: the frozen admitted threshold definition each band
+    /// bound. CPU-only; never uploaded.
+    admitted_band_thresholds: Vec<AdmittedBandThresholdDefinition>,
     band_binding_indices: Vec<u32>,
     emission_bindings: Vec<ActionBandEmissionBindingGpu>,
     eml_nodes: Vec<EmlNodeGpu>,
@@ -280,6 +320,7 @@ impl ActionBandExecutionPlan {
         target_channels: Vec<u32>,
         target_data: Vec<f32>,
         bands: Vec<ActionBandBandGpu>,
+        admitted_band_thresholds: Vec<AdmittedBandThresholdDefinition>,
         band_binding_indices: Vec<u32>,
         emission_bindings: Vec<ActionBandEmissionBindingGpu>,
         eml_nodes: Vec<EmlNodeGpu>,
@@ -372,6 +413,7 @@ impl ActionBandExecutionPlan {
             target_channels,
             target_data,
             bands,
+            admitted_band_thresholds,
             band_binding_indices,
             emission_bindings,
             eml_nodes,
@@ -423,7 +465,17 @@ impl ActionBandExecutionPlan {
     }
 
     /// The only ActionBand crossing bridge. Input evidence is the existing
-    /// sealed Phase-5 product; this method performs joins only, never compares.
+    /// sealed Phase-5 product.
+    ///
+    /// FROZEN THRESHOLD-DEFINITION PROVENANCE (DA admission, relay 5721882717):
+    /// the registration index selects a CANDIDATE band, but the sealed crossing
+    /// must then prove it carries the same threshold DEFINITION the band bound
+    /// at tick-zero admission. A registry rebuild that re-registers a different
+    /// threshold at the same index therefore fails closed here — before any
+    /// consequence authority — instead of routing a frozen consequence through
+    /// a redefined threshold. An identical rebuild (same definition, any index
+    /// or ordering) remains lawful, and unbound threshold churn is irrelevant
+    /// because only bound definitions are compared.
     pub fn crossings_from_sealed(
         &self,
         deltas: &[BandCrossingDelta],
@@ -433,6 +485,21 @@ impl ActionBandExecutionPlan {
             for (band_index, band) in self.bands.iter().enumerate() {
                 if band.threshold_registration != delta.reg_idx() {
                     continue;
+                }
+                let admitted = self.admitted_band_thresholds.get(band_index).ok_or(
+                    ActionBandExecutionError::MissingAdmittedThresholdDefinition {
+                        band_index: band_index as u32,
+                    },
+                )?;
+                if !admitted.admits(delta) {
+                    return Err(
+                        ActionBandExecutionError::FrozenThresholdDefinitionStale {
+                            band_index: band_index as u32,
+                            admitted_threshold_bits: admitted.threshold_bits,
+                            observed_threshold_bits: delta.threshold().to_bits(),
+                            registration_index: delta.reg_idx(),
+                        },
+                    );
                 }
                 for (instance_row, instance) in self.active_instances.iter().enumerate() {
                     let template = &self.templates[instance.template_index as usize];
@@ -659,6 +726,17 @@ pub enum ActionBandExecutionError {
     NativeDestinationCollision { slot: u32, column: u32 },
     #[error("depth-1 fast path received more than one sealed crossing for one active instance")]
     DuplicateDepth1Crossing,
+    #[error(
+        "sealed crossing at registration index {registration_index} carries threshold bits {observed_threshold_bits:#010x}, but band {band_index} froze admitted threshold bits {admitted_threshold_bits:#010x}: the bound threshold definition was redefined after ActionBand admission"
+    )]
+    FrozenThresholdDefinitionStale {
+        band_index: u32,
+        admitted_threshold_bits: u32,
+        observed_threshold_bits: u32,
+        registration_index: u32,
+    },
+    #[error("ActionBand band {band_index} has no frozen admitted threshold definition")]
+    MissingAdmittedThresholdDefinition { band_index: u32 },
     #[error("ActionBand recursive dependencies require the shared depth-1/2 fast shape")]
     RecursiveShapeDeferred,
     #[error("GPU structural packet does not preserve sealed crossing identity")]

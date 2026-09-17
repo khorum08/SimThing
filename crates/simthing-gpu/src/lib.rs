@@ -22,6 +22,7 @@ pub mod w_impedance_compose;
 
 pub use action_band_execution::{
     action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
+    AdmittedBandThresholdDefinition,
     ActionBandCrossingBatch, ActionBandCrossingConsumptionKey, ActionBandDependencyGpu,
     ActionBandEmissionBindingGpu, ActionBandEmissionDestination, ActionBandExecutionBucket,
     ActionBandExecutionError, ActionBandExecutionPlan, ActionBandExecutionReadback,

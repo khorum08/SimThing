@@ -2,6 +2,7 @@
 
 pub use simthing_kernel::accumulator_op::action_band_execution::{
     target_kind as action_band_target_kind, ActionBandActiveInstanceGpu, ActionBandBandGpu,
+    AdmittedBandThresholdDefinition,
     ActionBandCrossingBatch, ActionBandCrossingConsumptionKey, ActionBandDependencyGpu,
     ActionBandEmissionBindingGpu, ActionBandEmissionDestination, ActionBandExecutionBucket,
     ActionBandExecutionError, ActionBandExecutionPlan, ActionBandExecutionReadback,
