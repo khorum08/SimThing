@@ -1787,3 +1787,610 @@ fn separated_funded_crossings_without_placement_refusal(failures: &mut Vec<Strin
         }
     }
 }
+
+// Terminal additions deliberately leave every historical witness above intact.
+// Four independent switches (rather than one correlated reversal) distinguish
+// authored order from the allocator's physical placement of otherwise inert rows.
+fn terminal_order_case(project: usize, order: [bool; 4]) -> Vec<([[f32; 3]; 2], usize, u32)> {
+    use simthing_core::ObjectResidencyRelation;
+    use simthing_sim::BoundaryDeltaEntry;
+    let [children_reversed, arenas_reversed, recipes_reversed, prefix_spacers] = order;
+    let hosts = if recipes_reversed {
+        ["q", "p"]
+    } else {
+        ["p", "q"]
+    };
+    let (mut f, mut spec, pids) = build([4.0, 4.0], children_reversed, arenas_reversed, &hosts);
+    let root = f.scenario.root.id;
+    let ids = f.projects;
+    let spacers = (0..4)
+        .map(|_| SimThing::new(SimThingKind::Cohort, 0))
+        .collect::<Vec<_>>();
+    let spacer_ids = spacers.iter().map(|node| node.id).collect::<Vec<_>>();
+    if prefix_spacers {
+        f.scenario.root.children.splice(0..0, spacers);
+    } else {
+        f.scenario.root.children.extend(spacers);
+    }
+    f.scenario.n_slots = 8;
+    simthing_driver::resident_clearing_runtime::install_default_resident_rf_property(
+        &mut f.scenario.registry,
+        &mut f.scenario.root,
+    );
+    let mut initial = SlotAllocator::new();
+    initial.install_initial_tree(&f.scenario.root).unwrap();
+    spec.resource_flow = Some(admitted(&f, &initial, arenas_reversed));
+    let layout = f.scenario.registry.property(pids[2]).layout.clone();
+    let mut products = Vec::new();
+    let mut profiles = Vec::new();
+    for ordinal in 0..2 {
+        let mut product = SimThing::new(SimThingKind::Cohort, 0);
+        let mut component = SimThing::new(SimThingKind::Cohort, 0);
+        for (node, base) in [(&mut product, 7.0), (&mut component, 9.0)] {
+            let mut value = PropertyValue::from_layout(&layout);
+            value.set_role(&role("balance"), &layout, base + ordinal as f32);
+            node.add_property(pids[2], value);
+        }
+        let overlay = OverlayId::new();
+        product.overlays.push(Overlay {
+            id: overlay,
+            kind: OverlayKind::Policy,
+            source: OverlaySource::System,
+            origin: product.id,
+            affects: vec![product.id],
+            transform: PropertyTransformDelta {
+                property_id: pids[2],
+                sub_field_deltas: vec![(role("balance"), TransformOp::set(17.0 + ordinal as f32))],
+            },
+            lifecycle: OverlayLifecycle::UntilDissolved,
+        });
+        profiles.push((product.id, component.id, overlay));
+        product.add_child(component);
+        products.push(product);
+    }
+    let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+    install_funded_birth_sequence(&mut session, ids[project], pids[2], products);
+    let bound_slots = ids.map(|id| session.proto.allocator.slot_of(id).unwrap());
+    let mut physical_rows = bound_slots.map(|slot| slot.raw());
+    physical_rows.sort();
+    // This assertion prevents a canonicalizing install from silently making
+    // the physical-order dimension vacuous.
+    assert_eq!(physical_rows, if prefix_spacers { [5, 6] } else { [1, 2] });
+    let mut source_overlays = stop_joint_sources(&session, root, pids);
+    for target in spacer_ids {
+        session
+            .tx
+            .submit_boundary(BoundaryRequest::Remove { target })
+            .unwrap();
+    }
+    let col = session
+        .proto
+        .registry
+        .column_range(pids[2])
+        .col_for_role(&role("balance"), &layout)
+        .unwrap();
+    let shape = (session.state.n_slots, session.proto.registry.total_columns);
+    let mut first_placement = None;
+    let mut trace = Vec::new();
+    let mut births = Vec::new();
+    let mut crossing_sources = Vec::new();
+    for generation in 1..=8 {
+        if generation == 4 {
+            session
+                .tx
+                .submit_boundary(BoundaryRequest::Remove {
+                    target: profiles[0].0,
+                })
+                .unwrap();
+        }
+        if generation == 4 || generation == 5 {
+            source_overlays = replace_authored_source_flow(
+                &session,
+                root,
+                pids,
+                source_overlays,
+                generation,
+                if generation == 4 { 1.0 } else { 0.0 },
+            );
+        }
+        session
+            .step_once()
+            .expect("independent ordering preserves ordinary funded continuation");
+        let values = session.state.read_values();
+        let actual = stock(&session, ids, pids, &values);
+        let expected = match generation {
+            1 => [[3.0, 1.0, 0.0], [1.0, 3.0, 0.0]],
+            2..=4 => [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]],
+            5 => [[3.75, 1.25, 1.0], [1.25, 3.75, 1.0]],
+            _ => [[2.75, 0.25, 2.0], [0.25, 2.75, 2.0]],
+        };
+        assert_eq!(
+            actual, expected,
+            "project={project} order={order:?} g={generation}"
+        );
+        for resource in 0..2 {
+            assert_eq!(
+                actual[0][resource] + actual[1][resource] + actual[0][2] + actual[1][2],
+                if generation < 5 { 4.0 } else { 7.0 }
+            );
+        }
+        assert_eq!(
+            (session.state.n_slots, session.proto.registry.total_columns),
+            shape
+        );
+        assert_eq!(
+            ids.map(|id| session.proto.allocator.slot_of(id).unwrap()),
+            bound_slots
+        );
+        let entries = session.proto.take_delta_log();
+        assert!(!entries
+            .iter()
+            .any(|entry| matches!(entry, BoundaryDeltaEntry::GrowthResidencyRefused { .. })));
+        for entry in &entries {
+            if let BoundaryDeltaEntry::BandCrossingDeltasApplied { deltas } = entry {
+                for delta in deltas {
+                    assert_eq!(delta.sim_thing_id(), ids[project]);
+                    assert_eq!(delta.property_id(), pids[2]);
+                    assert_eq!(delta.slot(), bound_slots[project]);
+                    assert_eq!(delta.col(), col);
+                    crossing_sources.push(delta.generation());
+                }
+            }
+        }
+        for (ordinal, &(id, component, overlay)) in profiles.iter().enumerate() {
+            let born_now = generation == if ordinal == 0 { 3 } else { 7 };
+            let present = if ordinal == 0 {
+                generation == 3
+            } else {
+                generation >= 7
+            };
+            for identity in [id, component] {
+                assert_eq!(session.proto.root.contains_id(identity), present);
+                assert_eq!(session.proto.allocator.slot_of(identity).is_some(), present);
+                assert_eq!(
+                    session.proto.allocator.relation_of(identity).is_some(),
+                    present
+                );
+            }
+            if !present {
+                assert!(session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(root, id)
+                    .is_none());
+                continue;
+            }
+            let snapshot = session.proto.root.snapshot_node(id).unwrap();
+            assert_eq!(snapshot.children, vec![component]);
+            assert!(snapshot.property_ids.contains(&pids[2]));
+            assert!(snapshot.overlay_ids.contains(&overlay));
+            assert!(session
+                .proto
+                .root
+                .snapshot_node(component)
+                .unwrap()
+                .property_ids
+                .contains(&pids[2]));
+            assert_eq!(
+                session.proto.allocator.relation_of(id),
+                Some(ObjectResidencyRelation::ChildOf(ids[project]))
+            );
+            assert_eq!(
+                session.proto.allocator.relation_of(component),
+                Some(ObjectResidencyRelation::ChildOf(id))
+            );
+            assert!(session
+                .proto
+                .root
+                .snapshot_node(ids[project])
+                .unwrap()
+                .children
+                .contains(&id));
+            let placement = session
+                .proto
+                .allocator
+                .committed_residency_placement(root, id)
+                .unwrap();
+            assert_eq!(placement.quantity(), 2);
+            if born_now {
+                assert!(entries.iter().any(|entry| matches!(entry, BoundaryDeltaEntry::SimThingAdded { parent, node, residency }
+                    if *parent == ids[project] && node.id() == id && residency.placement() == placement)));
+                births.push(id);
+                if ordinal == 0 {
+                    first_placement = Some(placement);
+                } else {
+                    let prior = first_placement.unwrap();
+                    assert_eq!(
+                        placement.extent(),
+                        prior.extent(),
+                        "ordinary product uses released extent"
+                    );
+                    assert_ne!(placement.identity(), prior.identity());
+                }
+            } else {
+                for identity in [id, component] {
+                    let slot = session.proto.allocator.slot_of(identity).unwrap();
+                    assert_eq!(session.proto.allocator.owner_of(slot), Some(identity));
+                    assert_eq!(
+                        values[slot.as_usize() * shape.1 + col.raw_u32() as usize],
+                        17.0 + ordinal as f32
+                    );
+                }
+            }
+        }
+        let ordinal = session.action_band_execution_generation().unwrap();
+        assert_eq!(
+            ordinal,
+            if generation < 2 {
+                0
+            } else if generation < 6 {
+                1
+            } else {
+                2
+            }
+        );
+        trace.push((actual, session.proto.allocator.live_count(), ordinal));
+    }
+    assert_eq!(
+        births,
+        profiles.iter().map(|profile| profile.0).collect::<Vec<_>>()
+    );
+    assert_ne!(profiles[0].0, profiles[1].0);
+    assert_ne!(profiles[0].1, profiles[1].1);
+    assert_ne!(profiles[0].2, profiles[1].2);
+    assert_eq!(
+        crossing_sources,
+        vec![1, 5],
+        "sealed source generations survive quiet boundaries"
+    );
+    println!("terminal independent order project={project} order={order:?} host_rows={bound_slots:?} births={births:?} source_generations={crossing_sources:?} trace={trace:?}");
+    trace
+}
+
+#[test]
+fn ordinary_construction_terminal_matrix() {
+    let mut failures = terminal_identity_negatives();
+    terminal_early_crossing_negative(&mut failures);
+    let mut canonical = None;
+    for project in 0..2 {
+        for bits in 0..16 {
+            let order = std::array::from_fn(|index| bits & (1 << index) != 0);
+            let trace = terminal_order_case(project, order);
+            if let Some(expected) = &canonical {
+                assert_eq!(&trace, expected);
+            } else {
+                canonical = Some(trace);
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "ordinary integrated negatives must fail closed: {failures:?}"
+    );
+}
+
+fn terminal_fail_stop(session: &mut SimSession, label: &str) {
+    let before = (
+        session.coord.tick_index(),
+        session.coord.day_index(),
+        session.integration_schedule().entries().len(),
+        session.proto.allocator.binding_table_snapshot(),
+        session.action_band_execution_generation(),
+    );
+    let values = session.state.read_values();
+    for attempt in 0..3 {
+        let error = session
+            .step_once()
+            .expect_err("touched invalid generation must stay stopped");
+        println!("terminal fail-stop {label} retry={attempt}: {error:?}");
+        assert!(
+            matches!(error, simthing_driver::SessionError::ExecutionIdentity(ref message) if message.contains("fault"))
+        );
+        assert_eq!(session.state.read_values(), values);
+        assert_eq!(
+            (
+                session.coord.tick_index(),
+                session.coord.day_index(),
+                session.integration_schedule().entries().len(),
+                session.proto.allocator.binding_table_snapshot(),
+                session.action_band_execution_generation()
+            ),
+            before
+        );
+    }
+}
+
+fn terminal_identity_negatives() -> Vec<String> {
+    use simthing_driver::{ActionBandExecutionIngressError as Ingress, SessionError};
+    use simthing_sim::BoundaryDeltaEntry;
+    let mut failures = Vec::new();
+    for project in 0..2 {
+        for case in [
+            "stale-binding",
+            "foreign-binding",
+            "remove-bound",
+            "duplicate-product",
+            "changed-crossing-threshold",
+        ] {
+            let (f, spec, pids) = build([4.0, 4.0], project == 1, false, &["p", "q"]);
+            let root = f.scenario.root.id;
+            let ids = f.projects;
+            let mut first = SimThing::new(SimThingKind::Cohort, 0);
+            let component = SimThing::new(SimThingKind::Cohort, 0);
+            let component_id = component.id;
+            first.add_child(component);
+            let second = if case == "duplicate-product" {
+                first.clone()
+            } else {
+                SimThing::new(SimThingKind::Cohort, 0)
+            };
+            let products = [first.id, second.id];
+            let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+            install_funded_birth_sequence(&mut session, ids[project], pids[2], vec![first, second]);
+            let mut source_overlays = stop_joint_sources(&session, root, pids);
+            for _ in 0..3 {
+                session.step_once().unwrap();
+            }
+            assert!(session.proto.root.contains_id(products[0]));
+            let first_placement = session
+                .proto
+                .allocator
+                .committed_residency_placement(root, products[0])
+                .unwrap();
+            session.proto.take_delta_log();
+            if case == "stale-binding" || case == "foreign-binding" {
+                // Adversarial negative plants only: no dispatch, alternate
+                // policy, or repair occurs through these allocator mutations.
+                if case == "stale-binding" {
+                    let mut changed = session.proto.allocator.binding_table_snapshot();
+                    let a = changed[&ids[project]];
+                    let b = changed[&component_id];
+                    changed.insert(ids[project], b);
+                    changed.insert(component_id, a);
+                    session
+                        .proto
+                        .allocator
+                        .epoch_rebind(&changed, &Default::default(), &Default::default())
+                        .unwrap();
+                } else {
+                    let mut foreign = SimThing::new(SimThingKind::World, 0);
+                    for _ in 0..4 {
+                        foreign.add_child(SimThing::new(SimThingKind::Cohort, 0));
+                    }
+                    let mut allocator = SlotAllocator::new();
+                    allocator.install_initial_tree(&foreign).unwrap();
+                    session.proto.allocator = allocator;
+                }
+                let before = (
+                    session.coord.tick_index(),
+                    session.coord.day_index(),
+                    session.integration_schedule().entries().len(),
+                    session.action_band_execution_generation(),
+                );
+                let values = session.state.read_values();
+                for attempt in 0..3 {
+                    let error = session
+                        .step_once()
+                        .expect_err("foreign/stale binding must refuse before GPU work");
+                    println!("terminal negative project={project} case={case} attempt={attempt}: {error:?}");
+                    assert!(matches!(
+                        error,
+                        SessionError::ActionBandIngress(Ingress::BindingTableStale)
+                    ));
+                    assert_eq!(
+                        (
+                            session.coord.tick_index(),
+                            session.coord.day_index(),
+                            session.integration_schedule().entries().len(),
+                            session.action_band_execution_generation()
+                        ),
+                        before
+                    );
+                    assert_eq!(session.state.read_values(), values);
+                }
+                continue;
+            }
+            if case == "remove-bound" {
+                session
+                    .tx
+                    .submit_boundary(BoundaryRequest::Remove {
+                        target: ids[project],
+                    })
+                    .unwrap();
+                let error = session
+                    .step_once()
+                    .expect_err("installed crossing participant cannot be retired silently");
+                println!("terminal negative project={project} case={case}: {error:?}");
+                assert!(
+                    matches!(error, SessionError::ActionBandIngress(Ingress::BoundIdentityRemapped { id }) if id == u64::from(ids[project].raw()))
+                );
+                assert!(!session.proto.root.contains_id(ids[project]));
+                assert!(!session.proto.root.contains_id(products[0]));
+                assert!(session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(root, products[0])
+                    .is_none());
+                terminal_fail_stop(&mut session, case);
+                continue;
+            }
+            if case == "changed-crossing-threshold" {
+                // Keep the installed structural table and its registration
+                // indices/participant unchanged, but replace the second source
+                // with a DIFFERENT threshold via the public alert door.
+                // The production builder/GPU mint creates the evidence. No
+                // BandCrossingDelta, emission token, or generation is forged.
+                let mut alerts = session.proto.velocity_alerts().to_vec();
+                assert_eq!(alerts.len(), 2);
+                alerts[1].threshold = 1.25;
+                session.proto.clear_velocity_alerts();
+                for alert in alerts {
+                    session.proto.register_velocity_alert(alert);
+                }
+            }
+            let mut rejected = false;
+            let mut changed_crossing_seen = false;
+            for generation in 4..=8 {
+                if generation == 4 || generation == 5 {
+                    source_overlays = replace_authored_source_flow(
+                        &session,
+                        root,
+                        pids,
+                        source_overlays,
+                        generation,
+                        if generation == 4 { 1.0 } else { 0.0 },
+                    );
+                }
+                let result = session.step_once();
+                let values = session.state.read_values();
+                let actual = stock(&session, ids, pids, &values);
+                let entries = session.proto.take_delta_log();
+                let crossings = entries
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        BoundaryDeltaEntry::BandCrossingDeltasApplied { deltas } => Some(deltas),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                changed_crossing_seen |= crossings
+                    .iter()
+                    .flat_map(|deltas| deltas.iter())
+                    .any(|delta| delta.reg_idx() == 1 && delta.threshold() == 1.25);
+                println!("terminal negative project={project} case={case} g={generation} result={result:?} stock={actual:?} products={:?} action_generation={:?} crossings={crossings:?}", products.map(|id| session.proto.root.contains_id(id)), session.action_band_execution_generation());
+                if let Err(error) = result {
+                    if case == "duplicate-product" {
+                        assert!(
+                            matches!(&error, SessionError::GpuSync(simthing_sim::GpuSyncError::GrowthEntitlement(message)) if message.contains(&format!("growth grantee {} is already resident", products[0].raw()))),
+                            "duplicate identity typed provenance: {error:?}"
+                        );
+                        assert_eq!(generation, 7);
+                        assert_eq!(
+                            session
+                                .proto
+                                .allocator
+                                .committed_residency_placement(root, products[0]),
+                            Some(first_placement)
+                        );
+                        assert_eq!(session.proto.allocator.live_count(), 5);
+                    } else {
+                        assert!(
+                            matches!(&error, SessionError::ActionBandIngress(_)),
+                            "crossing provenance typed ingress refusal: {error:?}"
+                        );
+                        assert!(!session.proto.root.contains_id(products[1]));
+                    }
+                    terminal_fail_stop(&mut session, case);
+                    rejected = true;
+                    break;
+                }
+            }
+            if !rejected {
+                if case == "changed-crossing-threshold" {
+                    assert!(
+                        changed_crossing_seen,
+                        "negative must reach the canonical sealed crossing door"
+                    );
+                }
+                failures.push(format!("project={project} case={case}: accepted invalid provenance/identity through G8"));
+            }
+        }
+    }
+    failures
+}
+
+fn terminal_early_crossing_negative(failures: &mut Vec<String>) {
+    use simthing_driver::{ActionBandExecutionIngressError as Ingress, SessionError};
+    use simthing_sim::BoundaryDeltaEntry;
+    for project in 0..2 {
+        // Same public clear/re-register operation in both arms. The control
+        // preserves the frozen 1.5 threshold; the negative changes it to 0.75
+        // after commitments are installed, before ordinary G1. A real sealed
+        // 0.75 crossing cannot authorize the second frozen 1.5-bound product.
+        for threshold in [1.5, 0.75] {
+            let (f, spec, pids) = build([4.0, 4.0], project == 1, false, &["p", "q"]);
+            let root = f.scenario.root.id;
+            let ids = f.projects;
+            let products = [
+                SimThing::new(SimThingKind::Cohort, 0),
+                SimThing::new(SimThingKind::Cohort, 0),
+            ];
+            let product_ids = products.each_ref().map(|product| product.id);
+            let mut session = SimSession::open_from_spec(f.scenario, &spec).unwrap();
+            install_funded_birth_sequence(&mut session, ids[project], pids[2], products.to_vec());
+            stop_joint_sources(&session, root, pids);
+            let mut alerts = session.proto.velocity_alerts().to_vec();
+            assert_eq!(alerts[1].threshold, 1.5);
+            alerts[1].threshold = threshold;
+            session.proto.clear_velocity_alerts();
+            for alert in alerts {
+                session.proto.register_velocity_alert(alert);
+            }
+            let mut rejected = false;
+            let mut source_seen = false;
+            for generation in 1..=4 {
+                let result = session.step_once();
+                let actual = stock(&session, ids, pids, &session.state.read_values());
+                let entries = session.proto.take_delta_log();
+                let crossings = entries
+                    .iter()
+                    .filter_map(|entry| match entry {
+                        BoundaryDeltaEntry::BandCrossingDeltasApplied { deltas } => Some(deltas),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                source_seen |= crossings
+                    .iter()
+                    .flat_map(|deltas| deltas.iter())
+                    .any(|delta| {
+                        delta.reg_idx() == 1
+                            && delta.threshold() == threshold
+                            && delta.post_value() == 1.0
+                    });
+                println!("terminal early crossing project={project} frozen=1.5 runtime={threshold} g={generation} result={result:?} stock={actual:?} products={:?} action_generation={:?} crossings={crossings:?}", product_ids.map(|id| session.proto.root.contains_id(id)), session.action_band_execution_generation());
+                if generation == 3 {
+                    for id in product_ids {
+                        println!("terminal early product id={id:?} parent={:?} slot={:?} placement={:?} added={}",
+                            session.proto.allocator.relation_of(id), session.proto.allocator.slot_of(id),
+                            session.proto.allocator.committed_residency_placement(root, id),
+                            entries.iter().any(|entry| matches!(entry, BoundaryDeltaEntry::SimThingAdded { node, .. } if node.id() == id)));
+                    }
+                }
+                if let Err(error) = result {
+                    assert_eq!(
+                        threshold, 0.75,
+                        "unchanged-registration control must remain healthy"
+                    );
+                    assert!(
+                        matches!(error, SessionError::ActionBandIngress(_)),
+                        "typed crossing ingress refusal: {error:?}"
+                    );
+                    assert!(!session.proto.root.contains_id(product_ids[1]));
+                    // A stale-admission preflight is allowed to refuse before
+                    // touching G1. A dispatch refusal after work is fail-stop.
+                    if matches!(error, SessionError::ActionBandIngress(Ingress::Dispatch(_))) {
+                        terminal_fail_stop(&mut session, "early-crossing");
+                    }
+                    rejected = true;
+                    break;
+                }
+                if generation >= 2 {
+                    assert_eq!(actual, [[2.0, 0.0, 1.0], [0.0, 2.0, 1.0]]);
+                }
+                if threshold == 1.5 {
+                    assert_eq!(
+                        session.proto.root.contains_id(product_ids[0]),
+                        generation >= 3
+                    );
+                    assert!(!session.proto.root.contains_id(product_ids[1]));
+                }
+            }
+            if threshold == 0.75 && !rejected {
+                assert!(
+                    source_seen,
+                    "real production-minted mismatched crossing must be exercised"
+                );
+                failures.push(format!("project={project} frozen=1.5 runtime=0.75: no typed refusal; second_product_present={}", session.proto.root.contains_id(product_ids[1])));
+            }
+        }
+    }
+}
