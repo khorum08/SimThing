@@ -63,7 +63,7 @@ post-start provenance drift as well as the early-birth consequence.
 `session.rs::current_action_band_ingress_shape` records binding table,
 registry activation/columns and resident dimensions, but no threshold-definition
 identity. `BoundaryProto` rebuilds changed alert registrations through its normal
-threshold-dirty path. `ActionBandGpuPlan::crossings_from_sealed` joins on
+threshold-dirty path. `ActionBandExecutionPlan::crossings_from_sealed` joins on
 registration index, active-instance slot and template band range; it does not
 compare the sealed threshold identity with the frozen binding. The depth-1
 emission path uses that crossing and produces the existing structural request.
