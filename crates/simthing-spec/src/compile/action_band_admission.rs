@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use simthing_core::{
     ColumnIndex, DimensionRegistry, EmitOnThresholdRegistration, EmlConsumerKind,
-    EmlExpressionRegistry, EmlTreeId,
+    EmlExpressionRegistry, EmlTreeId, ThresholdDirection,
 };
 use thiserror::Error;
 
@@ -352,6 +352,17 @@ pub struct ActionBandCrossingBinding {
     event_kind: u32,
     template: ActionBandTemplateIndex,
     band_table_index: u32,
+    /// FROZEN THRESHOLD-DEFINITION PROVENANCE (DA admission, relay 5721882717).
+    ///
+    /// The registration INDEX is an ephemeral registry position; it is not the
+    /// threshold's meaning. These fields freeze the admitted DEFINITION at
+    /// tick-zero so a later rebuild that re-registers a different threshold at
+    /// the same index cannot route this already-frozen consequence. Exact
+    /// float bits are stored because the discriminator is identity, not
+    /// tolerance.
+    threshold_bits: u32,
+    threshold_slot: u32,
+    threshold_direction: ThresholdDirection,
 }
 
 impl ActionBandCrossingBinding {
@@ -365,6 +376,20 @@ impl ActionBandCrossingBinding {
 
     pub fn event_kind(self) -> u32 {
         self.event_kind
+    }
+
+    /// Exact admitted threshold value bits (relay 5721882717). Identity, not
+    /// tolerance: a rebuilt 1.5 matches, a rebuilt 0.75 or 1.25 does not.
+    pub fn threshold_bits(self) -> u32 {
+        self.threshold_bits
+    }
+
+    pub fn threshold_slot(self) -> u32 {
+        self.threshold_slot
+    }
+
+    pub fn threshold_direction(self) -> ThresholdDirection {
+        self.threshold_direction
     }
 
     pub fn template(self) -> ActionBandTemplateIndex {
@@ -693,6 +718,10 @@ fn compile_frozen_product(
                 event_kind: threshold_registration.event_kind,
                 template: index,
                 band_table_index: flat_band_index,
+                // Freeze the admitted threshold DEFINITION, not just its index.
+                threshold_bits: threshold_registration.threshold.to_bits(),
+                threshold_slot: threshold_registration.slot.raw(),
+                threshold_direction: threshold_registration.direction,
             });
             bands.push(admitted_band);
         }

@@ -697,11 +697,32 @@ fn compile_action_band_gpu_execution_inner(
         .map(|index| index.raw())
         .collect();
     let mut bands = Vec::with_capacity(frozen.bands().len());
-    for band in frozen.bands() {
+    // FROZEN THRESHOLD-DEFINITION PROVENANCE (relay 5721882717): carry each
+    // band's admitted threshold DEFINITION beside the GPU row (CPU-only, GPU
+    // ABI unchanged) so the sealed-crossing bridge can prove meaning, not just
+    // registry position.
+    let mut admitted_band_thresholds = Vec::with_capacity(frozen.bands().len());
+    for (band_index, band) in frozen.bands().iter().enumerate() {
         let span = band.emission_binding_span();
         if span.start() as usize + span.len() as usize > band_binding_indices.len() {
             return Err(ActionBandExecutionCompileError::InvalidFrozenSpan);
         }
+        let crossing = frozen
+            .crossing_binding_for_band(band_index as u32)
+            .ok_or(ActionBandExecutionCompileError::InvalidFrozenSpan)?;
+        let (admits_rising, admits_falling) = match crossing.threshold_direction() {
+            simthing_core::ThresholdDirection::Upward => (true, false),
+            simthing_core::ThresholdDirection::Downward => (false, true),
+            _ => (true, true),
+        };
+        admitted_band_thresholds.push(simthing_gpu::AdmittedBandThresholdDefinition {
+            threshold_bits: crossing.threshold_bits(),
+            slot: crossing.threshold_slot(),
+            col: crossing.threshold_column().raw() as u32,
+            event_kind: crossing.event_kind(),
+            admits_rising,
+            admits_falling,
+        });
         bands.push(ActionBandBandGpu {
             threshold_registration: band.threshold_registration().raw(),
             program_range: band
@@ -762,6 +783,7 @@ fn compile_action_band_gpu_execution_inner(
         target_channels,
         target_data,
         bands,
+        admitted_band_thresholds,
         band_binding_indices,
         emission_bindings.clone(),
         eml_nodes,

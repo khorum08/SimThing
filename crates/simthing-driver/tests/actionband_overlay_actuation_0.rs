@@ -213,6 +213,33 @@ fn real_gpu_crossing_at_generation(
     ctx: &GpuContext,
     source_generation: u32,
 ) -> simthing_gpu::BandCrossingDelta {
+    real_gpu_crossing_with_registrations(fx, ctx, source_generation, &fx.thresholds)
+}
+
+/// Mint one sealed Phase-5 crossing from a REBUILT threshold registration set,
+/// through the same production seal path. This is how the ordinary public
+/// threshold configuration path is modelled: registrations are cleared and
+/// re-registered while the installed ActionBand plan stays frozen.
+fn real_gpu_crossing_with_registrations(
+    fx: &Fixture,
+    ctx: &GpuContext,
+    source_generation: u32,
+    registrations: &[EmitOnThresholdRegistration],
+) -> simthing_gpu::BandCrossingDelta {
+    real_gpu_crossings_with_registrations(fx, ctx, source_generation, registrations)
+        .into_iter()
+        .next()
+        .expect("the existing Phase-5 GPU crossing is the only ingress")
+}
+
+/// Every sealed crossing minted from a rebuilt registration set, so a witness
+/// can select the exact definition it means to exercise.
+fn real_gpu_crossings_with_registrations(
+    fx: &Fixture,
+    ctx: &GpuContext,
+    source_generation: u32,
+    registrations: &[EmitOnThresholdRegistration],
+) -> Vec<simthing_gpu::BandCrossingDelta> {
     let mut allocator = SlotAllocator::new();
     allocator.install_initial_tree(&SimThing::new(SimThingKind::GameSession, 0));
     let mut previous = vec![0.0; fx.registry.total_columns];
@@ -227,7 +254,7 @@ fn real_gpu_crossing_at_generation(
         .upload_packed_threshold_ops(
             ctx,
             &PackedThresholdUpload::from_registrations(&emit_on_threshold_registrations_to_gpu(
-                &fx.thresholds,
+                registrations,
             ))
             .unwrap(),
         )
@@ -241,9 +268,6 @@ fn real_gpu_crossing_at_generation(
         &fx.registry,
         &allocator,
     )
-    .into_iter()
-    .next()
-    .expect("the existing Phase-5 GPU crossing is the only ingress")
 }
 
 fn resident_values(fx: &Fixture) -> Vec<f32> {
@@ -884,4 +908,160 @@ fn sparse_source_generations_execute_once_each_without_clock_pumping() {
             "a refused regression neither rewinds nor clears the accepted window"
         );
     }
+}
+
+/// FROZEN THRESHOLD-DEFINITION PROVENANCE witnesses (DA admission, relay
+/// 5721882717).
+///
+/// Tick-zero ActionBand commitments freeze a consequence against an admitted
+/// threshold DEFINITION. The ordinary public threshold configuration path may
+/// later clear and re-register thresholds while the installed plan stays
+/// frozen. Registration index is an ephemeral registry position and is NOT the
+/// threshold's meaning: an identical rebuild stays lawful at any index, while a
+/// redefinition fails closed BEFORE consequence authority.
+#[test]
+fn frozen_threshold_definition_is_authority_not_registration_index() {
+    let _guard = GPU.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let ctx =
+        GpuContext::new_blocking().expect("7.8 requires a real GPU adapter; skips are forbidden");
+    let fx = fixture();
+    let lanes = native_lanes(&fx);
+    let admitted = fx.thresholds[0].clone();
+
+    let session = |fx: &Fixture, lanes: &ActionBandNativeLaneAdmission| {
+        let resident = lanes
+            .bind_resident_next(ActionBandEmissionBindingGpu::property_next(
+                fx.column.raw_u32(),
+                simthing_gpu::ActionBandPropertyWrite::Set,
+            ))
+            .unwrap();
+        compile_crossing_consequence_session(&fx.frozen, &fx.eml, &[resident], &active(fx), lanes)
+            .unwrap()
+    };
+
+    // 1. Identical rebuild: the bound definition is exactly unchanged, so the
+    //    frozen consequence remains lawful with correct product timing.
+    let identical = vec![admitted.clone()];
+    let delta = real_gpu_crossing_with_registrations(&fx, &ctx, 1, &identical);
+    let plan_session = session(&fx, &lanes);
+    assert!(
+        plan_session
+            .compiled()
+            .execution_plan()
+            .crossings_from_sealed(std::slice::from_ref(&delta))
+            .expect("an identical rebuild keeps the frozen binding lawful")
+            .crossing_count()
+            > 0,
+        "identical rebuild must still join its frozen consequence"
+    );
+
+    // 2. Redefinition BEFORE the first crossing (the relay's 1.5 -> 0.75
+    //    shape): the sealed crossing carries the rebuilt threshold, so the
+    //    frozen consequence must NOT be routed through it.
+    for rebuilt_threshold in [0.75f32, 1.25] {
+        let mut redefined = admitted.clone();
+        redefined.threshold = rebuilt_threshold;
+        let stale_delta =
+            real_gpu_crossing_with_registrations(&fx, &ctx, 2, std::slice::from_ref(&redefined));
+        let plan_session = session(&fx, &lanes);
+        match plan_session
+            .compiled()
+            .execution_plan()
+            .crossings_from_sealed(std::slice::from_ref(&stale_delta))
+        {
+            Err(simthing_gpu::ActionBandExecutionError::FrozenThresholdDefinitionStale {
+                admitted_threshold_bits,
+                observed_threshold_bits,
+                ..
+            }) => {
+                assert_eq!(admitted_threshold_bits, admitted.threshold.to_bits());
+                assert_eq!(observed_threshold_bits, rebuilt_threshold.to_bits());
+            }
+            other => panic!(
+                "a redefined bound threshold ({rebuilt_threshold}) must fail closed before \
+                 consequence authority, got {other:?}"
+            ),
+        }
+    }
+
+    // 3. Reorder: the SAME bound definition re-registered at a different
+    //    index stays lawful — index-order independent. An unrelated UNBOUND
+    //    registration (its own event_kind) is registered ahead of it.
+    let unrelated = EmitOnThresholdRegistration {
+        slot: SlotIndex::new(0),
+        col: fx.column,
+        threshold: 0.6,
+        direction: ThresholdDirection::Upward,
+        event_kind: 9999,
+        buffer: EmitOnThresholdBuffer::Values,
+    };
+    let reordered = vec![unrelated.clone(), admitted.clone()];
+    let reordered_deltas = real_gpu_crossings_with_registrations(&fx, &ctx, 3, &reordered);
+    let bound_delta = reordered_deltas
+        .iter()
+        .find(|delta| delta.event_kind() == admitted.event_kind)
+        .expect("the bound definition still mints its own sealed crossing")
+        .clone();
+    assert_ne!(
+        bound_delta.reg_idx(),
+        0,
+        "the bound definition moved to a new registry index"
+    );
+    let plan_session = session(&fx, &lanes);
+    assert!(
+        plan_session
+            .compiled()
+            .execution_plan()
+            .crossings_from_sealed(std::slice::from_ref(&bound_delta))
+            .expect("reordering must not stale a frozen binding")
+            .crossing_count()
+            > 0,
+        "the frozen binding follows its DEFINITION, not its old index"
+    );
+
+    // 4. Unbound/additive churn at a NON-bound index is simply not this
+    //    plan's business: no consequence, and no session-wide poisoning.
+    // ADDITIVE set: the bound definition keeps index 0, the unrelated one is
+    // appended after it, so the churn genuinely sits at a NON-bound index.
+    let additive = vec![admitted.clone(), unrelated.clone()];
+    let additive_deltas = real_gpu_crossings_with_registrations(&fx, &ctx, 4, &additive);
+    let unbound_delta = additive_deltas
+        .iter()
+        .find(|delta| delta.event_kind() == unrelated.event_kind)
+        .expect("the unrelated definition mints its own sealed crossing")
+        .clone();
+    assert_ne!(
+        unbound_delta.reg_idx(),
+        0,
+        "additive churn must not occupy the bound registration index"
+    );
+    let plan_session = session(&fx, &lanes);
+    assert_eq!(
+        plan_session
+            .compiled()
+            .execution_plan()
+            .crossings_from_sealed(std::slice::from_ref(&unbound_delta))
+            .expect("unbound threshold churn is lawful")
+            .crossing_count(),
+        0,
+        "an unbound definition neither routes a consequence nor poisons the session"
+    );
+
+    // 5. REMAP: a different definition occupying the frozen band's own
+    //    registration index fails closed — the bound index no longer means
+    //    what was admitted.
+    let remapped = vec![unrelated.clone()];
+    let remapped_delta = real_gpu_crossing_with_registrations(&fx, &ctx, 5, &remapped);
+    assert_eq!(remapped_delta.reg_idx(), 0, "remap occupies the bound index");
+    let plan_session = session(&fx, &lanes);
+    assert!(
+        matches!(
+            plan_session
+                .compiled()
+                .execution_plan()
+                .crossings_from_sealed(std::slice::from_ref(&remapped_delta)),
+            Err(simthing_gpu::ActionBandExecutionError::FrozenThresholdDefinitionStale { .. })
+        ),
+        "a remapped bound index must fail closed before consequence authority"
+    );
 }
