@@ -67,7 +67,7 @@ use crate::grant_disbursement::{is_protected_grant_overlay, GrantDisbursementBou
 use crate::growth_entitlement::VerifiedGrowthResidencyCommit;
 use crate::overlay_lifecycle::OverlayLifecycleAdmissionState;
 use crate::sim_runtime_tree::SimRuntimeTree;
-use crate::tree_index::{detach_at_path, node_at_path, node_at_path_mut};
+use crate::tree_index::{node_at_path, node_at_path_mut};
 use simthing_core::{
     prepare_fission_clone_sources_subtree, DimensionRegistry, GenerationStamp,
     ObjectResidencyRequest, OverlayId, OverlayLifecycle, SimThing, SimThingId,
@@ -475,13 +475,16 @@ fn apply_remove(
     }
 
     // Find the subtree, collect its ids, then detach + tombstone.
-    let subtree = if let Some(paths) = node_paths {
-        paths
-            .get(&target)
-            .and_then(|path| detach_at_path(root, path))
-    } else {
-        detach_subtree(root, target)
-    };
+    // STRUCTURAL IDENTITY LAW (relay 5707155261): identity-verified detach —
+    // the cached path is a hint; a stale hint resolves against the current
+    // tree by identity and can never remove a different sibling.
+    let subtree = crate::tree_index::detach_by_identity(
+        root,
+        target,
+        node_paths
+            .and_then(|paths| paths.get(&target))
+            .map(Vec::as_slice),
+    );
     let Some(subtree) = subtree else {
         out.rejected_unknown_target += 1;
         return;
@@ -564,13 +567,14 @@ fn apply_reparent(
         return;
     }
 
-    let subtree = if let Some(paths) = node_paths {
-        paths
-            .get(&child)
-            .and_then(|path| detach_at_path(root, path))
-    } else {
-        detach_subtree(root, child)
-    };
+    // STRUCTURAL IDENTITY LAW (relay 5707155261): identity-verified detach.
+    let subtree = crate::tree_index::detach_by_identity(
+        root,
+        child,
+        node_paths
+            .and_then(|paths| paths.get(&child))
+            .map(Vec::as_slice),
+    );
     let Some(subtree) = subtree else {
         out.rejected_unknown_target += 1;
         return;
@@ -683,16 +687,27 @@ fn suspend_overlay(
     OverlayTransition::Changed
 }
 
+// STRUCTURAL IDENTITY LAW (DA admission, relay 5707155261): the cached path
+// snapshot is built ONCE before a boundary's whole structural batch, so any
+// earlier mutation in the same batch can shift or retire indices. SimThingId
+// is the only mutation authority — a hint is honored ONLY when the node it
+// currently reaches still carries the requested identity; otherwise both
+// lookups fall back to the CURRENT tree by identity (which also resolves
+// same-batch newborns that predate no snapshot). A stale hint can therefore
+// never select a different identity and never indexes out of bounds.
 fn lookup_node<'a>(
     root: &'a SimThing,
     id: SimThingId,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> Option<&'a SimThing> {
     if let Some(paths) = node_paths {
-        paths.get(&id).and_then(|path| node_at_path(root, path))
-    } else {
-        find_node(root, id)
+        if let Some(node) = paths.get(&id).and_then(|path| node_at_path(root, path)) {
+            if node.id == id {
+                return Some(node);
+            }
+        }
     }
+    find_node(root, id)
 }
 
 fn lookup_node_mut<'a>(
@@ -700,11 +715,17 @@ fn lookup_node_mut<'a>(
     id: SimThingId,
     node_paths: Option<&HashMap<SimThingId, Vec<usize>>>,
 ) -> Option<&'a mut SimThing> {
-    if let Some(paths) = node_paths {
-        paths.get(&id).and_then(|path| node_at_path_mut(root, path))
-    } else {
-        find_node_mut(root, id)
+    let hint_current = node_paths
+        .and_then(|paths| paths.get(&id))
+        .map(|path| node_at_path(&*root, path).map(|node| node.id == id).unwrap_or(false))
+        .unwrap_or(false);
+    if hint_current {
+        let path = node_paths
+            .and_then(|paths| paths.get(&id))
+            .expect("hint validity implies presence");
+        return node_at_path_mut(root, path);
     }
+    find_node_mut(root, id)
 }
 
 fn find_node<'a>(node: &'a SimThing, id: SimThingId) -> Option<&'a SimThing> {
@@ -744,6 +765,191 @@ mod tests {
     };
     use simthing_feeder::BoundaryRequest;
     use simthing_gpu::{ProvisionalResidencyEntitlement, ResidencyExtent, SlotAllocator};
+
+    // STRUCTURAL IDENTITY LAW witnesses (DA admission, relay 5707155261):
+    // one path snapshot taken before the whole batch (the boundary's exact
+    // behavior), then order-permuted same-boundary mutations. Identity is
+    // authority; a stale index can never take a different sibling or panic.
+    fn five_sibling_fixture() -> (
+        DimensionRegistry,
+        SlotAllocator,
+        SimRuntimeTree,
+        Vec<SimThingId>,
+    ) {
+        let mut reg = DimensionRegistry::new();
+        reg.register(SimProperty::simple("core", "loyalty", 0));
+        let mut root = SimThing::new(SimThingKind::World, 0);
+        let mut ids = Vec::new();
+        for _ in 0..5 {
+            let child = SimThing::new(SimThingKind::Location, 0);
+            ids.push(child.id);
+            root.add_child(child);
+        }
+        let mut alloc = SlotAllocator::new();
+        alloc.install_initial_tree(&root);
+        (reg, alloc, SimRuntimeTree::admit(root), ids)
+    }
+
+    fn run_batch(
+        requests: Vec<BoundaryRequest>,
+        reg: &mut DimensionRegistry,
+        alloc: &mut SlotAllocator,
+        tree: &mut SimRuntimeTree,
+    ) -> MaintainerOutcome {
+        let n_dims = reg.total_columns.max(1);
+        let mut shadow = vec![0.0f32; 64 * n_dims];
+        let snapshot = crate::tree_index::build_node_paths(tree.inner());
+        let mut lifecycle = OverlayLifecycleAdmissionState::default();
+        apply_structural_mutations(
+            requests,
+            tree,
+            alloc,
+            reg,
+            &mut shadow,
+            n_dims,
+            Some(&snapshot),
+            GenerationStamp::new(1),
+            &mut lifecycle,
+            &BTreeMap::new(),
+        )
+    }
+
+    fn surviving_ids(tree: &SimRuntimeTree) -> Vec<SimThingId> {
+        tree.inner().children.iter().map(|c| c.id).collect()
+    }
+
+    #[test]
+    fn sibling_removals_are_order_invariant_and_take_only_their_identities() {
+        // The exact A/C falsifier: forward order silently removed A + D.
+        for order in [[0usize, 2], [2, 0]] {
+            let (mut reg, mut alloc, mut tree, ids) = five_sibling_fixture();
+            let out = run_batch(
+                order
+                    .iter()
+                    .map(|&i| BoundaryRequest::Remove { target: ids[i] })
+                    .collect(),
+                &mut reg,
+                &mut alloc,
+                &mut tree,
+            );
+            assert_eq!(out.removes, 2);
+            assert_eq!(out.rejected_unknown_target, 0);
+            let survivors = surviving_ids(&tree);
+            assert_eq!(survivors, vec![ids[1], ids[3], ids[4]], "order {order:?}");
+            for &i in &order {
+                assert!(alloc.relation_of(ids[i]).is_none(), "removed id released");
+            }
+        }
+        // The exact D/E falsifier: forward order panicked on a stale index.
+        for order in [[3usize, 4], [4, 3]] {
+            let (mut reg, mut alloc, mut tree, ids) = five_sibling_fixture();
+            let out = run_batch(
+                order
+                    .iter()
+                    .map(|&i| BoundaryRequest::Remove { target: ids[i] })
+                    .collect(),
+                &mut reg,
+                &mut alloc,
+                &mut tree,
+            );
+            assert_eq!(out.removes, 2, "no panic, both removed, order {order:?}");
+            assert_eq!(surviving_ids(&tree), vec![ids[0], ids[1], ids[2]]);
+        }
+    }
+
+    #[test]
+    fn mixed_structural_family_respects_identity_after_earlier_mutations() {
+        // Reparent after Remove: E's cached path is stale after A's removal.
+        let (mut reg, mut alloc, mut tree, ids) = five_sibling_fixture();
+        let out = run_batch(
+            vec![
+                BoundaryRequest::Remove { target: ids[0] },
+                BoundaryRequest::Reparent {
+                    child: ids[4],
+                    new_parent: ids[1],
+                },
+            ],
+            &mut reg,
+            &mut alloc,
+            &mut tree,
+        );
+        assert_eq!((out.removes, out.reparents), (1, 1));
+        assert_eq!(surviving_ids(&tree), vec![ids[1], ids[2], ids[3]]);
+        let b = tree
+            .inner()
+            .children
+            .iter()
+            .find(|c| c.id == ids[1])
+            .expect("B survives");
+        assert_eq!(b.children.first().map(|c| c.id), Some(ids[4]), "E under B");
+
+        // Remove after Reparent: B's cached path is stale after A moved.
+        let (mut reg, mut alloc, mut tree, ids) = five_sibling_fixture();
+        let out = run_batch(
+            vec![
+                BoundaryRequest::Reparent {
+                    child: ids[0],
+                    new_parent: ids[3],
+                },
+                BoundaryRequest::Remove { target: ids[1] },
+            ],
+            &mut reg,
+            &mut alloc,
+            &mut tree,
+        );
+        assert_eq!((out.reparents, out.removes), (1, 1));
+        assert_eq!(surviving_ids(&tree), vec![ids[2], ids[3], ids[4]]);
+
+        // Duplicate + unknown targets: typed rejection, never a panic.
+        let (mut reg, mut alloc, mut tree, ids) = five_sibling_fixture();
+        let out = run_batch(
+            vec![
+                BoundaryRequest::Remove { target: ids[0] },
+                BoundaryRequest::Remove { target: ids[0] },
+                BoundaryRequest::Remove {
+                    target: SimThingId::from_session_raw(9_999_999),
+                },
+            ],
+            &mut reg,
+            &mut alloc,
+            &mut tree,
+        );
+        assert_eq!(out.removes, 1);
+        assert_eq!(out.rejected_unknown_target, 2);
+    }
+
+    #[test]
+    fn relocated_target_in_same_batch_resolves_by_current_identity_location() {
+        // Rule-4 newborn-equivalent: after the first mutation the target's
+        // snapshot path points nowhere useful (E now lives UNDER B); the
+        // second request must resolve E by identity at its CURRENT location.
+        // (A literal same-batch newborn requires a growth entitlement commit
+        // per the standing growth law — rejected_growth_entitlement fires —
+        // so the stale-resolution family is witnessed through relocation.)
+        let (mut reg, mut alloc, mut tree, ids) = five_sibling_fixture();
+        let out = run_batch(
+            vec![
+                BoundaryRequest::Reparent {
+                    child: ids[4],
+                    new_parent: ids[1],
+                },
+                BoundaryRequest::Remove { target: ids[4] },
+            ],
+            &mut reg,
+            &mut alloc,
+            &mut tree,
+        );
+        assert_eq!((out.reparents, out.removes), (1, 1));
+        assert_eq!(out.rejected_unknown_target, 0);
+        let b = tree
+            .inner()
+            .children
+            .iter()
+            .find(|n| n.id == ids[1])
+            .expect("B survives");
+        assert!(b.children.is_empty(), "relocated E removed by identity");
+        assert!(alloc.relation_of(ids[4]).is_none(), "E's slot released");
+    }
 
     fn fixture() -> (DimensionRegistry, SlotAllocator, SimRuntimeTree) {
         let mut reg = DimensionRegistry::new();
