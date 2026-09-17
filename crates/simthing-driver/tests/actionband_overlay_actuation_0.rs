@@ -201,6 +201,18 @@ fn native_lanes(fx: &Fixture) -> ActionBandNativeLaneAdmission {
 }
 
 fn real_gpu_crossing(fx: &Fixture, ctx: &GpuContext) -> simthing_gpu::BandCrossingDelta {
+    real_gpu_crossing_at_generation(fx, ctx, 0)
+}
+
+/// Mint one sealed Phase-5 crossing at an explicit SOURCE generation through
+/// the production generation-authority door (EVENT-GENERATION-STAMP-0), which
+/// is what ordinary step boundaries bind. No synthetic key, no test-only
+/// ingress: this is the same seal path the session uses.
+fn real_gpu_crossing_at_generation(
+    fx: &Fixture,
+    ctx: &GpuContext,
+    source_generation: u32,
+) -> simthing_gpu::BandCrossingDelta {
     let mut allocator = SlotAllocator::new();
     allocator.install_initial_tree(&SimThing::new(SimThingKind::GameSession, 0));
     let mut previous = vec![0.0; fx.registry.total_columns];
@@ -220,6 +232,7 @@ fn real_gpu_crossing(fx: &Fixture, ctx: &GpuContext) -> simthing_gpu::BandCrossi
             .unwrap(),
         )
         .unwrap();
+    phase5.bind_generation_authority(source_generation);
     phase5.tick(ctx, 0).unwrap();
     let emissions = phase5.readback_threshold_emissions(ctx).unwrap();
     apply_band_crossing_deltas_from_fused_emissions(
@@ -299,10 +312,20 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
     let values = dispatch.resident_current_for_proof(&ctx).unwrap();
     assert_eq!(values[fx.column.raw()].to_bits(), 1.75f32.to_bits());
     assert_eq!(dispatch.generation(), 1);
+    // SOURCE-GENERATION AUTHORITY (DA admission, relay 5720895186): this
+    // referee previously asserted the affine `source = facility + offset`
+    // model — after one dispatch it expected the window restamped to the
+    // FACILITY's next ordinal (Some(1), 0) and the replay refused as a
+    // generation mismatch against that ordinal. Under the successor law the
+    // window is keyed by the crossing's own SOURCE generation (0) and is
+    // RETAINED, so the identical replay is refused as what it actually is —
+    // a duplicate consumption of the same sealed crossing identity. The
+    // refusal is preserved and strictly better typed; no source time is
+    // restamped or collapsed.
     assert_eq!(
         dispatch.generation_dedupe_for_proof().unwrap(),
-        (Some(1), 0),
-        "the real resident-plane boundary must drop every prior-generation key immediately"
+        (Some(0), 1),
+        "the exactly-once window belongs to the crossing's source generation"
     );
     assert!(matches!(
         dispatch.dispatch_and_apply(
@@ -311,16 +334,12 @@ fn one_real_gpu_door_executes_all_three_consequence_arms() {
             replay_crossings,
             &tx,
         ),
-        Err(
-            simthing_driver::CrossingConsequenceDispatchError::CrossingGenerationMismatch {
-                expected: 1,
-                actual: 0,
-            }
-        )
+        Err(simthing_driver::CrossingConsequenceDispatchError::DuplicateCrossingConsumption)
     ));
     assert_eq!(
         dispatch.generation_dedupe_for_proof().unwrap(),
-        (Some(1), 0)
+        (Some(0), 1),
+        "a refused duplicate neither advances nor clears the source-generation window"
     );
 
     // RoutedOverlayDelivery: only authored duration + sealed source provenance
@@ -727,4 +746,142 @@ fn forbidden_overlay_and_state_plane_shapes_are_rejected_by_the_real_door() {
         error.to_string().contains("0 <= decay < 1"),
         "the same admission must RED specifically when feedback becomes unbounded: {error}"
     );
+}
+
+/// SOURCE-GENERATION AUTHORITY witnesses (DA admission, relay 5720895186).
+///
+/// Simulation/source generation is authoritative for crossing identity; the
+/// ActionBand facility generation is an internal monotone dispatch ordinal
+/// that advances only on non-empty dispatch. Quiet boundaries therefore
+/// separate the two clocks by construction, and SPARSE crossings must remain
+/// lawful without manufacturing anything for the quiet generations.
+#[test]
+fn sparse_source_generations_execute_once_each_without_clock_pumping() {
+    let _guard = GPU.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let ctx =
+        GpuContext::new_blocking().expect("7.8 requires a real GPU adapter; skips are forbidden");
+    let fx = fixture();
+    let lanes = native_lanes(&fx);
+
+    // gap_length 3 is the relay's G2 -> quiet G3/G4 -> G5 shape; gap_length 1
+    // is the contiguous G2 -> G3 control. Authored order is preserved in both.
+    for gap_length in [3u32, 1] {
+        let first_generation = 2u32;
+        let later_generation = first_generation + gap_length;
+        let resident = lanes
+            .bind_resident_next(ActionBandEmissionBindingGpu::property_next(
+                fx.column.raw_u32(),
+                simthing_gpu::ActionBandPropertyWrite::Set,
+            ))
+            .unwrap();
+        let session = compile_crossing_consequence_session(
+            &fx.frozen,
+            &fx.eml,
+            &[resident],
+            &active(&fx),
+            &lanes,
+        )
+        .unwrap();
+        let plan_deltas = |generation: u32| real_gpu_crossing_at_generation(&fx, &ctx, generation);
+        let first_delta = plan_deltas(first_generation);
+        let later_delta = plan_deltas(later_generation);
+        let (tx, _rx) = feeder_channel();
+        let mut dispatch = session
+            .bind_dispatch(&ctx, &resident_values(&fx))
+            .unwrap();
+
+        // Facility ordinal starts at 0 while source time is already 2: the
+        // two clocks are separated from the very first crossing.
+        assert_eq!(dispatch.generation(), 0);
+        let first = dispatch
+            .dispatch_sealed_and_apply(
+                &ctx,
+                fx.registry.total_columns as u32,
+                std::slice::from_ref(&first_delta),
+                &tx,
+            )
+            .expect("first sealed crossing executes at its own source generation")
+            .expect("a non-empty batch dispatches");
+        assert_eq!(first.crossing_count, 1);
+        assert_eq!(
+            dispatch.generation_dedupe_for_proof().unwrap(),
+            (Some(first_generation), 1),
+            "the window carries the SOURCE generation, not the facility ordinal"
+        );
+        let facility_after_first = dispatch.generation();
+        assert_eq!(facility_after_first, 1, "one non-empty dispatch, one ordinal");
+
+        // Quiet boundaries: no crossings, therefore no dispatch and NO
+        // manufactured facility generation (rule 4, no clock pumping).
+        for _ in 0..gap_length.saturating_sub(1) {
+            assert!(
+                dispatch
+                    .dispatch_sealed_and_apply(&ctx, fx.registry.total_columns as u32, &[], &tx)
+                    .expect("a quiet boundary is lawful")
+                    .is_none(),
+                "quiet boundaries must not dispatch"
+            );
+        }
+        assert_eq!(
+            dispatch.generation(),
+            facility_after_first,
+            "quiet boundaries must not manufacture facility generations"
+        );
+
+        // The later sparse crossing executes ONCE at its actual source
+        // generation. Under the previous affine association this refused with
+        // CrossingGenerationMismatch { expected: 2, actual: 5 }.
+        let later = dispatch
+            .dispatch_sealed_and_apply(
+                &ctx,
+                fx.registry.total_columns as u32,
+                std::slice::from_ref(&later_delta),
+                &tx,
+            )
+            .expect("a sparse later crossing is lawful")
+            .expect("a non-empty batch dispatches");
+        assert_eq!(later.crossing_count, 1);
+        assert_eq!(
+            dispatch.generation_dedupe_for_proof().unwrap(),
+            (Some(later_generation), 1),
+            "the window advanced to the later SOURCE generation exactly once"
+        );
+        assert_eq!(dispatch.generation(), facility_after_first + 1);
+
+        // Duplicate at the accepted source generation stays suppressed.
+        assert!(matches!(
+            dispatch.dispatch_sealed_and_apply(
+                &ctx,
+                fx.registry.total_columns as u32,
+                std::slice::from_ref(&later_delta),
+                &tx,
+            ),
+            Err(simthing_driver::CrossingConsequenceDispatchError::DuplicateCrossingConsumption)
+        ));
+
+        // Source-generation REGRESSION is refused fail-closed and leaves the
+        // accepted window untouched.
+        match dispatch.dispatch_sealed_and_apply(
+            &ctx,
+            fx.registry.total_columns as u32,
+            std::slice::from_ref(&first_delta),
+            &tx,
+        ) {
+            Err(
+                simthing_driver::CrossingConsequenceDispatchError::CrossingSourceGenerationRegressed {
+                    accepted,
+                    actual,
+                },
+            ) => {
+                assert_eq!(accepted, later_generation);
+                assert_eq!(actual, first_generation);
+            }
+            other => panic!("source-generation regression must refuse fail-closed: {other:?}"),
+        }
+        assert_eq!(
+            dispatch.generation_dedupe_for_proof().unwrap(),
+            (Some(later_generation), 1),
+            "a refused regression neither rewinds nor clears the accepted window"
+        );
+    }
 }
