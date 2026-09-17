@@ -231,9 +231,33 @@ struct FrozenConsequences {
     by_event_kind: BTreeMap<u32, CrossingConsequenceBinding>,
 }
 
+/// SOURCE-GENERATION AUTHORITY (DA admission, relay 5720895186).
+///
+/// Crossing identity belongs to the SIMULATION/evaluation generation carried
+/// by the sealed crossing — never to the ActionBand facility's dispatch
+/// ordinal. The two clocks advance on different events by construction: the
+/// facility generation advances once per successful non-empty dispatch, while
+/// simulation generation advances every boundary and quiet boundaries
+/// deliberately manufacture no dispatch. The previous law froze an affine
+/// `source = facility + offset` association at the first observed crossing,
+/// which is therefore invalid for SPARSE crossings (a crossing at G2, quiet
+/// G3/G4, then a lawful crossing at G5 refused as a mismatch).
+///
+/// The successor keeps a monotone watermark over accepted SOURCE generations:
+/// - all keys in one dispatch share one source generation (a mixed batch is a
+///   typed mismatch — one dispatch settles exactly one evaluation generation);
+/// - a source generation ABOVE the watermark opens a new exactly-once window;
+/// - the SAME source generation reuses the retained window, so a genuine
+///   duplicate (same generation + same admitted band slot/event identity) is
+///   suppressed even across separate dispatches;
+/// - a source generation BELOW the watermark is a regression, refused
+///   fail-closed.
+///
+/// The facility ordinal is never consulted here, so no empty-envelope clock
+/// pumping can make a lawful sparse crossing executable — nothing needs to be
+/// manufactured for the quiet generations at all.
 #[derive(Debug, Default)]
 struct GenerationBoundCrossingDedupe {
-    generation_offset: Option<u32>,
     generation: Option<u32>,
     keys: HashSet<ActionBandCrossingConsumptionKey>,
 }
@@ -241,65 +265,47 @@ struct GenerationBoundCrossingDedupe {
 impl GenerationBoundCrossingDedupe {
     fn admit(
         &mut self,
-        facility_generation: u32,
         keys: &[ActionBandCrossingConsumptionKey],
     ) -> Result<(), CrossingConsequenceDispatchError> {
-        let Some(generation_offset) = self.generation_offset.or_else(|| {
-            keys.first()
-                .and_then(|key| key.generation().checked_sub(facility_generation))
-        }) else {
-            if let Some(key) = keys.first() {
-                return Err(
-                    CrossingConsequenceDispatchError::CrossingGenerationMismatch {
-                        expected: facility_generation,
-                        actual: key.generation(),
-                    },
-                );
-            }
+        let Some(first) = keys.first() else {
             return Ok(());
         };
-        let executable_generation = generation_offset
-            .checked_add(facility_generation)
-            .ok_or(CrossingConsequenceDispatchError::GenerationWatermarkOverflow)?;
-        self.synchronize(executable_generation);
+        let source_generation = first.generation();
         if let Some(key) = keys
             .iter()
-            .find(|key| key.generation() != executable_generation)
+            .find(|key| key.generation() != source_generation)
         {
             return Err(
                 CrossingConsequenceDispatchError::CrossingGenerationMismatch {
-                    expected: executable_generation,
+                    expected: source_generation,
                     actual: key.generation(),
                 },
             );
         }
-        if keys.iter().any(|key| self.keys.contains(key)) {
-            return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
+        match self.generation {
+            Some(accepted) if source_generation < accepted => {
+                return Err(
+                    CrossingConsequenceDispatchError::CrossingSourceGenerationRegressed {
+                        accepted,
+                        actual: source_generation,
+                    },
+                );
+            }
+            Some(accepted) if source_generation == accepted => {
+                if keys.iter().any(|key| self.keys.contains(key)) {
+                    return Err(CrossingConsequenceDispatchError::DuplicateCrossingConsumption);
+                }
+            }
+            _ => {
+                // Strictly later source generation (or the first crossing this
+                // session): open a fresh exactly-once window. Sparse gaps are
+                // lawful and require no manufactured intermediate dispatch.
+                self.generation = Some(source_generation);
+                self.keys.clear();
+            }
         }
-        self.generation_offset = Some(generation_offset);
         self.keys.extend(keys.iter().cloned());
         Ok(())
-    }
-
-    fn observe_boundary(
-        &mut self,
-        facility_generation: u32,
-    ) -> Result<(), CrossingConsequenceDispatchError> {
-        let Some(generation_offset) = self.generation_offset else {
-            return Ok(());
-        };
-        let executable_generation = generation_offset
-            .checked_add(facility_generation)
-            .ok_or(CrossingConsequenceDispatchError::GenerationWatermarkOverflow)?;
-        self.synchronize(executable_generation);
-        Ok(())
-    }
-
-    fn synchronize(&mut self, executable_generation: u32) {
-        if self.generation != Some(executable_generation) {
-            self.generation = Some(executable_generation);
-            self.keys.clear();
-        }
     }
 
     fn proof_snapshot(&self) -> (Option<u32>, usize) {
@@ -486,16 +492,16 @@ impl CrossingConsequenceDispatch {
         boundary: &FeederSender,
     ) -> Result<CrossingConsequenceDispatchOutcome, CrossingConsequenceDispatchError> {
         let crossing_count = crossings.crossing_count() as u32;
-        self.generation_dedupe.admit(
-            self.execution.facility_generation(),
-            crossings.consumption_keys(),
-        )?;
+        // SOURCE-GENERATION AUTHORITY (relay 5720895186): admission consults
+        // the sealed crossings' own evaluation generation only. The facility
+        // dispatch ordinal advances inside `dispatch_resident_next` below and
+        // remains orthogonal internal state — it never re-derives, clears, or
+        // re-synchronizes this exactly-once window.
+        self.generation_dedupe.admit(crossings.consumption_keys())?;
         let production = self
             .execution
             .dispatch_resident_next(ctx, n_dims, &crossings)
             .map_err(|error| CrossingConsequenceDispatchError::Gpu(error.to_string()))?;
-        self.generation_dedupe
-            .observe_boundary(self.execution.facility_generation())?;
         let mut outcome = self.apply_boundary_consequences(production, boundary)?;
         outcome.crossing_count = crossing_count;
         Ok(outcome)
@@ -627,6 +633,10 @@ pub enum CrossingConsequenceDispatchError {
         "sealed ActionBand crossing generation {actual} is not executable generation {expected}"
     )]
     CrossingGenerationMismatch { expected: u32, actual: u32 },
+    #[error(
+        "sealed ActionBand crossing source generation {actual} regresses below accepted source generation {accepted}"
+    )]
+    CrossingSourceGenerationRegressed { accepted: u32, actual: u32 },
     #[error("ActionBand crossing generation watermark overflowed")]
     GenerationWatermarkOverflow,
     #[error("ActionBand GPU consequence dispatch failed: {0}")]
