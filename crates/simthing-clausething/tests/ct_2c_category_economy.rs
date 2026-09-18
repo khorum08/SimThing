@@ -282,7 +282,7 @@ fn gpu_category_micro_economy_matches_arena_allocation_oracle() {
     );
     assert!(
         report.all_pass(),
-        "unchanged RF-1 must judge ct_2c: {report:?}"
+        "RF-1 must judge ct_2c: {report:?}"
     );
     println!(
         "RF3-CT2C: participants={} disbursed={disbursed:?} residual={residual} balance_delta={root_balance_delta} rf1=PASS converged_path=active",
