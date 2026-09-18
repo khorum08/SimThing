@@ -111,9 +111,13 @@ authority. The same ordinary GPU session test passes with required=observed
 [E8 evidence](construction_retention_payer_checkpoint/e8_pin_proof.txt).
 
 Reference tuple: NVIDIA GeForce RTX 4080 Laptop / Vulkan / NVIDIA 595.79,
-rustc 1.95.0 / LLVM 22.1.2, `simthing-gpu/eml-resource-profiling`. The final
-exact-head clean-checkout reproduction and hosted run identities are bound in
-the PR body and Board return. Clean-checkout proof uses the same admitted tuple;
+rustc 1.95.0 / LLVM 22.1.2, `simthing-gpu/eml-resource-profiling`. A fresh detached clean checkout of implementation head `8b0f1b25`
+reproduces required=observed `ee0e9ac0af830bdf`, bundle `3e5297c713ea1ecd`: the
+stock ingress test passes 1/0/0/0 in 1.28s. All 32 sealed components match
+the payer checkout byte-for-byte and match their filtered Git blobs. A warm
+Cargo target was reused; workspace crates rebuilt from the clean path.
+The final evidence-only successor head, clean-checkout repetition and hosted
+run identities are bound in the PR body and Board return. Clean-checkout proof uses the same admitted tuple;
 no cross-adapter qualification is claimed.
 
 ## Gates, advisory residue, and limits
@@ -122,7 +126,14 @@ Required local checks pass: rung-close 2.1, artifact expiry (expired=0, cruft=0,
 malformed=0), lifecycle schema, test inventory drift (stale=0), orientation
 freshness/pointer 2.2, and canonical stamp equality. Cargo check with `--tests`
 covers all nine affected Rust crates using the admitted profiling feature.
-The stock local agent scan reports zero hard failures and zero INSPECT flags.
+The underlying local Doctrine scan reports zero hard failures and zero INSPECT
+flags. The committed-range agent wrapper **FAILS**: its primary class is
+`rehearsal-doc-graduation`, whose docs-only envelope rejects all 115 changed
+Rust paths. This authorized combined graduation carrier/retention sweep
+therefore returns that real class-envelope residue to the required DA lane;
+no class or gate was changed to suppress it. The earlier precommit wrapper
+PASS saw only the committed stamp range and is not proof of the full payer
+envelope. The full failure output is retained in diagnostic accounting.
 Exact commands/results and fixture-consumer outputs are in the
 [local validation packet](construction_retention_payer_checkpoint/local_validation.txt).
 

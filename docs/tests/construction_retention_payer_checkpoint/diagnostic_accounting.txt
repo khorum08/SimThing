@@ -148,3 +148,159 @@ PAYER full residue report:
   - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/resource_economy_materialize.rs (199 lines, no consumer outside tests/support/)
   note: DEAD-EXPORT is advisory. An exported module, empty test target, or unreachable support fixture is either a missing consumer or unreaped residue; say which, in the PR.
 SCENARIO-RESIDUE-VERDICT: INSPECT scenario=0 domain=0 dead_exports=52 unpinned_seals=0
+
+FULL COMMITTED-RANGE AGENT SCAN
+HEAD: 8b0f1b25853482b1a1e4f7d677c3e4d49e126154
+BASE: 9b6385ad9776cc43b0d79abfcd86cb94581c96a5
+Exit 1: underlying Doctrine PASS; 115 forbidden Rust paths under rehearsal-doc-graduation; no class/gate edits.
+DOCTRINE SCAN REPORT  (commit 8b0f1b25, 2026-09-18T04:12:00Z)
+  scanner self-test: SKIPPED
+  scan mode: PR delta (9b6385ad..8b0f1b25)
+  reliable scope: whole-tree
+  heuristic scope: changed files / changed lines
+  --- results ---
+  FIELD-SWEEP-SINGLE-PATH-ALGEBRA  PASS  0  design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; algebra is authored EML data and never an enum/tag/operator match in the sweep path
+  FIELD-SWEEP-SINGLE-PATH-SHADERS  PASS  0  design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; no eighth bespoke field shader in either production shader home beside the exact canonical generic interpreter
+  FIELD-SWEEP-LEGACY-CALLERS  PASS  0  design 0.0.8.7 Phase 5 FIELD-ADJACENCY-GENERATORS-0; the seven retiring operators are migration referees only and have zero compiled production callers
+  FIELD-SWEEP-DENSE-CAP-CROSSING  PASS  0  design 0.0.8.7 Phase 5 FIELD-ADJACENCY-GENERATORS-0; generic and sparse LinkGraph adjacency cannot inherit dense REGION_FIELD theater caps
+  B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
+  FORGE-MINTERS  PASS  0  design §5 forge minters
+  UNSAFE-FN  PASS  0  design §5 unsafe fn
+  UNSAFE-ALLOW-ATTR  PASS  0  design §5 allow unsafe attr
+  UNSAFE-FORBID-ATTR  PASS  0  design §5 forbid unsafe attr
+  DENY-TOML-STUB  PASS  0  design §0.6.6 deny.toml stub
+  SIM-KIND-READ  PASS  0  design §5 sim .kind read
+  SEMANTIC-WORDS  PASS  0  design §5 semantic words below spec
+  SPEC-STRING-CHANNEL  PASS  0  design §5 stringly channel identity
+  ALLOW-SEALED-PRODUCERS  PASS  0  design §5 sealed producer allowlist
+  ALLOW-BUFFER-HANDLES  PASS  0  design §5 buffer handle allowlist
+  ALLOW-KERNEL-SURFACE  PASS  0  design §5 kernel surface allowlist
+  TEST-BUDGET  PASS  0  design §0.9.5 test admission budget
+  SPEC-LOWERER-KIND-READ  PASS  0  ci_screening_surface §12 + design §0A.1; HEURISTIC tripwire: spec/lowering kind read may be legitimate role-resolution, but closed-lowerer hits are higher suspicion because lowerers are constitutionally closed unless a DA-authorized amendment names them
+  GUARD-KABUKI-TRIPWIRE  PASS  0  handoff_template section H + ci_screening_surface section 4; HEURISTIC tripwire for bespoke source-scanning guards and test-side include_str source greps; HC-6: symbol with well-formed FRESH HORIZON-ENTRY(iso-date): consumer/ref is EXEMPT (dated+assessable; unmarked/stale stay FLAGGED; never bare-token forever-pass); HC-8 accepted evasion residue: PRIVATE fn source-scanner or var-bound include_str! evades the pub-fn-anchored arms (DA review is the backstop; regex intentionally NOT widened — would false-fire on legit parsers); legitimate cases route to INSPECT triage, never FAIL
+  EXECUTION-STATUS-UNCLASSIFIED  PASS  0  design 0.0.8.7 §3 Phase 0 EXECUTION-STATUS-TAXONOMY-0; HEURISTIC: execution-flavored driver/kernel surface missing from scripts/ci/execution_status_taxonomy.tsv (delta-scoped on PR)
+  CELL-STORAGE-POLYMORPHISM  PASS  0  design 0.0.8.7 §2 P0(e) fence (i) CELL-STORAGE-POLYMORPHISM; HEURISTIC reach detector for tagged/templated/heterogeneous matrix-cell storage across production crates (workshop excluded)
+  BESPOKE-PATHFINDER  PASS  0  design 0.0.8.7 §4 TRIAD DOORS / P5 PALMA BESPOKE-PATHFINDER; HEURISTIC: A* (BinaryHeap+came_from/g_score/open_set) OR ordinary Dijkstra (dist/distance+prev/predecessor with dijkstra/shortest_path/relax_edge) in production crates
+  BORDER-SERVICE  PASS  0  design 0.0.8.7 §4 TRIAD DOORS / P5 Gu-Yang BORDER-SERVICE; HEURISTIC: border/frontline semantic service machinery (not mere presentation polyline projection/cache); mapeditor included for service-layer reaches
+  OWNER-POLICY-WEIGHT-AUTHORITY-MINT  PASS  0  design 0.0.8.7 §3 Phase 3 FIRST-CITIZEN-SPECIALISTS-0; HEURISTIC: authored clause/scenario-JSON sources minting OWNER_POLICY_WEIGHT_AUTHORITY property id 8_300_318 outside hydration field-economy derivation (hydration-derived dumps excluded)
+  --- summary ---
+  hard failures: 0   inspect flags: 0   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only
+DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+  --- inspect justifications ---
+  justifications file present with 4 entries
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/anchor_disposition_admission_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/capability_effect_host_admission_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/capability_prereq_dag_admission_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/clausething_admission_convergence_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/stead_spatial_contract_guards.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/anchor_remap.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/anchor_table.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/column_index.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/eml_exp.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/eml_ln.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/eml_registry.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/evaluate.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/execution_posture.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/persistence_deformation.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/residency_tier.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/simthing.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/tree_execution_context.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/tests/band_quantized_draw_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/tests/eml_exp_consumer_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/src/action_band_semantic_shadow.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/src/install.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/src/rf_conservation_oracle.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/accumulator_convergence_seal_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_field_triad_progress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_gpu_execution_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_overlay_actuation_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_recursive_composition_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_semantic_shadow_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/admission_provenance_typed_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/arena_participant_elimination_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/authored_law_gadget_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/clearing_weight_deformation_lifecycle_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/clearing_weight_semantic_partition_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/clearing_weight_span_unification_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/comparative_default_birth_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/contention_arena_executed_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/cpu_gpu_parity_matrix_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/determinism_matrix_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/field_adjacency_generators_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/field_sweep_n4_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/field_sweep_session_seam_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/grant_disbursement_lane_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/guyang_comparative_projections_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/invariant_set_inline_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/overlay_fractal_closure_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/owner_channel_intrinsic_reduce_up_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/plan_struct_typing_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/residency_tier_vocabulary_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/slot_logical_identity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/stemthing_b_flow_market_germ_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/stemthing_b_growth_entitlement_seam_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/stemthing_b_vram_residency_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/unified_facility_convergence_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/write_door_band_delta_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/actionband_execution_ingress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/oracle_surface_quarantine_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/portability_proof_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/vendor_door_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/vendor_door_triad_surface_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-gpu/src/resident_clearing_runtime.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/derived_span_projection_tests.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_exp_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_ln_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_opcode_gate.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_resource_class.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_uniqueness.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/overlay_prep.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/residency_placement.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/sealed/anchor_table.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/sealed/band_crossing_delta.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/sealed/emission.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/slot.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/tests/gpu_overlay_lifecycle_extraction_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/tests/plan_struct_typing_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/src/anchor_remap_encode.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/src/grant_disbursement.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/tests/continuous_posture_dual_site_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/tests/gpu_overlay_lifecycle_oracle_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/tests/resolution_site_split_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/src/compile/eml_gadget.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/src/compile/region_field_admission.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/tests/actionband_admission_door_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/tests/stemthing_b_allocator_retirement_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/src/actionband_spatial_flux_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/src/actionband_spatial_vendorization_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/actionband_full_field_triad_movement_vendor_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/actionband_spatial_flux_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/actionband_spatial_vendorization_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/bound_market_policy_singularity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/consequence_ingress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/departing_stream_disposal_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/departure_live_basis_convergence_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_arithmetic_semantics_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_exp_primitive_0_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_ln_primitive_0_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_resource_class_capability_census_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_resource_class_jit_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_resource_class_measurement_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/exact_cap_projection_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/exact_consumer_obligation_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/field_sweep_ir_probe_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/generation_abort_safety_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/generation_critical_path_baseline_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/persistence_deformation_port_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/recursion_axis_conformance_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/recursive_resource_filter_formalization_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/recursive_resource_filter_unification_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_apportionment_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_cutover_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_plan_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_score_and_bands_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_filter_substrate_binding_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_session_integration_conformance_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/tree_execution_authority_lifetime_0.rs
+AGENT-SCAN-VERDICT: FAIL delta_inspect=0 elapsed=74s

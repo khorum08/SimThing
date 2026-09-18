@@ -1,4 +1,7 @@
-Local payer validation after 46 promotions /318 reaps and the E8 pin roll.
+Precommit local payer validation after 46 promotions /318 reaps and the E8 pin roll.
+The early agent wrapper PASS below covered only the committed stamp range. It is not full-payer envelope proof.
+The full committed range at 8b0f1b25 reports underlying Doctrine PASS failures=0 inspect=0, but AGENT-SCAN FAIL with 115 rehearsal-doc-graduation forbidden-path reports.
+Full output retained in diagnostic_accounting.txt; final exact-head repetition bound in PR/Board.
 Each command below exited 0; full log SHA-256 binds the original local output, including compiler warnings.
 Final exact-head and clean-checkout repetition plus hosted proof are bound in the PR/Board return.
 
