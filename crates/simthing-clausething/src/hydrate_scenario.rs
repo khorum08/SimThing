@@ -54,7 +54,7 @@ use crate::hydrate_scenario_commitment::{
 use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, RawValue};
 
 #[path = "rehearsal_ingress_fields.rs"]
-mod rehearsal_ingress_fields;
+pub(crate) mod rehearsal_ingress_fields;
 
 pub const PR3_MAX_LINK_FANOUT: usize = 4;
 /// PR4 admits one scenario-contained SaturatingFlux field operator per document.

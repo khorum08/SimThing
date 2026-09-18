@@ -8,7 +8,7 @@ use simthing_core::{
     SubFieldSpec,
 };
 
-pub(super) fn parse_role(name: &str) -> SubFieldRole {
+pub(crate) fn parse_role(name: &str) -> SubFieldRole {
     match name {
         "Amount" => SubFieldRole::Amount,
         "Velocity" => SubFieldRole::Velocity,

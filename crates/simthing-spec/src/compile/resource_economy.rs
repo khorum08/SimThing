@@ -119,7 +119,11 @@ pub struct ResourceEconomyDiagnostic {
     pub message: String,
 }
 
-type ConsumedCellKey = (u32, SimPropertyId, ColumnIndex);
+/// One consumed CELL as authored: order band, property column, and the host
+/// that owns the stock (`None` = the property's unique live host). Two hosts of
+/// one property are two cells, so they never contend (relay 5730468245); the
+/// kernel planner re-checks the resolved `(band, slot, col)` as the final word.
+type ConsumedCellKey = (u32, SimPropertyId, ColumnIndex, Option<String>);
 
 struct ContentionTracker {
     cells: HashMap<ConsumedCellKey, String>,
@@ -137,9 +141,10 @@ impl ContentionTracker {
         order_band: u32,
         property_id: SimPropertyId,
         col: ColumnIndex,
+        host: Option<&str>,
         owner: &str,
     ) -> Result<(), SpecError> {
-        let key = (order_band, property_id, col);
+        let key = (order_band, property_id, col, host.map(str::to_string));
         if let Some(first) = self.cells.get(&key) {
             return Err(SpecError::ResourceEconomyConsumedInputContention {
                 property_id: property_id.0,
@@ -279,6 +284,7 @@ fn compile_transfer(
         transfer.order_band,
         source_property,
         source_col,
+        transfer.source_host_entity.as_deref(),
         &transfer.id,
     )?;
 
@@ -387,7 +393,13 @@ fn compile_recipe_input(
         },
     )?;
 
-    contention.record_consumed(recipe.order_band, property, col, &recipe.id)?;
+    contention.record_consumed(
+        recipe.order_band,
+        property,
+        col,
+        input.host_entity.as_deref(),
+        &recipe.id,
+    )?;
 
     Ok(CompiledResourceRecipeInput {
         property,
@@ -560,6 +572,56 @@ mod tests {
         ClampBehavior, EmlConsumerMask, EmlFormulaMeta, EmlNodeGpu, PropertyLayout, SimProperty,
         SubFieldSpec,
     };
+
+    // HOST-QUALIFIED CONTENTION witness (DA, relay 5730468245): two hosts of
+    // one property are two consumed cells in one band; only the SAME host's
+    // cell contends. A host-blind key refused two factions each spending
+    // their own energy.
+    #[test]
+    fn consumed_input_contention_is_keyed_by_host_cell() {
+        let mut registry = DimensionRegistry::new();
+        register_amount_property(&mut registry, "econ", "energy");
+        register_amount_property(&mut registry, "econ", "alloys");
+        let amount = SubFieldRole::Named("amount".into());
+        let recipe = |id: &str, host: &str| ResourceRecipeSpec {
+            id: id.into(),
+            inputs: vec![RecipeInputSpec {
+                property: PropertyKey::new("econ", "energy"),
+                role: amount.clone(),
+                unit_cost: 1.0,
+                host_entity: Some(host.into()),
+                host_span_token: None,
+            }],
+            target: PropertyKey::new("econ", "alloys"),
+            target_role: amount.clone(),
+            target_host_entity: Some(host.into()),
+            target_host_span_token: None,
+            output_coefficient: 1.0,
+            order_band: 0,
+            throttle_hint_max_per_tick: 1,
+        };
+        let compile = |recipes: Vec<ResourceRecipeSpec>| {
+            compile_resource_economy(
+                &ResourceEconomySpec {
+                    recipes,
+                    ..Default::default()
+                },
+                &registry,
+                &EmlExpressionRegistry::new(),
+            )
+        };
+        assert!(
+            compile(vec![recipe("east", "east"), recipe("west", "west")]).is_ok(),
+            "distinct hosts are distinct cells"
+        );
+        assert!(
+            matches!(
+                compile(vec![recipe("first", "east"), recipe("second", "east")]),
+                Err(SpecError::ResourceEconomyConsumedInputContention { .. })
+            ),
+            "the same host cell still contends"
+        );
+    }
 
     fn register_amount_property(
         reg: &mut DimensionRegistry,
