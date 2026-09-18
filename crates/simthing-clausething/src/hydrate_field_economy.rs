@@ -9,6 +9,7 @@
 //! entity/property/role → full-cell admission).
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::num::NonZeroU32;
 
 use serde::{Deserialize, Serialize};
 use simthing_core::{
@@ -101,6 +102,10 @@ pub struct HydratedProductionBuilding {
     pub output_resource: String,
     pub output_coefficient: f32,
     pub throttle_hint_max_per_tick: u32,
+    /// AUTHORITATIVE per-generation recipe-unit ceiling (relay 5735839909);
+    /// the throttle hint above stays a hint. Absent = every affordable unit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_units_per_generation: Option<NonZeroU32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -469,6 +474,7 @@ fn parse_production_building(
     let mut inputs = Vec::new();
     let mut output = None;
     let mut throttle_hint_max_per_tick = None;
+    let mut max_units_per_generation = None;
 
     // DUPLICATE-FIELD LAW (relay 5730468245, rule 6): a repeated authored field
     // is either a declared collection or an error — never a silent last-wins
@@ -495,6 +501,25 @@ fn parse_production_building(
                 field,
                 "production_building",
             )?,
+            // Recipe UNITS are integers by type: fractional, negative and zero
+            // authority refuse here rather than being rounded or ignored.
+            "max_units_per_generation" => {
+                let units = read_scalar_u32(field, "max_units_per_generation")?;
+                let cap = NonZeroU32::new(units).ok_or_else(|| {
+                    HydrateError::new_spanned(
+                        "production_building.max_units_per_generation must be a positive integer \
+                         number of recipe units"
+                            .to_string(),
+                        Some(field.key.span.clone()),
+                    )
+                })?;
+                set_once(
+                    &mut max_units_per_generation,
+                    cap,
+                    field,
+                    "production_building",
+                )?
+            }
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported production_building field `{other}`"),
@@ -521,6 +546,7 @@ fn parse_production_building(
             "throttle_hint_max_per_tick",
             property,
         )?,
+        max_units_per_generation,
     })
 }
 
@@ -1689,6 +1715,7 @@ fn lower_field_economy(
                 output_coefficient: building.output_coefficient,
                 order_band: 0,
                 throttle_hint_max_per_tick: building.throttle_hint_max_per_tick,
+                max_units_per_generation: building.max_units_per_generation,
             })
         })
         .collect::<Result<_, HydrateError>>()?;
@@ -1748,6 +1775,7 @@ fn lower_field_economy(
                 output_coefficient: coupling.output_coefficient,
                 order_band: coupling.order_band,
                 throttle_hint_max_per_tick: 1,
+                max_units_per_generation: None,
             }),
     );
 

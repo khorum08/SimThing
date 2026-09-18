@@ -6,6 +6,7 @@
 use crate::spec::script::PropertyKey;
 use crate::spec::trigger::TriggerDirection;
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU32;
 use simthing_core::SubFieldRole;
 
 /// Top-level authored economic registration content for a game mode.
@@ -74,6 +75,13 @@ pub struct ResourceRecipeSpec {
     pub order_band: u32,
     /// Boundary/throttle metadata only (E-3R). Not an enforced GPU or CPU cap.
     pub throttle_hint_max_per_tick: u32,
+    /// AUTHORITATIVE per-generation ceiling on executed recipe UNITS (DA, relay
+    /// 5735839909): `executed = min(floor(min_i(input_i / unit_cost_i)), cap)`
+    /// debits every input and credits the target by that one count. Absent =
+    /// every affordable unit. A positive integer by type: zero, negative and
+    /// fractional authority refuse at deserialization.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_units_per_generation: Option<NonZeroU32>,
 }
 
 /// One conjunctive recipe input channel.

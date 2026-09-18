@@ -153,6 +153,7 @@ fn recipe(host: &str, band: u32) -> ResourceRecipeSpec {
         output_coefficient: 1.0,
         order_band: band,
         throttle_hint_max_per_tick: 1,
+        max_units_per_generation: None,
     }
 }
 

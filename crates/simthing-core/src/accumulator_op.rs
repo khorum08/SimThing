@@ -26,6 +26,7 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
+use std::num::NonZeroU32;
 
 use crate::{ColumnIndex, SlotIndex};
 
@@ -107,9 +108,12 @@ pub enum CombineFn {
     },
     /// Debt-band emission formula: `floor((queued_count * unit_cost + value) / unit_cost)`.
     CrossingFormula { unit_cost: f32 },
-    /// Conjunctive production: `floor(min(input_i / unit_cost_i))`.
-    /// Emits one unit when all channels have accumulated enough.
-    MinAcrossInputs,
+    /// Conjunctive production: `floor(min(input_i / unit_cost_i))`, capped at
+    /// `max_units` per execution when present (one execution per generation in
+    /// its band; unused capacity never carries over). The capped count drives
+    /// BOTH the target credit and every input debit, so per-recipe conservation
+    /// stays exact. `None` executes every affordable unit.
+    MinAcrossInputs { max_units: Option<NonZeroU32> },
     /// Evaluate a designer EML expression tree on GPU.
     /// Requires a whitelist entry in `EmlExpressionRegistry`.
     /// Only valid for formulas with no transcendentals and ≤16 nodes.

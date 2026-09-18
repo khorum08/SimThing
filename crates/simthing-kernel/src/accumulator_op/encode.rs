@@ -368,7 +368,7 @@ fn validate_bootstrap_op(op: &AccumulatorOp) -> Result<(), EncodeError> {
         }
     } else if op.consume == ConsumeMode::SubtractFromAllInputs {
         match (&op.source, &op.combine) {
-            (SourceSpec::ConjunctiveCrossing { inputs }, CombineFn::MinAcrossInputs) => {
+            (SourceSpec::ConjunctiveCrossing { inputs }, CombineFn::MinAcrossInputs { .. }) => {
                 if inputs.is_empty() {
                     Err(EncodeError::Unsupported(
                         "SubtractFromAllInputs requires non-empty ConjunctiveCrossing",
@@ -443,7 +443,15 @@ fn encode_combine(
         CombineFn::CrossingFormula { unit_cost } => {
             Ok((combine_kind::CROSSING_FORMULA, unit_cost.to_bits(), 0, 0, 0))
         }
-        CombineFn::MinAcrossInputs => Ok((combine_kind::MIN_ACROSS_INPUTS, 0, 0, 0, 0)),
+        // `combine_a` carries the per-generation unit ceiling; 0 = uncapped, so
+        // every legacy conjunctive op encodes byte-identically.
+        CombineFn::MinAcrossInputs { max_units } => Ok((
+            combine_kind::MIN_ACROSS_INPUTS,
+            max_units.map_or(0, |cap| cap.get()),
+            0,
+            0,
+            0,
+        )),
         CombineFn::EvalEML { tree_id } => {
             let tree_id = EmlTreeId(*tree_id);
             let Some(registry) = eml else {
