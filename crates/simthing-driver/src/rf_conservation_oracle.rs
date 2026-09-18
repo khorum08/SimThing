@@ -8,7 +8,8 @@
 //!    `|Σ_i disbursed(I→C_i) − budget(I)| ≤ O(ε × n_children)`;
 //!    residual integrates into the parent `Balance` via existing `governed_by`
 //! 3. **Per-arena (structural):** intrinsic + inbound coupling =
-//!    leaf allocations + Balance changes + emission consumption;
+//!    terminal (ungoverned-leaf) allocations + Balance changes + emission
+//!    consumption — a governed leaf settles its allocation into its Balance;
 //!    no orphan participants
 //!
 //! # Independence fence (anti-cosplay)
@@ -177,6 +178,12 @@ pub struct ArenaMemberObservation {
     pub id: u64,
     /// True when this participant is a leaf for allocation (receives allocated flow).
     pub is_leaf: bool,
+    /// True when this participant's Balance is governed (`governed_by`), so it
+    /// settles the flow it owns: a governed LEAF retains the allocation it
+    /// receives inside its own `balance_delta` instead of handing it to a
+    /// terminal consumer. Declared by the property's sub-field governance — a
+    /// fact the caller supplies, never a verdict.
+    pub balance_governed: bool,
     /// Declared intrinsic-flow contribution this tick (0 if none).
     pub intrinsic_flow: f32,
     /// Allocated flow received this tick (leaves; 0 for pure intermediates if unused).
@@ -223,8 +230,10 @@ pub enum StructuralConservationViolation {
 
 /// Structural per-arena conservation + orphan ban (ADR).
 ///
-/// `intrinsic + inbound_coupling = leaf_allocations + Σ balance_delta + emission_consumption`
+/// `intrinsic + inbound_coupling = terminal_leaf_allocations + Σ balance_delta + emission_consumption`
 /// within an O(ε × n_participants) bound (f32 accumulation over the participant set).
+/// A terminal leaf allocation is one received by a leaf whose Balance is NOT
+/// governed; a governed leaf settles its allocation into its own `balance_delta`.
 pub fn check_arena_structural(
     snap: &ArenaConservationSnapshot,
 ) -> Result<(), StructuralConservationViolation> {
@@ -251,10 +260,13 @@ pub fn check_arena_structural(
     }
 
     let intrinsic: f32 = snap.participants.iter().map(|p| p.intrinsic_flow).sum();
+    // Only an ungoverned leaf hands its allocation to a terminal consumer. A
+    // governed leaf's allocation already sits inside its `balance_delta`, so
+    // counting it here as well would count the same mass twice.
     let leaf_alloc: f32 = snap
         .participants
         .iter()
-        .filter(|p| p.is_leaf)
+        .filter(|p| p.is_leaf && !p.balance_governed)
         .map(|p| p.allocated_flow)
         .sum();
     let balance: f32 = snap
@@ -340,61 +352,6 @@ pub fn check_conservation(
 // ---------------------------------------------------------------------------
 // Adapters from flat-star / E-11 style cell maps (no recursive RF source)
 // ---------------------------------------------------------------------------
-
-/// Build allocator + structural observations from a flat D=2 star after an
-/// allocation pass. Pure arithmetic — does not call the recursive RF tick path.
-///
-/// `root_slot` holds the intermediate budget (`intrinsic_flow` at depth 0).
-/// `leaf_slots` receive `allocated_flow`. `disbursed` is the measured leaf
-/// allocation vector (same order as `leaf_slots`).
-pub fn flat_star_observations(
-    root_slot: u64,
-    leaf_slots: &[u64],
-    root_intrinsic: f32,
-    leaf_allocated: &[f32],
-    root_balance_delta: Option<f32>,
-    leaf_balance_deltas: &[Option<f32>],
-    inbound_coupling: f32,
-    emission_consumption: f32,
-) -> (AllocatorStepObservation, ArenaConservationSnapshot) {
-    assert_eq!(leaf_slots.len(), leaf_allocated.len());
-    assert_eq!(leaf_slots.len(), leaf_balance_deltas.len());
-    let allocator = AllocatorStepObservation {
-        budget: root_intrinsic,
-        disbursed: leaf_allocated.to_vec(),
-        // Never substitute arithmetic truth for the executed Balance readout.
-        balance_residual: root_balance_delta,
-    };
-
-    let mut participants = Vec::with_capacity(1 + leaf_slots.len());
-    participants.push(ArenaMemberObservation {
-        id: root_slot,
-        is_leaf: false,
-        intrinsic_flow: root_intrinsic,
-        allocated_flow: 0.0,
-        balance_delta: root_balance_delta,
-    });
-    for (i, &slot) in leaf_slots.iter().enumerate() {
-        participants.push(ArenaMemberObservation {
-            id: slot,
-            is_leaf: true,
-            intrinsic_flow: 0.0,
-            allocated_flow: leaf_allocated[i],
-            balance_delta: leaf_balance_deltas[i],
-        });
-    }
-    let arena = ArenaConservationSnapshot {
-        participants,
-        structural_evidence: ArenaStructuralEvidence {
-            declared_intrinsic_source_ids: vec![root_slot],
-            inbound_coupling_endpoint_ids: Vec::new(),
-            parent_disbursement_recipient_ids: leaf_slots.to_vec(),
-        },
-        inbound_coupling,
-        emission_consumption,
-    };
-    (allocator, arena)
-}
 
 /// Construct an allocator observation from measured child shares and a measured
 /// Balance residual. The observation is intentionally incomplete when the

@@ -364,7 +364,7 @@ pub use resource_flow_fission_enrollment::{
 pub use resource_flow_preflight::validate_resource_flow_preflight;
 pub use rf_conservation_oracle::{
     allocator_eps_bound, allocator_from_disbursements, check_allocator_step,
-    check_arena_structural, check_conservation, check_recipe_exact, flat_star_observations,
+    check_arena_structural, check_conservation, check_recipe_exact,
     leaf_allocated_from_cells, orphan_ids, AllocatorConservationViolation,
     AllocatorStepObservation, ArenaConservationSnapshot, ArenaMemberObservation,
     ArenaStructuralEvidence, ConservationReport, RecipeConservationViolation,
