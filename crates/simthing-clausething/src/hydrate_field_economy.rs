@@ -59,12 +59,45 @@ pub struct HydratedFieldEconomy {
     pub need_bindings: Vec<NeedBindingSpec>,
 }
 
+/// Where one authored recipe cost is consumed from.
+///
+/// NATIVE RECIPE-INPUT LOCUS LAW (DA admission, relay 5730468245). An input is
+/// either the historical location-local material quantity shorthand, or a
+/// canonical binding to an EXISTING property/role hosted at an authored entity.
+/// The canonical form never invents a property: the named locus must already be
+/// admitted, and an unknown property, role, or ambiguous host is refused
+/// pre-activation by the ordinary resource-economy admission.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum HydratedRecipeInputLocus {
+    /// `input = { resource = minerals amount = 2 }` — a location-local
+    /// `<namespace>::<location>_<resource>_quantity` material the lowering
+    /// registers, exactly as the single-input form always has.
+    LocalMaterial { resource: String },
+    /// `input = { entity = terran property = "meridian::energy" role = balance amount = 1 }`
+    /// — same `entity` / `property` / `role` vocabulary as `need_binding`.
+    Canonical {
+        entity: String,
+        property: PropertyKey,
+        role: SubFieldRole,
+    },
+}
+
+/// One authored recipe cost. A production building owns a conjunction of these.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HydratedRecipeInput {
+    pub locus: HydratedRecipeInputLocus,
+    pub amount: f32,
+    #[serde(skip)]
+    pub span_token: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HydratedProductionBuilding {
     pub id: String,
     pub location: String,
-    pub input_resource: String,
-    pub input_amount: f32,
+    /// The complete authored conjunction. Repeated `input` fields ACCUMULATE —
+    /// they are a collection, never a last-wins scalar.
+    pub inputs: Vec<HydratedRecipeInput>,
     pub output_resource: String,
     pub output_coefficient: f32,
     pub throttle_hint_max_per_tick: u32,
@@ -433,20 +466,35 @@ fn parse_production_building(
     let (header_id, block) = header_or_block_body(property, "production_building")?;
     let mut id = header_id;
     let mut location = None;
-    let mut input = None;
+    let mut inputs = Vec::new();
     let mut output = None;
     let mut throttle_hint_max_per_tick = None;
 
+    // DUPLICATE-FIELD LAW (relay 5730468245, rule 6): a repeated authored field
+    // is either a declared collection or an error — never a silent last-wins
+    // overwrite. `input` is the collection; every scalar refuses a repeat.
     for field in &block.properties {
         match field.key.text.as_str() {
             "id" => id = read_checked_id(field, &id)?,
-            "location" => location = Some(read_scalar_text(field, "location")?),
-            "input" => input = Some(parse_resource_amount(field, "input")?),
-            "output" => output = Some(parse_resource_output(field)?),
-            "throttle_hint_max_per_tick" => {
-                throttle_hint_max_per_tick =
-                    Some(read_scalar_u32(field, "throttle_hint_max_per_tick")?)
-            }
+            "location" => set_once(
+                &mut location,
+                read_scalar_text(field, "location")?,
+                field,
+                "production_building",
+            )?,
+            "input" => inputs.push(parse_recipe_input(field)?),
+            "output" => set_once(
+                &mut output,
+                parse_resource_output(field)?,
+                field,
+                "production_building",
+            )?,
+            "throttle_hint_max_per_tick" => set_once(
+                &mut throttle_hint_max_per_tick,
+                read_scalar_u32(field, "throttle_hint_max_per_tick")?,
+                field,
+                "production_building",
+            )?,
             other => {
                 return Err(HydrateError::new_spanned(
                     format!("unsupported production_building field `{other}`"),
@@ -455,13 +503,17 @@ fn parse_production_building(
             }
         }
     }
-    let input = require_local(input, "input", property)?;
+    if inputs.is_empty() {
+        return Err(HydrateError::new_spanned(
+            "production_building requires at least one `input`".to_string(),
+            Some(property.key.span.clone()),
+        ));
+    }
     let output = require_local(output, "output", property)?;
     Ok(HydratedProductionBuilding {
         id: require_id(id, "production_building", property)?,
         location: require_local(location, "location", property)?,
-        input_resource: input.resource,
-        input_amount: input.amount,
+        inputs,
         output_resource: output.resource,
         output_coefficient: output.coefficient,
         throttle_hint_max_per_tick: require_local(
@@ -830,6 +882,148 @@ fn parse_weight_profile(
     Ok(HydratedFieldEconomyWeightProfile { id, profile, stack })
 }
 
+/// DUPLICATE-FIELD LAW (relay 5730468245, rule 6): assign an authored scalar
+/// exactly once. A second occurrence is a typed refusal carrying the repeated
+/// field's own span — never a silent last-wins overwrite of economic meaning.
+fn set_once<T>(
+    slot: &mut Option<T>,
+    value: T,
+    field: &RawProperty,
+    context: &str,
+) -> Result<(), HydrateError> {
+    if slot.is_some() {
+        return Err(HydrateError::new_spanned(
+            format!(
+                "duplicate {context} field `{}`: a scalar field may be authored only once",
+                field.key.text
+            ),
+            Some(field.key.span.clone()),
+        ));
+    }
+    *slot = Some(value);
+    Ok(())
+}
+
+/// Parse one authored recipe cost (relay 5730468245).
+///
+/// Exactly one locus form per input:
+/// - `{ resource = minerals amount = 2 }` — location-local material shorthand;
+/// - `{ entity = terran property = "meridian::energy" role = balance amount = 1 }`
+///   — a canonical existing locus, in the same vocabulary `need_binding` uses.
+///
+/// Mixing the forms, or omitting part of the canonical triple, is ambiguous and
+/// refused here rather than resolved by guessing.
+fn parse_recipe_input(property: &RawProperty) -> Result<HydratedRecipeInput, HydrateError> {
+    let block = require_block(property, "input")?;
+    let mut resource = None;
+    let mut entity = None;
+    let mut property_key = None;
+    let mut role = None;
+    let mut amount = None;
+    for field in &block.properties {
+        match field.key.text.as_str() {
+            "resource" => set_once(
+                &mut resource,
+                read_scalar_text(field, "resource")?,
+                field,
+                "production_building.input",
+            )?,
+            "entity" => set_once(
+                &mut entity,
+                read_scalar_text(field, "entity")?,
+                field,
+                "production_building.input",
+            )?,
+            "property" => {
+                let raw = read_scalar_text(field, "property")?;
+                let key = match raw.split_once("::") {
+                    Some((ns, name)) if !ns.is_empty() && !name.is_empty() => {
+                        PropertyKey::new(ns, name)
+                    }
+                    _ => {
+                        return Err(HydrateError::new_spanned(
+                            format!(
+                                "production_building.input.property must be `namespace::name`, got `{raw}`"
+                            ),
+                            Some(field.key.span.clone()),
+                        ));
+                    }
+                };
+                set_once(&mut property_key, key, field, "production_building.input")?;
+            }
+            // The native property-declaration role vocabulary, not a copy of it.
+            "role" => set_once(
+                &mut role,
+                crate::hydrate_scenario::rehearsal_ingress_fields::parse_role(&read_scalar_text(field, "role")?),
+                field,
+                "production_building.input",
+            )?,
+            "amount" => set_once(
+                &mut amount,
+                read_scalar_f32(field, "amount")?,
+                field,
+                "production_building.input",
+            )?,
+            other => {
+                return Err(HydrateError::new_spanned(
+                    format!("unsupported production_building.input field `{other}`"),
+                    Some(field.key.span.clone()),
+                ));
+            }
+        }
+    }
+    let span = Some(property.key.span.clone());
+    let canonical_named = entity.is_some() || property_key.is_some() || role.is_some();
+    let locus = match (resource, canonical_named) {
+        (Some(_), true) => {
+            return Err(HydrateError::new_spanned(
+                "production_building.input mixes `resource` with a canonical \
+                 `entity`/`property`/`role` locus; author exactly one form"
+                    .to_string(),
+                span,
+            ));
+        }
+        (Some(resource), false) => HydratedRecipeInputLocus::LocalMaterial { resource },
+        (None, true) => match (entity, property_key, role) {
+            (Some(entity), Some(property), Some(role)) => HydratedRecipeInputLocus::Canonical {
+                entity,
+                property,
+                role,
+            },
+            (entity, property_key, role) => {
+                let missing: Vec<&str> = [
+                    entity.is_none().then_some("entity"),
+                    property_key.is_none().then_some("property"),
+                    role.is_none().then_some("role"),
+                ]
+                .into_iter()
+                .flatten()
+                .collect();
+                return Err(HydrateError::new_spanned(
+                    format!(
+                        "production_building.input canonical locus is incomplete; missing {}",
+                        missing.join(", ")
+                    ),
+                    span,
+                ));
+            }
+        },
+        (None, false) => {
+            return Err(HydrateError::new_spanned(
+                "production_building.input names no locus; author `resource` or a canonical \
+                 `entity`/`property`/`role`"
+                    .to_string(),
+                span,
+            ));
+        }
+    };
+    Ok(HydratedRecipeInput {
+        locus,
+        amount: require_local(amount, "amount", property)?,
+        span_token: property.key.span.token_index,
+    })
+}
+
 fn parse_resource_amount(
     property: &RawProperty,
     field_name: &str,
@@ -1176,11 +1370,13 @@ fn validate_field_economy(
         .collect();
     for building in &parsed.production_buildings {
         validate_location_ref(&building.location, root_node, &parsed.span)?;
-        validate_positive_amount(
-            building.input_amount,
-            "production_building.input.amount",
-            &parsed.span,
-        )?;
+        for input in &building.inputs {
+            validate_positive_amount(
+                input.amount,
+                "production_building.input.amount",
+                &parsed.span,
+            )?;
+        }
         // Coefficient is required at parse; 0.0 is an authored neutralization
         // (no production accretion) for Clause-source bite controls.
         validate_non_negative_amount(
@@ -1329,18 +1525,104 @@ fn validate_field_economy(
     Ok(())
 }
 
+/// NATIVE RECIPE-INPUT LOCUS LAW (DA admission, relay 5730468245).
+///
+/// Lower a production building's COMPLETE authored conjunction into the
+/// already-generic `Vec<RecipeInputSpec>` — no last-wins overwrite, no
+/// first-wins truncation, no reduction to a single cost (rule 1).
+///
+/// The result is canonically ordered by the lowered locus, so authored field
+/// order carries no economic authority: reordering distinct inputs yields a
+/// byte-identical spec (rule 2). Two inputs lowering to the SAME
+/// `(property, role, host)` locus are refused rather than merged or overwritten
+/// (rule 6) — including a canonical input that happens to name a shorthand's
+/// own derived quantity property.
+fn lower_recipe_inputs(
+    namespace: &str,
+    building: &HydratedProductionBuilding,
+) -> Result<Vec<RecipeInputSpec>, HydrateError> {
+    let mut lowered: Vec<(RecipeInputSpec, usize)> = building
+        .inputs
+        .iter()
+        .map(|input| {
+            let spec = match &input.locus {
+                HydratedRecipeInputLocus::LocalMaterial { resource } => RecipeInputSpec {
+                    property: located_resource_key(
+                        namespace,
+                        &building.location,
+                        resource,
+                        "quantity",
+                    ),
+                    role: SubFieldRole::Amount,
+                    unit_cost: input.amount,
+                    host_entity: Some(building.location.clone()),
+                    host_span_token: None,
+                },
+                HydratedRecipeInputLocus::Canonical {
+                    entity,
+                    property,
+                    role,
+                } => RecipeInputSpec {
+                    property: property.clone(),
+                    role: role.clone(),
+                    unit_cost: input.amount,
+                    host_entity: Some(entity.clone()),
+                    host_span_token: Some(input.span_token),
+                },
+            };
+            (spec, input.span_token)
+        })
+        .collect();
+    let locus_key = |spec: &RecipeInputSpec| {
+        (
+            spec.property.namespace.clone(),
+            spec.property.name.clone(),
+            format!("{:?}", spec.role),
+            spec.host_entity.clone(),
+        )
+    };
+    lowered.sort_by(|(a, _), (b, _)| locus_key(a).cmp(&locus_key(b)));
+    for pair in lowered.windows(2) {
+        if locus_key(&pair[0].0) == locus_key(&pair[1].0) {
+            return Err(HydrateError::new_spanned(
+                format!(
+                    "production_building `{}` authors the same input locus `{}::{}` ({:?}) at \
+                     `{}` more than once; a duplicate cost is refused rather than merged or \
+                     overwritten",
+                    building.id,
+                    pair[1].0.property.namespace,
+                    pair[1].0.property.name,
+                    pair[1].0.role,
+                    pair[1].0.host_entity.as_deref().unwrap_or("<unqualified>"),
+                ),
+                Some(crate::raw::RawSpan {
+                    token_index: pair[1].1,
+                }),
+            ));
+        }
+    }
+    Ok(lowered.into_iter().map(|(spec, _)| spec).collect())
+}
+
 fn lower_field_economy(
     parsed: ParsedFieldEconomy,
     disruption_presences: Vec<HydratedDisruptionPresence>,
 ) -> Result<FieldEconomyLowering, HydrateError> {
     let mut properties = Vec::new();
     for building in &parsed.production_buildings {
-        properties.push(located_resource_property(
-            &parsed.namespace,
-            &building.location,
-            &building.input_resource,
-            "quantity",
-        ));
+        // Only the local-material shorthand registers its quantity property. A
+        // canonical input names an EXISTING locus and must never invent one
+        // (relay 5730468245, rule 6): if it is absent, admission refuses.
+        for input in &building.inputs {
+            if let HydratedRecipeInputLocus::LocalMaterial { resource } = &input.locus {
+                properties.push(located_resource_property(
+                    &parsed.namespace,
+                    &building.location,
+                    resource,
+                    "quantity",
+                ));
+            }
+        }
         properties.push(located_resource_property(
             &parsed.namespace,
             &building.location,
@@ -1391,34 +1673,25 @@ fn lower_field_economy(
     let mut recipes: Vec<ResourceRecipeSpec> = parsed
         .production_buildings
         .iter()
-        .map(|building| ResourceRecipeSpec {
-            id: format!("{}_recipe_{}", parsed.id, building.id),
-            inputs: vec![RecipeInputSpec {
-                property: located_resource_key(
+        .map(|building| {
+            Ok(ResourceRecipeSpec {
+                id: format!("{}_recipe_{}", parsed.id, building.id),
+                inputs: lower_recipe_inputs(&parsed.namespace, building)?,
+                target: located_resource_key(
                     &parsed.namespace,
                     &building.location,
-                    &building.input_resource,
+                    &building.output_resource,
                     "quantity",
                 ),
-                role: SubFieldRole::Amount,
-                unit_cost: building.input_amount,
-                host_entity: Some(building.location.clone()),
-                host_span_token: None,
-            }],
-            target: located_resource_key(
-                &parsed.namespace,
-                &building.location,
-                &building.output_resource,
-                "quantity",
-            ),
-            target_role: SubFieldRole::Amount,
-            target_host_entity: Some(building.location.clone()),
-            target_host_span_token: None,
-            output_coefficient: building.output_coefficient,
-            order_band: 0,
-            throttle_hint_max_per_tick: building.throttle_hint_max_per_tick,
+                target_role: SubFieldRole::Amount,
+                target_host_entity: Some(building.location.clone()),
+                target_host_span_token: None,
+                output_coefficient: building.output_coefficient,
+                order_band: 0,
+                throttle_hint_max_per_tick: building.throttle_hint_max_per_tick,
+            })
         })
-        .collect();
+        .collect::<Result<_, HydrateError>>()?;
     recipes.extend(
         parsed
             .flow_couplings
