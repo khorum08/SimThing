@@ -1,0 +1,306 @@
+Non-gating full legacy inventory diagnostic: baseline-equivalent FAIL; 33 pre-existing findings, zero new. Required lifecycle schema and inventory drift are PASS.
+  - line 1000: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/arena_allocation_plan.rs', 'independent_resource_layouts_bind_their_own_child_weight_in_both_orders', 'unit')
+  - line 1001: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/child_share_eml.rs', 'child_share_formula_is_column_agnostic_with_child_weight_as_param_3', 'unit')
+  - line 1002: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/arena_allocation_plan.rs', 'neutral_interior_pressure_carrier_is_bit_identical_to_history', 'unit')
+  - line 1003: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/tests/rehearsal_lifecycle_interior_policy_overlay_0.rs', 'installed_weight_overlay_classifies_host_and_affected', 'integration')
+  - line 1022: KEEP behavior-regression row lacks specific 'catches:' judgment note
+  - line 1023: KEEP behavior-regression row lacks specific 'catches:' judgment note
+  - line 961: never-pare row is AUDIT: ('simthing-workshop', 'crates/simthing-workshop/tests/rehearsal_perf_guyang_gather_0.rs', 'current_gather_and_retained_tiled_have_exact_field_parity_and_paired_samples', 'integration')
+  - line 962: never-pare row is AUDIT: ('simthing-workshop', 'crates/simthing-workshop/tests/rehearsal_perf_guyang_gather_0.rs', 'signed_samplewise_residuals_remain_negative_before_aggregation', 'integration')
+  - line 963: never-pare row is AUDIT: ('simthing-workshop', 'crates/simthing-workshop/tests/rehearsal_perf_tr_composite_0.rs', 'per_tree_composite_keeps_barrier_next_execution_and_observation_separate', 'integration')
+  - line 972: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/tests/rehearsal_lifecycle_post_rf_observation_0.rs', 'post_rf_rescan_with_zero_need_regs_publishes_canonical_observation', 'integration')
+  - line 973: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/tests/rehearsal_lifecycle_post_rf_observation_0.rs', 'post_rf_rescan_with_zero_anchor_rows_stays_a_lawful_no_op', 'integration')
+  - line 978: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/arena_allocation_plan.rs', 'interior_authored_weight_survives_the_pressure_upsweep', 'unit')
+  - line 979: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/tests/actionband_overlay_actuation_0.rs', 'frozen_threshold_definition_is_authority_not_registration_index', 'integration')
+  - line 980: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/tests/actionband_overlay_actuation_0.rs', 'sparse_source_generations_execute_once_each_without_clock_pumping', 'integration')
+  - line 981: never-pare row is AUDIT: ('simthing-sim', 'crates/simthing-sim/src/tree_mutation.rs', 'sibling_removals_are_order_invariant_and_take_only_their_identities', 'unit')
+  - line 982: never-pare row is AUDIT: ('simthing-sim', 'crates/simthing-sim/src/tree_mutation.rs', 'mixed_structural_family_respects_identity_after_earlier_mutations', 'unit')
+  - line 983: never-pare row is AUDIT: ('simthing-sim', 'crates/simthing-sim/src/tree_mutation.rs', 'relocated_target_in_same_batch_resolves_by_current_identity_location', 'unit')
+  - line 984: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'canonical_removal_evidence_admits_unbound_shrink_and_its_absence_is_stale', 'unit')
+  - line 985: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'bound_identity_removal_stays_typed_even_with_removal_evidence', 'unit')
+  - line 986: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'surviving_remap_stays_stale_even_with_removal_evidence_present', 'unit')
+  - line 987: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'mixed_add_remove_needs_both_evidence_classes', 'unit')
+  - line 988: never-pare row is AUDIT: ('simthing-kernel', 'crates/simthing-kernel/src/residency_placement.rs', 'removed_subtree_retires_exactly_its_placements_and_frees_the_extent', 'unit')
+  - line 989: never-pare row is AUDIT: ('simthing-kernel', 'crates/simthing-kernel/src/residency_placement.rs', 'unrelated_removal_retires_no_placement_state', 'unit')
+  - line 990: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'additive_row_from_accepted_growth_is_lawful_and_without_growth_is_stale', 'unit')
+  - line 991: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'bound_identity_remap_or_removal_refuses_with_its_own_type_even_during_growth', 'unit')
+  - line 992: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'unbound_preexisting_row_change_is_stale_even_during_growth', 'unit')
+  - line 993: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'registry_and_dimension_fences_refuse_typed_even_with_growth_evidence', 'unit')
+  - line 994: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/session.rs', 'identical_shape_is_always_lawful', 'unit')
+  - line 995: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/resource_economy_compile.rs', 'multi_row_property_refuses_unqualified_reference_in_both_tree_orders', 'unit')
+  - line 996: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/resource_economy_compile.rs', 'two_explicit_hosts_bind_distinct_slots_in_both_tree_orders', 'unit')
+  - line 997: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/resource_economy_compile.rs', 'single_owner_unqualified_resolution_is_unchanged', 'unit')
+  - line 998: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/arena_allocation_plan.rs', 'balance_governed_leaves_receive_residual_closure', 'unit')
+  - line 999: never-pare row is AUDIT: ('simthing-driver', 'crates/simthing-driver/src/arena_allocation_plan.rs', 'arena_plans_carry_no_governed_integration', 'unit')
+
+
+Standalone SCENARIO-RESIDUE: base advisory=46; payer advisory=52; new=6; dead-target failures=0.
+Six newly exposed exported-source residues retained unchanged outside the exact proof disposal scope; no future consumer is claimed:
+crates/simthing-driver/src/action_band_semantic_shadow.rs (524 lines, no consumer outside simthing-driver/src)
+crates/simthing-driver/src/comparative_default_birth.rs (399 lines, no consumer outside simthing-driver/src)
+crates/simthing-driver/src/owner_channel_rf_compile.rs (222 lines, no consumer outside simthing-driver/src)
+crates/simthing-driver/src/resource_flow_convergence_burn_in.rs (878 lines, no consumer outside simthing-driver/src)
+crates/simthing-driver/src/resource_flow_dynamic_enrollment_soak.rs (209 lines, no consumer outside simthing-driver/src)
+crates/simthing-sim/src/resolution_site.rs (317 lines, no consumer outside simthing-sim/src)
+
+BASE full residue report:
+  - DEAD-EXPORT (inspect): crates/simthing-sim/src/property_expiry.rs (326 lines, no consumer outside simthing-sim/src)
+  - DEAD-EXPORT (inspect): crates/simthing-gpu/src/min_plus_traversal_d_probe.rs (289 lines, no consumer outside simthing-gpu/src)
+  - DEAD-EXPORT (inspect): crates/simthing-gpu/src/saturating_flux_choke_threshold.rs (354 lines, no consumer outside simthing-gpu/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/atlas_0080_0.rs (657 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/field_scheduler.rs (389 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/min_plus_traversal_field.rs (481 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/order_directive.rs (347 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/production_path_0080_0.rs (607 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/recursive_local_rf_compile.rs (235 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/semantic_local_effects_compile.rs (240 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/simulation_fabric.rs (441 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/structural_n4_atlas_partition.rs (611 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/structural_n4_theater_compile.rs (349 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-spec/tests/support/reduce_up_fixture.rs (150 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-spec/tests/support/resource_economy_compile.rs (137 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-sim/tests/support/accumulator_plan_fixtures.rs (74 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-sim/tests/support/readback_gate.rs (42 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/c1_atlas_scale_model.rs (174 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/ct4b_field_fixture.rs (201 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/daily_economy_session.rs (215 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/e11_burn_in_scenarios.rs (190 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/e11_flat_star.rs (223 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/e11_resource_flow_soak.rs (176 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/economy_field_policy_product_fixture.rs (204 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/field_policy_v1_live_pipeline.rs (2589 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/field_policy_v1_route_replay.rs (59 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/first_slice_scenario_fixture.rs (69 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/frontier_v1.rs (1237 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/frontier_v2.rs (712 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/gpu_exec0_fixture.rs (377 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel0_fixture.rs (545 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel10_stream_accounting_fixture.rs (531 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel11_budget_envelope_fixture.rs (516 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel1_dispatch_fixture.rs (279 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel2_34k_fixture.rs (329 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel3_projection_fixture.rs (422 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel4_34k_projection_fixture.rs (582 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel5_second_kernel_fixture.rs (726 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel6_chain_fixture.rs (428 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel7_replay_fixture.rs (403 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel8_variant_batch_fixture.rs (531 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel9_frame_stream_fixture.rs (637 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_runtime1a_fixture.rs (184 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_runtime1b_dispatch_fixture.rs (273 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_runtime1b_fixture.rs (192 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/resource_economy_materialize.rs (199 lines, no consumer outside tests/support/)
+  note: DEAD-EXPORT is advisory. An exported module, empty test target, or unreachable support fixture is either a missing consumer or unreaped residue; say which, in the PR.
+SCENARIO-RESIDUE-VERDICT: INSPECT scenario=0 domain=0 dead_exports=46 unpinned_seals=0
+
+PAYER full residue report:
+  - DEAD-EXPORT (inspect): crates/simthing-sim/src/property_expiry.rs (326 lines, no consumer outside simthing-sim/src)
+  - DEAD-EXPORT (inspect): crates/simthing-sim/src/resolution_site.rs (317 lines, no consumer outside simthing-sim/src)
+  - DEAD-EXPORT (inspect): crates/simthing-gpu/src/min_plus_traversal_d_probe.rs (289 lines, no consumer outside simthing-gpu/src)
+  - DEAD-EXPORT (inspect): crates/simthing-gpu/src/saturating_flux_choke_threshold.rs (354 lines, no consumer outside simthing-gpu/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/action_band_semantic_shadow.rs (524 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/atlas_0080_0.rs (657 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/comparative_default_birth.rs (399 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/field_scheduler.rs (389 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/min_plus_traversal_field.rs (481 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/order_directive.rs (347 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/owner_channel_rf_compile.rs (222 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/production_path_0080_0.rs (607 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/recursive_local_rf_compile.rs (235 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/resource_flow_convergence_burn_in.rs (878 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/resource_flow_dynamic_enrollment_soak.rs (209 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/semantic_local_effects_compile.rs (240 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/simulation_fabric.rs (441 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/structural_n4_atlas_partition.rs (611 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/src/structural_n4_theater_compile.rs (349 lines, no consumer outside simthing-driver/src)
+  - DEAD-EXPORT (inspect): crates/simthing-spec/tests/support/reduce_up_fixture.rs (150 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-spec/tests/support/resource_economy_compile.rs (137 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-sim/tests/support/accumulator_plan_fixtures.rs (74 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-sim/tests/support/readback_gate.rs (42 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/c1_atlas_scale_model.rs (174 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/ct4b_field_fixture.rs (201 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/daily_economy_session.rs (215 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/e11_burn_in_scenarios.rs (190 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/e11_flat_star.rs (223 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/e11_resource_flow_soak.rs (176 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/economy_field_policy_product_fixture.rs (204 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/field_policy_v1_live_pipeline.rs (2589 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/field_policy_v1_route_replay.rs (59 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/first_slice_scenario_fixture.rs (69 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/frontier_v1.rs (1237 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/frontier_v2.rs (712 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/gpu_exec0_fixture.rs (377 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel0_fixture.rs (545 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel10_stream_accounting_fixture.rs (531 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel11_budget_envelope_fixture.rs (516 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel1_dispatch_fixture.rs (279 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel2_34k_fixture.rs (329 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel3_projection_fixture.rs (422 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel4_34k_projection_fixture.rs (582 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel5_second_kernel_fixture.rs (726 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel6_chain_fixture.rs (428 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel7_replay_fixture.rs (403 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel8_variant_batch_fixture.rs (531 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_gpu_kernel9_frame_stream_fixture.rs (637 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_runtime1a_fixture.rs (184 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_runtime1b_dispatch_fixture.rs (273 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/mobility_runtime1b_fixture.rs (192 lines, no consumer outside tests/support/)
+  - DEAD-EXPORT (inspect): crates/simthing-driver/tests/support/resource_economy_materialize.rs (199 lines, no consumer outside tests/support/)
+  note: DEAD-EXPORT is advisory. An exported module, empty test target, or unreachable support fixture is either a missing consumer or unreaped residue; say which, in the PR.
+SCENARIO-RESIDUE-VERDICT: INSPECT scenario=0 domain=0 dead_exports=52 unpinned_seals=0
+
+FULL COMMITTED-RANGE AGENT SCAN
+HEAD: 8b0f1b25853482b1a1e4f7d677c3e4d49e126154
+BASE: 9b6385ad9776cc43b0d79abfcd86cb94581c96a5
+Exit 1: underlying Doctrine PASS; 115 forbidden Rust paths under rehearsal-doc-graduation; no class/gate edits.
+DOCTRINE SCAN REPORT  (commit 8b0f1b25, 2026-09-18T04:12:00Z)
+  scanner self-test: SKIPPED
+  scan mode: PR delta (9b6385ad..8b0f1b25)
+  reliable scope: whole-tree
+  heuristic scope: changed files / changed lines
+  --- results ---
+  FIELD-SWEEP-SINGLE-PATH-ALGEBRA  PASS  0  design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; algebra is authored EML data and never an enum/tag/operator match in the sweep path
+  FIELD-SWEEP-SINGLE-PATH-SHADERS  PASS  0  design 0.0.8.7 Phase 5 FIELD-SWEEP-SINGLE-PATH; no eighth bespoke field shader in either production shader home beside the exact canonical generic interpreter
+  FIELD-SWEEP-LEGACY-CALLERS  PASS  0  design 0.0.8.7 Phase 5 FIELD-ADJACENCY-GENERATORS-0; the seven retiring operators are migration referees only and have zero compiled production callers
+  FIELD-SWEEP-DENSE-CAP-CROSSING  PASS  0  design 0.0.8.7 Phase 5 FIELD-ADJACENCY-GENERATORS-0; generic and sparse LinkGraph adjacency cannot inherit dense REGION_FIELD theater caps
+  B3-BUFFER-ESCAPE  PASS  0  design §5 B3 buffer escape
+  FORGE-MINTERS  PASS  0  design §5 forge minters
+  UNSAFE-FN  PASS  0  design §5 unsafe fn
+  UNSAFE-ALLOW-ATTR  PASS  0  design §5 allow unsafe attr
+  UNSAFE-FORBID-ATTR  PASS  0  design §5 forbid unsafe attr
+  DENY-TOML-STUB  PASS  0  design §0.6.6 deny.toml stub
+  SIM-KIND-READ  PASS  0  design §5 sim .kind read
+  SEMANTIC-WORDS  PASS  0  design §5 semantic words below spec
+  SPEC-STRING-CHANNEL  PASS  0  design §5 stringly channel identity
+  ALLOW-SEALED-PRODUCERS  PASS  0  design §5 sealed producer allowlist
+  ALLOW-BUFFER-HANDLES  PASS  0  design §5 buffer handle allowlist
+  ALLOW-KERNEL-SURFACE  PASS  0  design §5 kernel surface allowlist
+  TEST-BUDGET  PASS  0  design §0.9.5 test admission budget
+  SPEC-LOWERER-KIND-READ  PASS  0  ci_screening_surface §12 + design §0A.1; HEURISTIC tripwire: spec/lowering kind read may be legitimate role-resolution, but closed-lowerer hits are higher suspicion because lowerers are constitutionally closed unless a DA-authorized amendment names them
+  GUARD-KABUKI-TRIPWIRE  PASS  0  handoff_template section H + ci_screening_surface section 4; HEURISTIC tripwire for bespoke source-scanning guards and test-side include_str source greps; HC-6: symbol with well-formed FRESH HORIZON-ENTRY(iso-date): consumer/ref is EXEMPT (dated+assessable; unmarked/stale stay FLAGGED; never bare-token forever-pass); HC-8 accepted evasion residue: PRIVATE fn source-scanner or var-bound include_str! evades the pub-fn-anchored arms (DA review is the backstop; regex intentionally NOT widened — would false-fire on legit parsers); legitimate cases route to INSPECT triage, never FAIL
+  EXECUTION-STATUS-UNCLASSIFIED  PASS  0  design 0.0.8.7 §3 Phase 0 EXECUTION-STATUS-TAXONOMY-0; HEURISTIC: execution-flavored driver/kernel surface missing from scripts/ci/execution_status_taxonomy.tsv (delta-scoped on PR)
+  CELL-STORAGE-POLYMORPHISM  PASS  0  design 0.0.8.7 §2 P0(e) fence (i) CELL-STORAGE-POLYMORPHISM; HEURISTIC reach detector for tagged/templated/heterogeneous matrix-cell storage across production crates (workshop excluded)
+  BESPOKE-PATHFINDER  PASS  0  design 0.0.8.7 §4 TRIAD DOORS / P5 PALMA BESPOKE-PATHFINDER; HEURISTIC: A* (BinaryHeap+came_from/g_score/open_set) OR ordinary Dijkstra (dist/distance+prev/predecessor with dijkstra/shortest_path/relax_edge) in production crates
+  BORDER-SERVICE  PASS  0  design 0.0.8.7 §4 TRIAD DOORS / P5 Gu-Yang BORDER-SERVICE; HEURISTIC: border/frontline semantic service machinery (not mere presentation polyline projection/cache); mapeditor included for service-layer reaches
+  OWNER-POLICY-WEIGHT-AUTHORITY-MINT  PASS  0  design 0.0.8.7 §3 Phase 3 FIRST-CITIZEN-SPECIALISTS-0; HEURISTIC: authored clause/scenario-JSON sources minting OWNER_POLICY_WEIGHT_AUTHORITY property id 8_300_318 outside hydration field-economy derivation (hydration-derived dumps excluded)
+  --- summary ---
+  hard failures: 0   inspect flags: 0   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only
+DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+  --- inspect justifications ---
+  justifications file present with 4 entries
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/anchor_disposition_admission_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/capability_effect_host_admission_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/capability_prereq_dag_admission_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/clausething_admission_convergence_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-clausething/tests/stead_spatial_contract_guards.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/anchor_remap.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/anchor_table.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/column_index.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/eml_exp.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/eml_ln.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/eml_registry.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/evaluate.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/execution_posture.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/persistence_deformation.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/residency_tier.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/simthing.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/src/tree_execution_context.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/tests/band_quantized_draw_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-core/tests/eml_exp_consumer_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/src/action_band_semantic_shadow.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/src/install.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/src/rf_conservation_oracle.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/accumulator_convergence_seal_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_field_triad_progress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_gpu_execution_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_overlay_actuation_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_recursive_composition_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/actionband_semantic_shadow_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/admission_provenance_typed_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/arena_participant_elimination_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/authored_law_gadget_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/clearing_weight_deformation_lifecycle_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/clearing_weight_semantic_partition_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/clearing_weight_span_unification_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/comparative_default_birth_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/contention_arena_executed_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/cpu_gpu_parity_matrix_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/determinism_matrix_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/field_adjacency_generators_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/field_sweep_n4_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/field_sweep_session_seam_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/grant_disbursement_lane_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/guyang_comparative_projections_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/invariant_set_inline_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/overlay_fractal_closure_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/owner_channel_intrinsic_reduce_up_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/plan_struct_typing_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/residency_tier_vocabulary_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/slot_logical_identity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/stemthing_b_flow_market_germ_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/stemthing_b_growth_entitlement_seam_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/stemthing_b_vram_residency_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/unified_facility_convergence_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-driver/tests/write_door_band_delta_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/actionband_execution_ingress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/oracle_surface_quarantine_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/portability_proof_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/vendor_door_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-embedder/tests/vendor_door_triad_surface_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-gpu/src/resident_clearing_runtime.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/derived_span_projection_tests.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_exp_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_ln_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_opcode_gate.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_resource_class.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/eml_uniqueness.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/overlay_prep.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/residency_placement.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/sealed/anchor_table.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/sealed/band_crossing_delta.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/sealed/emission.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/src/slot.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/tests/gpu_overlay_lifecycle_extraction_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-kernel/tests/plan_struct_typing_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/src/anchor_remap_encode.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/src/grant_disbursement.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/tests/continuous_posture_dual_site_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/tests/gpu_overlay_lifecycle_oracle_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-sim/tests/resolution_site_split_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/src/compile/eml_gadget.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/src/compile/region_field_admission.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/tests/actionband_admission_door_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-spec/tests/stemthing_b_allocator_retirement_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/src/actionband_spatial_flux_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/src/actionband_spatial_vendorization_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/actionband_full_field_triad_movement_vendor_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/actionband_spatial_flux_witness_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/actionband_spatial_vendorization_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/bound_market_policy_singularity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/consequence_ingress_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/departing_stream_disposal_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/departure_live_basis_convergence_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_arithmetic_semantics_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_exp_primitive_0_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_ln_primitive_0_qualification.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_resource_class_capability_census_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_resource_class_jit_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/eml_resource_class_measurement_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/exact_cap_projection_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/exact_consumer_obligation_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/field_sweep_ir_probe_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/generation_abort_safety_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/generation_critical_path_baseline_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/persistence_deformation_port_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/recursion_axis_conformance_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/recursive_resource_filter_formalization_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/recursive_resource_filter_unification_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_apportionment_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_cutover_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_parity_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_plan_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_clearing_score_and_bands_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_filter_substrate_binding_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/resident_session_integration_conformance_0.rs
+AGENT-SCAN FORBIDDEN-EDIT (clearance would refuse this envelope; fix at edit time): class=rehearsal-doc-graduation file=crates/simthing-workshop/tests/tree_execution_authority_lifetime_0.rs
+AGENT-SCAN-VERDICT: FAIL delta_inspect=0 elapsed=74s

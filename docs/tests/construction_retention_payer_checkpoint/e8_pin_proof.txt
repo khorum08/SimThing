@@ -1,0 +1,145 @@
+E8 pin proof; stock ordinary session ingress; reference RTX 4080 Laptop / Vulkan / NVIDIA 595.79; rustc 1.95.0; --features simthing-gpu/eml-resource-profiling
+Command: cargo test --locked -p simthing-driver --features simthing-gpu/eml-resource-profiling --test rehearsal_lifecycle_construction_ingress -- --nocapture --test-threads=1
+
+EXPECTED NEGATIVE: old pin, exit 101
+running 1 test
+test construction_leaf_a_requires_qualified_ordinary_session ... adapter: AdapterInfo { name: "NVIDIA GeForce RTX 4080 Laptop GPU", vendor: 4318, device: 10144, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "595.79", backend: Vulkan }
+qualification: ResidentClearingQualification {
+    backend: "Vulkan",
+    adapter: "NVIDIA GeForce RTX 4080 Laptop GPU",
+    vendor: 4318,
+    device: 10144,
+    device_class: "DiscreteGpu",
+    driver_runtime: "NVIDIA 595.79",
+    features: "Features(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | PIPELINE_STATISTICS_QUERY | TIMESTAMP_QUERY_INSIDE_ENCODERS | TIMESTAMP_QUERY_INSIDE_PASSES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | MULTI_DRAW_INDIRECT | MULTI_DRAW_INDIRECT_COUNT | PUSH_CONSTANTS | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | POLYGON_MODE_POINT | CONSERVATIVE_RASTERIZATION | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | SPIRV_SHADER_PASSTHROUGH | MULTIVIEW | TEXTURE_FORMAT_NV12 | RAY_TRACING_ACCELERATION_STRUCTURE | RAY_QUERY | SHADER_F64 | SHADER_I16 | SHADER_PRIMITIVE_INDEX | DUAL_SOURCE_BLENDING | SHADER_INT64 | SUBGROUP | SUBGROUP_VERTEX | SUBGROUP_BARRIER | PIPELINE_CACHE | SHADER_INT64_ATOMIC_MIN_MAX | SHADER_INT64_ATOMIC_ALL_OPS)",
+    compiler: "rustc 1.95.0 (59807616e 2026-04-14)\nbinary: rustc\ncommit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860\ncommit-date: 2026-04-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.95.0\nLLVM version: 22.1.2",
+    cargo_features: "EML_RESOURCE_PROFILING",
+    shader_compiler: "wgpu 22.1.0 / naga 22.1.0",
+    cargo_lock_hash: 2005979115394712535,
+    semantic_kernel_bundle_hash: 4490818659730202317,
+    workgroups: [
+        32,
+        64,
+    ],
+    subgroup_assumption: "subgroup-independent:no-subgroup-builtins-or-size-authority",
+    abi_version: 1,
+}
+required_fingerprint: ec5a2a30afaee795
+observed_fingerprint: ee0e9ac0af830bdf
+bundle: 3e5297c713ea1ecd
+
+thread 'construction_leaf_a_requires_qualified_ordinary_session' (41368) panicked at crates\simthing-driver\tests\rehearsal_lifecycle_construction_ingress.rs:47:23:
+Leaf A stopped before economics: ResidentClearing(LiveHead(UnqualifiedAdapter { required: 17030971329449224085, observed: 17153818183069797343 }))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    construction_leaf_a_requires_qualified_ordinary_session
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s
+
+error: test failed, to rerun pass `-p simthing-driver --test rehearsal_lifecycle_construction_ingress`
+
+SUCCESSOR: authorized new pin, exit 0
+running 1 test
+test construction_leaf_a_requires_qualified_ordinary_session ... adapter: AdapterInfo { name: "NVIDIA GeForce RTX 4080 Laptop GPU", vendor: 4318, device: 10144, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "595.79", backend: Vulkan }
+qualification: ResidentClearingQualification {
+    backend: "Vulkan",
+    adapter: "NVIDIA GeForce RTX 4080 Laptop GPU",
+    vendor: 4318,
+    device: 10144,
+    device_class: "DiscreteGpu",
+    driver_runtime: "NVIDIA 595.79",
+    features: "Features(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | PIPELINE_STATISTICS_QUERY | TIMESTAMP_QUERY_INSIDE_ENCODERS | TIMESTAMP_QUERY_INSIDE_PASSES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | MULTI_DRAW_INDIRECT | MULTI_DRAW_INDIRECT_COUNT | PUSH_CONSTANTS | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | POLYGON_MODE_POINT | CONSERVATIVE_RASTERIZATION | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | SPIRV_SHADER_PASSTHROUGH | MULTIVIEW | TEXTURE_FORMAT_NV12 | RAY_TRACING_ACCELERATION_STRUCTURE | RAY_QUERY | SHADER_F64 | SHADER_I16 | SHADER_PRIMITIVE_INDEX | DUAL_SOURCE_BLENDING | SHADER_INT64 | SUBGROUP | SUBGROUP_VERTEX | SUBGROUP_BARRIER | PIPELINE_CACHE | SHADER_INT64_ATOMIC_MIN_MAX | SHADER_INT64_ATOMIC_ALL_OPS)",
+    compiler: "rustc 1.95.0 (59807616e 2026-04-14)\nbinary: rustc\ncommit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860\ncommit-date: 2026-04-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.95.0\nLLVM version: 22.1.2",
+    cargo_features: "EML_RESOURCE_PROFILING",
+    shader_compiler: "wgpu 22.1.0 / naga 22.1.0",
+    cargo_lock_hash: 2005979115394712535,
+    semantic_kernel_bundle_hash: 4490818659730202317,
+    workgroups: [
+        32,
+        64,
+    ],
+    subgroup_assumption: "subgroup-independent:no-subgroup-builtins-or-size-authority",
+    abi_version: 1,
+}
+required_fingerprint: ee0e9ac0af830bdf
+observed_fingerprint: ee0e9ac0af830bdf
+bundle: 3e5297c713ea1ecd
+ordinary session admitted; construction discriminator may proceed
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.26s
+
+FRESH CLEAN CHECKOUT: implementation HEAD 8b0f1b25853482b1a1e4f7d677c3e4d49e126154
+clean_checkout_head: 8b0f1b25853482b1a1e4f7d677c3e4d49e126154
+clean_checkout_tree: d11d94c8b6b1b800814a9cb59a6d10f3ca04f8ef
+git_status_before: CLEAN
+Cargo target: reused warm target C:/Users/mvorm/SimThing-0088-construction-local-2068/target; workspace crates rebuilt from fresh checkout
+path	checkout_sha256	git_blob	checkout_filtered_blob
+Cargo.lock	e62921d73d527a38516d14eefa73e1f2ed9a6b7c0619ee9f7df779415503495a	f893ca06bc555cbf39dc4bead985e1f90db860b9	f893ca06bc555cbf39dc4bead985e1f90db860b9
+crates/simthing-driver/src/child_share_eml.rs	09f7fddb7c371dd62034cd65a796c161a3d7b32ef20809fbd014db25001f0c5f	356f9da700eb852110d78e472f97fe06847c954c	356f9da700eb852110d78e472f97fe06847c954c
+crates/simthing-core/src/eml_nodes.rs	86aeff739d90743d1dac697d85ea641eca6915b6c560192f087097e726c82fa9	cbe4cb8d4ccc57bb98e31aedb12761e0da884398	cbe4cb8d4ccc57bb98e31aedb12761e0da884398
+crates/simthing-core/src/accumulator_op.rs	02c49e5d26d58fc9ac33a985f29065ba0fdc582ffe5ac098dbad261640e6dc11	7df2e2305a3bedbce91b627ac6a9c5151c65c274	7df2e2305a3bedbce91b627ac6a9c5151c65c274
+crates/simthing-core/src/accumulator_op_builder.rs	345a3ff1639a4d1b836fa8e1f29d605b4dd1c9096287dcc4c97b73a70aee0ef4	50ab00432b9db4fe946aa8192a6599b2b746ceef	50ab00432b9db4fe946aa8192a6599b2b746ceef
+crates/simthing-driver/src/arena_allocation_plan.rs	fee8fb6f4984883c7b6edfd72b1a0c27552de9ef0e2d168978e1c95556b78064	09b86dfaa723667932358bb6e79fe8786f2f859f	09b86dfaa723667932358bb6e79fe8786f2f859f
+crates/simthing-driver/src/arena_allocation_sync.rs	2d451aa8e844f8317a07f61535e5da450880ff46e3d4516b3780fb7af8ac8522	4a94df434eaf410cc6105e50fc5fae187479447e	4a94df434eaf410cc6105e50fc5fae187479447e
+crates/simthing-driver/src/arena_hierarchy.rs	7403f45519cafdbf720ba54c3d7a9cd39c52f7811425610c26384dc84b6f04e8	523e8f35ac9277a89fe163b01fc3c81b13e7bb56	523e8f35ac9277a89fe163b01fc3c81b13e7bb56
+crates/simthing-kernel/src/accumulator_op/mod.rs	c5fea1eb7a807d49054711e2a74b5cead707ca0d71d9c9631bed17f3a4777bfd	d4460fb459ca5cacd38a2a0c1fc9b0302418f8ea	d4460fb459ca5cacd38a2a0c1fc9b0302418f8ea
+crates/simthing-kernel/src/accumulator_op/types.rs	a69493237a9757600723422f769457c74e7775ceb556b860948e4c2c77123e04	2160bed7683fb268449abbb86ff19bdf80a1496d	2160bed7683fb268449abbb86ff19bdf80a1496d
+crates/simthing-kernel/src/accumulator_op/encode.rs	ba4a1e7323c70c5492d3ed8ebc88da3cd7feced462f3135bb95762eb6dd83596	98b31b5a37106a4f8846cf5c34968dd38315847d	98b31b5a37106a4f8846cf5c34968dd38315847d
+crates/simthing-kernel/src/accumulator_op/cpu_oracle.rs	06fef0ca6dd44f9a9903141a3e6282b5d352c95c09118f2e54505a1e457495db	8ccff0a1e9cdcab00ea1214a297f00b670a7980a	8ccff0a1e9cdcab00ea1214a297f00b670a7980a
+crates/simthing-kernel/src/accumulator_op/session.rs	50a1ae405c8b02da09c710918c63eee3634d2567cbf1635d8be5ce725e4ad7f6	fd226ebb74b8f45f7e170d1aaabe8e685dcc7e8f	fd226ebb74b8f45f7e170d1aaabe8e685dcc7e8f
+crates/simthing-kernel/src/shaders/accumulator_op.wgsl	3ae36839a2a9259dfcdbc96f034a0bf7e81027dabf411ed50e5d0c7d09c90441	580f6ea81d263f64ddfce7bd1aab749bba03952b	580f6ea81d263f64ddfce7bd1aab749bba03952b
+crates/simthing-kernel/src/resident_clearing_plan.rs	4caeebc285c1b47193f75a56d843be1f25e426e9f65b9553b563048bb67ec1cb	38f3a4fbec90d23ae7df63fb12158b8ce3eb146e	38f3a4fbec90d23ae7df63fb12158b8ce3eb146e
+crates/simthing-core/src/persistence_deformation.rs	ec1b9458d34f5c3e3305a25fefdca7d9de31e187c15d5762e3a2f30990539153	8990dbfffdfd4c6a4a37090f88aa7bfcf1941243	8990dbfffdfd4c6a4a37090f88aa7bfcf1941243
+crates/simthing-kernel/src/resident_clearing_apportionment.rs	27d4562d279656373403e2a6d5aa4f5b89b44ab20a630f1828e3c08f2ca24112	ba06d81e78cfb749688772fd8e43997b4b1dfe80	ba06d81e78cfb749688772fd8e43997b4b1dfe80
+crates/simthing-kernel/src/shaders/resident_clearing_apportionment.wgsl	1232875ef68f136772de86a7b10a9b6e792546a53e8a0b0d8444591efd8c4f5c	08070e71c59d8ade44179aec6f541301fe82d331	08070e71c59d8ade44179aec6f541301fe82d331
+crates/simthing-kernel/src/resident_recursive_intake_transform.rs	24926733afeb06978e48e1ab7c071221d9be230797fae3d6a502911e2de3acb9	b1acf8a1a70a51768610c0f8a82fd1620948c76b	b1acf8a1a70a51768610c0f8a82fd1620948c76b
+crates/simthing-kernel/src/shaders/resident_recursive_intake_transform.wgsl	4b791c0670d755220e8f0829217f45a4d76a190646900d20beba7685fd265824	1fbe28305c5b3e57732ed7cb12be53bc7f2cbd79	1fbe28305c5b3e57732ed7cb12be53bc7f2cbd79
+crates/simthing-gpu/src/resident_clearing_plan.rs	5bc43493a295ca0a0c045da7319719ab4d05e285a9aec60265b38262f6166921	beee2b5fc6471967a7bc3905ac6c96fae1aa994f	beee2b5fc6471967a7bc3905ac6c96fae1aa994f
+crates/simthing-driver/src/resident_clearing_runtime.rs	a2a28668f758dc52a208e6e69b020e68fd1931363da857c66e13f5af5eb58e58	ce8f367bb86e483fde49ad8ca71341860fc0fe41	ce8f367bb86e483fde49ad8ca71341860fc0fe41
+crates/simthing-driver/src/session.rs	886fea8d031f36c267be5849416150b4406fd51a01b30a7033927e01676de259	c90d311f006310bb1154f4135c938d84904c97ae	c90d311f006310bb1154f4135c938d84904c97ae
+crates/simthing-driver/src/growth_entitlement.rs	60711cfe88d900617a6d21e806c77be6eb7446dc0fce0231441b34640db46db9	e1c27ca4ab61f0ffd5f5331c2cefb7d9b6a4b9b2	e1c27ca4ab61f0ffd5f5331c2cefb7d9b6a4b9b2
+crates/simthing-driver/src/spec_session.rs	410bcc5b2310379e6313286e2d897f4b2c01d714ae78eeb24d9c9eafdbabf88c	8b1c894759d31de832456579981c0671f7fc8931	8b1c894759d31de832456579981c0671f7fc8931
+crates/simthing-sim/src/boundary.rs	fc727b4ab512071e6aba4b0fcecddbe5f10826a21a7e594f3f973b81d396413e	d3a8d33d31feb8f466c5a9193586951a358f61ee	d3a8d33d31feb8f466c5a9193586951a358f61ee
+crates/simthing-sim/src/sim_runtime_tree.rs	a06261066a75f88e0c464395914ab0f3b40da1bc6e4549ea808e4beb277c97cb	d4f907bf1e40c91bf1f3b652f9a37f2826e190aa	d4f907bf1e40c91bf1f3b652f9a37f2826e190aa
+crates/simthing-spec/src/spec/flow_market.rs	df3a63f477e48e7a7b2db407984e252d01f1e9b1850fc2e2ed1d5e091fe5a19a	b0bc4ff4b8bb618083589d7b67f7a76e4b1f2537	b0bc4ff4b8bb618083589d7b67f7a76e4b1f2537
+crates/simthing-spec/src/spec/constrained_clearing.rs	825238823a8bee172d75d67c51f2ad048106be7f6aaac2b27a81ffbb66518617	019edc36e62e6b3c72f66d14787ec530517a69a5	019edc36e62e6b3c72f66d14787ec530517a69a5
+crates/simthing-spec/src/spec/scenario.rs	ea6b5770d31233ef59ec3eea47235bb85ca379e3f0d4cd4bf842d4d612f97b30	0962a802d0a9f7de40bce1f8db0dceaf337556ff	0962a802d0a9f7de40bce1f8db0dceaf337556ff
+crates/simthing-core/src/owner_channel.rs	de95abd13ea293d4f6397e84873e343d68aa60e15e08d70171ffe3357721d31f	09fc8a9f4d31ae7c93b4922152ab06ac9cd8149d	09fc8a9f4d31ae7c93b4922152ab06ac9cd8149d
+crates/simthing-clausething/src/hydrate_shipsize_decoder.rs	7ed3a92c9d8cdb18d944f4d2c2bbe5d2cb89509ac2b7777e74da1af0436037b1	d643e6596f97489f4719100fcbff8af18a3fd662	d643e6596f97489f4719100fcbff8af18a3fd662
+All 32 sealed components have identical checkout bytes in payer and fresh checkout, and each filtered blob equals exact HEAD.
+Canonical stamp: both blobs exact.
+git_status_after: CLEAN
+running 1 test
+test construction_leaf_a_requires_qualified_ordinary_session ... adapter: AdapterInfo { name: "NVIDIA GeForce RTX 4080 Laptop GPU", vendor: 4318, device: 10144, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "595.79", backend: Vulkan }
+qualification: ResidentClearingQualification {
+    backend: "Vulkan",
+    adapter: "NVIDIA GeForce RTX 4080 Laptop GPU",
+    vendor: 4318,
+    device: 10144,
+    device_class: "DiscreteGpu",
+    driver_runtime: "NVIDIA 595.79",
+    features: "Features(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | PIPELINE_STATISTICS_QUERY | TIMESTAMP_QUERY_INSIDE_ENCODERS | TIMESTAMP_QUERY_INSIDE_PASSES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | MULTI_DRAW_INDIRECT | MULTI_DRAW_INDIRECT_COUNT | PUSH_CONSTANTS | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | POLYGON_MODE_POINT | CONSERVATIVE_RASTERIZATION | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | SPIRV_SHADER_PASSTHROUGH | MULTIVIEW | TEXTURE_FORMAT_NV12 | RAY_TRACING_ACCELERATION_STRUCTURE | RAY_QUERY | SHADER_F64 | SHADER_I16 | SHADER_PRIMITIVE_INDEX | DUAL_SOURCE_BLENDING | SHADER_INT64 | SUBGROUP | SUBGROUP_VERTEX | SUBGROUP_BARRIER | PIPELINE_CACHE | SHADER_INT64_ATOMIC_MIN_MAX | SHADER_INT64_ATOMIC_ALL_OPS)",
+    compiler: "rustc 1.95.0 (59807616e 2026-04-14)\nbinary: rustc\ncommit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860\ncommit-date: 2026-04-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.95.0\nLLVM version: 22.1.2",
+    cargo_features: "EML_RESOURCE_PROFILING",
+    shader_compiler: "wgpu 22.1.0 / naga 22.1.0",
+    cargo_lock_hash: 2005979115394712535,
+    semantic_kernel_bundle_hash: 4490818659730202317,
+    workgroups: [
+        32,
+        64,
+    ],
+    subgroup_assumption: "subgroup-independent:no-subgroup-builtins-or-size-authority",
+    abi_version: 1,
+}
+required_fingerprint: ee0e9ac0af830bdf
+observed_fingerprint: ee0e9ac0af830bdf
+bundle: 3e5297c713ea1ecd
+ordinary session admitted; construction discriminator may proceed
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.28s

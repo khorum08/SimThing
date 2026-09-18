@@ -159,23 +159,4 @@ pub fn _column_index_axis_distinct_from_role_offset(_col: ColumnIndex, _offset: 
 mod tests {
     use super::ColumnIndex;
 
-    #[test]
-    fn gpu_round_trip_door_preserves_column_bits() {
-        assert_eq!(ColumnIndex::from_gpu_round_trip(17).raw(), 17);
-    }
-
-    #[test]
-    fn authored_admit_door_rejects_out_of_range_and_preserves_in_range() {
-        assert_eq!(
-            ColumnIndex::try_from_admitted_authored(3, 4).unwrap().raw(),
-            3
-        );
-        assert!(ColumnIndex::try_from_admitted_authored(4, 4).is_err());
-        assert!(ColumnIndex::try_from_admitted_authored(0, 0).is_err());
-    }
-
-    #[test]
-    fn raw_oracle_rehearsal_door_preserves_column_bits() {
-        assert_eq!(ColumnIndex::from_raw_for_oracle_or_rehearsal(23).raw(), 23);
-    }
 }

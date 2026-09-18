@@ -1,0 +1,12 @@
+PRESERVATION-VERDICT: PASS
+Base: 9b6385ad9776cc43b0d79abfcd86cb94581c96a5; canonical stamp: 6fd3cb7f272bc854a5fd2c967f747152b50b670d
+Original active inventory 1037 unchanged rows +46 promoted harness-fixture rows = 1083.
+All 46 identities, source bytes, original birth provenance, and DSU counts preserved; original provenance retained in promotion notes and original_parked.tsv.
+Parking pen: 364 -> 0; 46 promotions +25 automatic removals +293 exact-function removals =364; Rust removals=318; renewals=0.
+All 90 files with manual ranges reconstructed byte-for-byte outside approved removals, EOF separator trim, and the single authorized E8 pin constant replacement; 53 resulting empty shells reaped under DEAD-TARGET.
+895 surviving function bodies byte-identical in 37 retained shared files.
+Original live/artifact preservation: 877 whole files byte-identical; 12 shared files differ only by approved removals plus the E8 pin constant.
+The unrelated workshop README artifact row and file are byte-identical; --all reaper refused that out-of-scope non-reapable lease; no lease date changed.
+Both canonical stamp files are Git-blob-identical to 6fd3cb7f; track_closeout.sh and all gate code untouched.
+Mechanical COMPONENTS overlap: only persistence_deformation.rs changed, precisely the two approved test functions. E8 successor pin proof is separate.
+No production function changes; no 2.2 implementation; Model 2 CLOSED.

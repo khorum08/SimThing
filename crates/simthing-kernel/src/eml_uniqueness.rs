@@ -46,25 +46,4 @@ pub fn uniqueness_add_sub(
 mod tests {
     use super::*;
 
-    #[test]
-    fn unique_mul_into_sub_rhs_matches_mul_add() {
-        let a = 1.25f32;
-        let b = 0.75f32;
-        let lhs = 10.0f32;
-        let expected = (-a).mul_add(b, lhs);
-        let got = uniqueness_add_sub(true, lhs, a * b, None, Some((a, b)));
-        assert_eq!(got.to_bits(), expected.to_bits());
-    }
-
-    #[test]
-    fn two_mul_into_add_stays_unfused() {
-        let a = 1.0e20f32;
-        let b = 1.0f32;
-        let c = 1.0e20f32;
-        let d = 1.0f32;
-        let lhs = a * b;
-        let rhs = c * d;
-        let got = uniqueness_add_sub(false, lhs, rhs, Some((a, b)), Some((c, d)));
-        assert_eq!(got.to_bits(), (lhs + rhs).to_bits());
-    }
 }

@@ -1,0 +1,94 @@
+Precommit local payer validation after 46 promotions /318 reaps and the E8 pin roll.
+The early agent wrapper PASS below covered only the committed stamp range. It is not full-payer envelope proof.
+The full committed range at 8b0f1b25 reports underlying Doctrine PASS failures=0 inspect=0, but AGENT-SCAN FAIL with 115 rehearsal-doc-graduation forbidden-path reports.
+Full output retained in diagnostic_accounting.txt; final exact-head repetition bound in PR/Board.
+Each command below exited 0; full log SHA-256 binds the original local output, including compiler warnings.
+Final exact-head and clean-checkout repetition plus hosted proof are bound in the PR/Board return.
+
+COMMAND: cargo check --locked -p simthing-core -p simthing-spec -p simthing-driver -p simthing-kernel -p simthing-sim -p simthing-gpu -p simthing-workshop -p simthing-clausething -p simthing-embedder --tests --features simthing-gpu/eml-resource-profiling
+log_sha256: e6e7530190d8f0af25f96cc1e752b3eb0f4f217871051c98e2b7c8004ec063ad
+warning: function `overlay` is never used
+   --> crates\simthing-spec\src\validate_order_weight.rs:274:8
+    |
+274 |     fn overlay(
+    |        ^^^^^^^
+
+warning: `simthing-spec` (lib test) generated 56 warnings (4 duplicates) (run `cargo fix --lib -p simthing-spec --tests` to apply 17 suggestions)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 5.53s
+
+COMMAND: bash scripts/ci/agent_scan.sh --base 9b6385ad9776cc43b0d79abfcd86cb94581c96a5
+log_sha256: 1aa0cc6d8a1331ddd850ebc3026b87ec3a368600d6ecbba214d0c5f16e444565
+  hard failures: 0   inspect flags: 0   reliability: RELIABLE=hard FAIL; HEURISTIC=INSPECT only
+DOCTRINE-SCAN-VERDICT: PASS  failures=0 inspect=0 selftest=SKIPPED
+  --- inspect justifications ---
+  justifications file present with 4 entries
+AGENT-SCAN-VERDICT: PASS delta_inspect=0 elapsed=32s
+
+COMMAND: bash scripts/ci/track_closeout.sh --rungclose 0088-CONSTRUCTION-LIFECYCLE-0
+log_sha256: cf1897b2f74804575cab9f6b0a006fbf7315dd8b839eff8457eda507d2e18b48
+RUNGCLOSE-VERDICT: PASS rung=0088-CONSTRUCTION-LIFECYCLE-0 stamped+pointer-advanced+orientation-fresh+reap-clear
+
+COMMAND: bash scripts/ci/track_closeout.sh --artifact-expiry
+log_sha256: 192ff7d1737e622cb6ca13f953c94e49e9890ab084e34947dc8517b01ff80375
+TRACK-CLOSEOUT ARTIFACT-EXPIRY (wall-clock)
+  leased artifacts: 1  parked rows: 0  now: 2026-09-18
+ARTIFACT-EXPIRY-VERDICT: PASS expired=0 cruft=0 malformed=0
+
+COMMAND: bash scripts/ci/test_lifecycle_expiry_check.sh --schema
+log_sha256: 06f73b2e64ef59e0fa3574eed28f0c1183b5bdb1b1b5845201d6a22e15c514a6
+LIFECYCLE-EXPIRY SCHEMA CHECK
+  inventory rows: 1083
+  lifecycle tracks: 11
+  dsu tiers: 3
+LIFECYCLE-EXPIRY-VERDICT: PASS expired=0 audit=0 max_dsu_survivals=0 mode=schema
+
+COMMAND: bash scripts/ci/test_inventory_drift_check.sh
+log_sha256: 32ece1d083a35dbc5ca811dd871c87457b3d523bca9a71f001c59323b71948f9
+  unledgered: 0
+  parked (pen, accounted): 0
+  stale: 0
+  promotion-target rows: 0
+TEST-INVENTORY-DRIFT-CHECK-VERDICT: PASS
+
+COMMAND: bash scripts/ci/clearance_check.sh --selftest
+log_sha256: 792970df78fea3a70a1d71ac65325dd0ce1892040195e1ebc3c04a0aea1ab5c9
+PASS clearance_selftest_body_sha_evidence_tail
+PASS clearance_selftest_body_sha_stale_code_delta
+CLEARANCE-VERDICT: ORCHESTRATOR-CLEARABLE
+body_sha: STALE
+CLEARANCE-SELFTEST: PASS (131 fixtures)
+
+COMMAND: bash scripts/ci/relay_lint.sh --selftest
+log_sha256: aaa7bb9515461c360a1503039789178b42c58bc538715ffc9e1e320c54d4e76a
+PASS anchor_integrity_selftest_pass_gate_wiring_ack
+PASS anchor_integrity_selftest_fail_missing_ack
+PASS anchor_integrity_selftest_fail_stale_ack
+PASS anchor_integrity_selftest_fail_unknown_anchor
+RELAY-LINT-SELFTEST: PASS (41 fixtures)
+
+COMMAND: bash scripts/ci/doctrine_selftest.sh
+log_sha256: dbce3bccf33671c95cfb736ab98a69a799b7552ec1280fc06c0b93f4f81b8c4c
+  horizon entry falsifier: PASS (unmarked=INSPECT stale=INSPECT bare=INSPECT fresh=PASS pre_fix_fresh=INSPECT single_source_override=scan+lifecycle agree pre_fix_hardcode_diverges)
+  test budget proof: PASS
+  inventory drift proof: PASS
+  stock-gate fail emit proof: PASS
+DOCTRINE-SELFTEST-VERDICT: PASS
+
+COMMAND: python scripts/ci/artifact_provenance_check.py --selftest
+log_sha256: 8b8192a77c0a5d137f717e57fc3f81043c008a46f0b0527474c183ca209e3980
+PASS clean fixture-backed generator
+PASS planted generator scenarios/ read -> RED
+PASS restored generator fixture read -> GREEN
+ARTIFACT-PROVENANCE-SELFTEST: PASS (3 checks, 1 planted defect)
+
+COMMAND: python scripts/ci/doctrine_exec_review_context_selftest.py --selftest
+log_sha256: 3a4329c702eecd29e3dcb6d3519a657a1cfa712fe8892e700107e6a663a770b6
+DOCTRINE-EXEC-REVIEW-CONTEXT-SELFTEST: PASS branches=2 hostile_payloads=2
+
+COMMAND: bash scripts/ci/embedder_guide_exemplars_check.sh --selftest
+log_sha256: 00892b0c6bc77005ddcf143222d983badb0a6e3c5d055187d60aad6d0ca2db35
+PASS selftest_door_import
+PASS selftest_guide_path
+PASS selftest_rename
+EMBEDDER-GUIDE-EXEMPLARS-SELFTEST: PASS
+EMBEDDER-GUIDE-EXEMPLARS-VERDICT: PASS

@@ -521,18 +521,4 @@ pub fn designation_for_template<'a>(
 mod unit {
     use super::*;
 
-    #[test]
-    fn field_neutrality_outcome_is_field_neutral() {
-        assert_eq!(FIELD_NEUTRALITY_OUTCOME, FieldNeutralityGate::FieldNeutral);
-    }
-
-    #[test]
-    fn bound_observable_is_not_a_field_class_enum() {
-        let obs = BoundObservableIdentity::new(
-            "synthetic-non-palma-grant-axis",
-            Some("semantic-readback-only"),
-        );
-        assert_eq!(obs.key(), "synthetic-non-palma-grant-axis");
-        assert_eq!(carry_bound_observables(&[obs.clone()]), vec![obs]);
-    }
 }

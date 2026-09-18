@@ -300,14 +300,4 @@ mod tests {
         cohort.add_property(lid, pv);
         cohort
     }
-    /// SESSION-WIRING-KILL-SWEEP-0: historical wire key loads into generation stamp.
-    #[test]
-    fn field_snapshot_deserializes_legacy_generation_wire_alias() {
-        // Fixture retains the historical JSON key only; identifier is generation-vocabulary.
-        let json = r#"{"day":7,"entities":[]}"#;
-        let snap: FieldSnapshot =
-            serde_json::from_str(json).expect("legacy generation wire alias load");
-        assert_eq!(snap.generation, 7);
-    }
-
 }
