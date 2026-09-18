@@ -1,5 +1,5 @@
 //! 2.2 authoring-boundary probe for the existing Meridian Arm asset.
-//! Board 5735380927: conjunction-first resumption after the admitted native repair.
+//! Board 5737285324: conjunction-first, capped-stock, then funded-birth ingress.
 //! The refinery assertion expresses the frozen two-input contract. No spec/session
 //! mutation, economic readback feedback, replacement model, or test-side birth is used.
 
@@ -395,6 +395,11 @@ fn generator_stock_source(withheld: bool) -> String {
         "flow = @generator_rate weight = 1",
         "flow = @generator_rate weight = 0",
     );
+    assert_eq!(text.matches("throttle_hint_max_per_tick = 1").count(), 2);
+    text = text.replace(
+        "throttle_hint_max_per_tick = 1",
+        "throttle_hint_max_per_tick = 1\n      max_units_per_generation = 1",
+    );
     if withheld {
         // Withhold the spendable surplus: two 1-energy generators cover the
         // unchanged two facility costs, leaving no refinery/fleet energy.
@@ -530,6 +535,8 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
                 "only the frozen mineral/energy costs"
             );
             assert_eq!(recipe.throttle_hint_max_per_tick, 1);
+            assert_eq!(recipe.max_units_per_generation.unwrap().get(), 1);
+            assert_eq!(recipe.order_band, 0);
             assert_eq!(recipe.output_coefficient, 1.0);
         }
         let scenario = driver_scenario_field_bearing_from_profile(&profile).unwrap();
@@ -563,7 +570,7 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
         assert_eq!(energy, if withheld { [0.0, 0.0] } else { [10.0, 8.0] });
         println!("STOCK_N0 case={label} energy={energy:?}");
         let mut recovered = [0.0; 2];
-        for generation in 1..=6 {
+        for generation in 1..=8 {
             if withheld && generation == 4 {
                 restore_generators(&session, &profile);
             }
@@ -625,6 +632,15 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
                 if withheld && generation >= 4 {
                     recovered[faction] += batches;
                 }
+                assert_eq!(
+                    batches,
+                    if withheld && generation <= 5 {
+                        0.0
+                    } else {
+                        1.0
+                    },
+                    "exact rate, including recovery without banked unused capacity"
+                );
                 if batches > 1.0 {
                     contract_failures.push(format!(
                         "{label}/G{generation}/{owner}: {batches} alloys, frozen maximum 1"
@@ -645,4 +661,142 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
         contract_failures.is_empty(),
         "2.2 STOP: frozen refinery throughput not preserved: {contract_failures:#?}"
     );
+}
+
+/// Continue from the GREEN rate gate using only native content. The shipyard
+/// owns ordinary energy WIP allocated from the SAME generator flow. Giving it
+/// a separate owned stock avoids two recipes consuming the same cell in band 0;
+/// there is no additional source or permit resource. `corvette` is deliberately
+/// only the existing recipe's scalar output, NOT evidence of a born fleet.
+fn funded_output_source() -> String {
+    let mut text = generator_stock_source(false);
+    for (owner, site) in [("terran", "A1"), ("pirate", "E1")] {
+        let child = format!("      child = {owner}_generator_1");
+        assert_eq!(text.matches(&child).count(), 1);
+        text = text.replace(
+            &child,
+            &format!(
+                r#"      child = {owner}_shipyard {{ kind = Cohort name = "Shipyard energy WIP"
+        owner_ref = {owner}
+        property_value = {{ property = "meridian::energy" flow = 0 weight = 1 balance = 0 }}
+      }}
+{child}"#
+            ),
+        );
+        let recipe = format!("    production_building = {owner}_refining");
+        assert_eq!(text.matches(&recipe).count(), 1);
+        text = text.replace(&recipe, &format!(r#"    production_building = {owner}_corvette_funding {{
+      location = {site}
+      input = {{ resource = alloys amount = 6 }}
+      input = {{ entity = {owner}_shipyard property = "meridian::energy" role = balance amount = 4 }}
+      output = {{ resource = corvette coefficient = 1 }}
+      throttle_hint_max_per_tick = 1
+      max_units_per_generation = 1
+    }}
+{recipe}"#));
+    }
+    text
+}
+
+#[test]
+fn rehearsal_economy_fleet_native_funded_output_must_birth_fleets() {
+    let text = funded_output_source();
+    // These are boundary diagnostics, not invented supported syntax. Neither
+    // the ActionBand surface nor an AddChild effect is accepted by this native
+    // container. Keep the precise refusal alongside the executable scalar case.
+    for (label, declaration, expected) in [
+        ("action-band", "action_band = funded_corvette {}", "unsupported scenario field `action_band`"),
+        ("structural-effect", "commitment = funded_corvette { threshold = 0.5 event_kind = 1 field_urgency = { source = A1 weight = 1 } effect = { add_child = corvette } }", "unsupported effect field `add_child`"),
+    ] {
+        let end = text.rfind('}').unwrap();
+        let candidate = format!("{}\n{declaration}\n{}", &text[..end], &text[end..]);
+        let refused_bundle = variant(&candidate);
+        let error = ingest_clause_scenario_path(
+            &refused_bundle.path().join("stellaristhing_base.clause"),
+            &ClauseScenarioIngestOptions::default(),
+        ).expect_err("unmapped structural authoring must not silently activate");
+        println!("BIRTH_AUTHORING_REFUSAL case={label} source={} error={error:?}", clause_source_content_identity(candidate.as_bytes()));
+        assert!(format!("{error:?}").contains(expected));
+    }
+    let directory = variant(&text);
+    let result = ingest(&directory.path().join("stellaristhing_base.clause"));
+    let profile = authored_live_profile_from_pack(&result.pack).unwrap();
+    pin_profile(&profile, "funded-output-birth-gap");
+    let economy = profile.game_mode.resource_economy.as_ref().unwrap();
+    assert_eq!(economy.recipes.len(), 4);
+    assert!(economy.emissions.is_empty() && economy.transfers.is_empty());
+    for recipe in economy.recipes.iter().filter(|r| r.id.contains("corvette")) {
+        assert_eq!(recipe.inputs.len(), 2);
+        assert!(recipe.inputs.iter().any(|i| i.unit_cost == 6.0
+            && i.property.name.ends_with("_alloys_quantity")
+            && i.role == SubFieldRole::Amount));
+        assert!(recipe.inputs.iter().any(|i| i.unit_cost == 4.0
+            && i.property == PropertyKey::new("meridian", "energy")
+            && i.host_entity.as_ref().unwrap().ends_with("_shipyard")
+            && i.role == SubFieldRole::Named("balance".into())));
+        assert_eq!(recipe.max_units_per_generation.unwrap().get(), 1);
+        assert_eq!(recipe.output_coefficient, 1.0);
+    }
+    let scenario = driver_scenario_field_bearing_from_profile(&profile).unwrap();
+    let mut initial_ids = BTreeSet::new();
+    identities(&scenario.root, &mut initial_ids);
+    let mut session =
+        SimSession::open_from_spec(scenario, &field_bearing_game_mode(&profile.game_mode)).unwrap();
+    let initial_capacity = session.state.n_slots;
+    let mut previous = stock_snapshot(&session, &profile, "funded-output-birth-gap");
+    assert_eq!(
+        [previous[2], previous[3], previous[4], previous[5]],
+        [20.0, 4.0, 14.0, 3.0]
+    );
+    let mut work = [0.0; 2];
+    let mut produced = [0.0; 2];
+    let mut first_funding = [None; 2];
+    for generation in 1..=40 {
+        session
+            .step_once()
+            .expect("ordinary same-asset funded-output generation");
+        let current = stock_snapshot(&session, &profile, "funded-output-birth-gap");
+        for (faction, owner, site, alloy) in [(0, "terran", "A1", 3), (1, "pirate", "E1", 5)] {
+            let total = observe_hosted_property_cell(
+                &session.proto.registry,
+                &session.proto.allocator,
+                &AnchorTableSnapshot::from_session(&session),
+                profile.install_targets[site][0],
+                &PropertyKey::new("meridian_material", format!("{site}_corvette_quantity")),
+                &SubFieldRole::Amount,
+            )
+            .unwrap();
+            let made = total - produced[faction];
+            let yard = format!("{owner}_shipyard");
+            let energy = energy_cell(&session, &profile, &yard, "balance");
+            let settled = energy_cell(&session, &profile, &yard, "balance_rate");
+            assert_eq!(energy, work[faction] + settled - 4.0 * made);
+            assert_eq!(current[alloy], previous[alloy] + 1.0 - 6.0 * made);
+            assert!((0.0..=1.0).contains(&made));
+            if made > 0.0 && first_funding[faction].is_none() {
+                first_funding[faction] = Some(generation);
+            }
+            println!("FUNDING_FLOW generation={generation} owner={owner} shipyard_id={} energy_before={} settled={settled} energy_after={energy} alloys_before={} alloys_after={} scalar_funded_total={total} scalar_funded_delta={made} action_generation={:?}", profile.install_targets[&yard][0].raw(), work[faction], previous[alloy], current[alloy], session.action_band_execution_generation());
+            work[faction] = energy;
+            produced[faction] = total;
+        }
+        previous = current;
+    }
+    assert!(
+        first_funding.iter().all(Option::is_some),
+        "both factions really fund the recipe"
+    );
+    let mut final_ids = BTreeSet::new();
+    let mut pending = vec![session.proto.root.id()];
+    while let Some(id) = pending.pop() {
+        assert!(final_ids.insert(id.raw()));
+        for index in 0..session.proto.root.child_count(id).unwrap() {
+            pending.push(session.proto.root.child_id(id, index).unwrap());
+        }
+    }
+    let new_ids: Vec<_> = final_ids.difference(&initial_ids).copied().collect();
+    println!("BIRTH_GAP first_funding={first_funding:?} funded_total={produced:?} n0_ids={initial_ids:?} g40_ids={final_ids:?} fresh_ids={new_ids:?} n0_capacity={initial_capacity} g40_capacity={} action_generation={:?}", session.state.n_slots, session.action_band_execution_generation());
+    // This necessary structural floor is intentionally RED. A scalar recipe
+    // result cannot stand in for the absent source-to-ActionBand consequence.
+    assert!(new_ids.len() >= 2, "2.2 STOP: both corvette recipes were funded, but native scenario execution produced no fresh structural fleet identities; no authored funded-birth consequence reaches the existing 2.1 ActionBand door");
 }
