@@ -510,13 +510,34 @@ fn restore_generators(session: &SimSession, profile: &StudioAuthoredLiveProfile)
 
 #[test]
 fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
+    struct GeneratorCase {
+        label: &'static str,
+        withheld: bool,
+        initial_energy: [f32; 2],
+        expected_batches: [f32; 8],
+    }
+    const CASES: [GeneratorCase; 2] = [
+        GeneratorCase {
+            label: "generator-stock",
+            withheld: false,
+            initial_energy: [10.0, 8.0],
+            expected_batches: [1.0; 8],
+        },
+        GeneratorCase {
+            label: "generator-withheld-restored",
+            withheld: true,
+            initial_energy: [0.0; 2],
+            expected_batches: [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0],
+        },
+    ];
     let mut contract_failures = Vec::new();
-    for withheld in [false, true] {
-        let label = if withheld {
-            "generator-withheld-restored"
-        } else {
-            "generator-stock"
-        };
+    for case in CASES {
+        let GeneratorCase {
+            label,
+            withheld,
+            initial_energy,
+            expected_batches,
+        } = case;
         let directory = variant(&generator_stock_source(withheld));
         let result = ingest(&directory.path().join("stellaristhing_base.clause"));
         let profile = authored_live_profile_from_pack(&result.pack).unwrap();
@@ -567,7 +588,7 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
             energy_cell(&session, &profile, "terran_refinery", "balance"),
             energy_cell(&session, &profile, "pirate_refinery", "balance"),
         ];
-        assert_eq!(energy, if withheld { [0.0, 0.0] } else { [10.0, 8.0] });
+        assert_eq!(energy, initial_energy);
         println!("STOCK_N0 case={label} energy={energy:?}");
         let mut recovered = [0.0; 2];
         for generation in 1..=8 {
@@ -634,11 +655,7 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
                 }
                 assert_eq!(
                     batches,
-                    if withheld && generation <= 5 {
-                        0.0
-                    } else {
-                        1.0
-                    },
+                    expected_batches[generation as usize - 1],
                     "exact rate, including recovery without banked unused capacity"
                 );
                 if batches > 1.0 {
