@@ -1,6 +1,7 @@
 //! C-8c transfer substrate planner → AccumulatorOp.
 
 use std::collections::HashSet;
+use std::num::NonZeroU32;
 
 use simthing_core::{
     AccumulatorOp, ColumnIndex, CombineFn, ConsumeMode, EmlTreeId, GateSpec, InputSpec, ScaleSpec,
@@ -25,6 +26,11 @@ pub struct TransferRegistration {
     pub output_scale: f32,
     /// Single-source fixed transfer cap (Identity + SubtractFromSource path).
     pub max_transfer: Option<f32>,
+    /// AUTHORITATIVE per-generation recipe-unit ceiling for the CONJUNCTIVE
+    /// path (`MinAcrossInputs { max_units }`). Distinct from `max_transfer`
+    /// and refused on a single-source fixed transfer: the two laws never
+    /// share a representation by accident.
+    pub max_units_per_generation: Option<NonZeroU32>,
     pub tree_id: Option<EmlTreeId>,
     /// Authored D-2a OrderBand gate identity (default 0).
     pub order_band: u32,
@@ -53,6 +59,8 @@ pub enum TransferPlanError {
     UnsupportedSingleSourceOutputScale { output_scale: f32 },
     #[error("non-finite or negative max_transfer")]
     InvalidMaxTransfer,
+    #[error("a single-source fixed transfer (max_transfer) has no recipe-unit cap")]
+    UnitCapOnFixedTransfer,
     #[error("non-finite or negative output_scale")]
     InvalidOutputScale,
 }
@@ -79,6 +87,9 @@ fn validate_registration(reg: &TransferRegistration) -> Result<(), TransferPlanE
     if let Some(max) = reg.max_transfer {
         if !max.is_finite() || max < 0.0 {
             return Err(TransferPlanError::InvalidMaxTransfer);
+        }
+        if reg.inputs.len() == 1 && reg.max_units_per_generation.is_some() {
+            return Err(TransferPlanError::UnitCapOnFixedTransfer);
         }
     }
     for input in &reg.inputs {
@@ -166,7 +177,9 @@ pub fn plan_transfer_ops(
                 .collect();
             ops.push(AccumulatorOp {
                 source: SourceSpec::ConjunctiveCrossing { inputs },
-                combine: CombineFn::MinAcrossInputs,
+                combine: CombineFn::MinAcrossInputs {
+                    max_units: reg.max_units_per_generation,
+                },
                 gate: GateSpec::OrderBand(reg.order_band),
                 scale: if reg.output_scale == 1.0 {
                     ScaleSpec::Identity
@@ -210,8 +223,8 @@ pub fn encode_transfer_plan(
 
 /// Convert one E-3 registration into a C-8c [`TransferRegistration`].
 ///
-/// `throttle_hint_max_per_tick` on the registration is not forwarded — C-8c has
-/// no per-tick recipe cap; E-3 emits all affordable exact units.
+/// The authoritative `max_units_per_generation` is forwarded into the
+/// conjunctive op; `throttle_hint_max_per_tick` stays a hint and is not.
 pub fn conjunctive_recipe_registration_to_transfer(
     reg: &simthing_core::ConjunctiveRecipeRegistration,
 ) -> TransferRegistration {
@@ -229,6 +242,7 @@ pub fn conjunctive_recipe_registration_to_transfer(
         target_col: reg.target_col,
         output_scale: 1.0,
         max_transfer: None,
+        max_units_per_generation: reg.max_units_per_generation,
         tree_id: None,
         order_band: 0,
     }
@@ -259,6 +273,7 @@ pub fn discrete_transfer_registration_to_transfer(
         target_col: reg.target_col,
         output_scale: 1.0,
         max_transfer: Some(reg.amount),
+        max_units_per_generation: None,
         tree_id: None,
         order_band: reg.order_band,
     }

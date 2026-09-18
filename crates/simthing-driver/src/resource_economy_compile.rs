@@ -178,6 +178,7 @@ pub fn materialize_resource_economy_registrations_with_slots(
             target_slot: SlotIndex::new(resolve_slot(recipe.target_property)?),
             target_col: recipe.target_col,
             throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
+            max_units_per_generation: recipe.max_units_per_generation,
         };
         rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
         recipes.push(reg);
@@ -364,6 +365,7 @@ pub fn materialize_resource_economy_registrations_host_qualified(
             )?),
             target_col: recipe.target_col,
             throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
+            max_units_per_generation: recipe.max_units_per_generation,
         };
         rebuild_conjunctive_recipe_ops(std::slice::from_ref(&reg))?;
         recipes.push(reg);

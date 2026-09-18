@@ -148,6 +148,7 @@ pub fn full_fixture_spec() -> ResourceEconomySpec {
             output_coefficient: 1.0,
             order_band: 0,
             throttle_hint_max_per_tick: 4,
+            max_units_per_generation: None,
         }],
         emissions: vec![
             ResourceEmissionSpec {

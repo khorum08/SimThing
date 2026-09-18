@@ -335,3 +335,76 @@ fn unknown_canonical_cost_locus_refuses_before_activation() {
         assert!(error.contains(expected), "{bad_input}: {error}");
     }
 }
+
+/// The two-cost conjunction with abundant minerals and, when `cap` is set, the
+/// AUTHORITATIVE per-generation unit ceiling on both refineries.
+fn capped_source(cap: Option<u32>, mine_rate: u32) -> String {
+    let mut text = conjunction_source(false, "10", &energy_input("terran"));
+    assert_eq!(text.matches("@mine_rate = 3\n").count(), 1);
+    text = text.replace("@mine_rate = 3\n", &format!("@mine_rate = {mine_rate}\n"));
+    if let Some(cap) = cap {
+        let hint = "      throttle_hint_max_per_tick = 1\n";
+        assert_eq!(text.matches(hint).count(), 2, "both refineries author the hint");
+        text = text.replace(
+            hint,
+            &format!("{hint}      max_units_per_generation = {cap}\n"),
+        );
+    }
+    text
+}
+
+/// Units executed per generation per faction, with the exact accounting
+/// identities checked on every generation.
+fn units_per_generation(text: &str, mine_rate: f32, generations: u32) -> Vec<[f32; 2]> {
+    let mut live = open(text).expect("ordinary capped session");
+    assert_eq!(
+        economics(&live.recipes),
+        economics(&live.cached_recipes),
+        "the canonical cache rebinds the same cap"
+    );
+    let mut before = snapshot(&live);
+    let mut units = Vec::new();
+    for generation in 0..generations {
+        live.sim.step_once().expect("ordinary generation");
+        let after = snapshot(&live);
+        let mut executed = [0.0f32; 2];
+        for faction in 0..2 {
+            let batches = after[faction].alloys - before[faction].alloys;
+            assert_eq!(
+                after[faction].minerals - before[faction].minerals,
+                mine_rate - 2.0 * batches,
+                "generation {generation} faction {faction}: 2 minerals per executed unit"
+            );
+            assert_eq!(
+                after[faction].energy,
+                before[faction].energy + after[faction].settled_energy - batches,
+                "generation {generation} faction {faction}: 1 energy per executed unit"
+            );
+            executed[faction] = batches;
+        }
+        units.push(executed);
+        before = after;
+    }
+    units
+}
+
+/// catches: the authored cap ignored in the ordinary session, applied to the
+/// alloy credit without the matching mineral/energy debit, banked across
+/// generations, or leaking onto a recipe that authors none (relay 5735839909).
+#[test]
+fn capped_refinery_executes_at_most_the_authored_units_per_generation() {
+    let uncapped = units_per_generation(&capped_source(None, 20), 20.0, 1);
+    println!("uncapped G1 units [terran, pirate] = {:?}", uncapped[0]);
+    assert!(
+        uncapped[0].iter().all(|&units| units > 2.0),
+        "without the cap every affordable unit executes: {uncapped:?}"
+    );
+    for cap in [1u32, 2] {
+        let capped = units_per_generation(&capped_source(Some(cap), 20), 20.0, 3);
+        println!("cap {cap}: units per generation [terran, pirate] = {capped:?}");
+        assert!(
+            capped.iter().all(|units| *units == [cap as f32; 2]),
+            "cap {cap}: exactly {cap} unit(s) per faction per generation: {capped:?}"
+        );
+    }
+}

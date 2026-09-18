@@ -766,7 +766,13 @@ fn gather_min_across_inputs(op: AccumulatorOpGpu) -> f32 {
     if (op.source_count == 0u) {
         return 0.0;
     }
-    return max(floor(amount), 0.0);
+    let units = max(floor(amount), 0.0);
+    // Authoritative per-generation unit ceiling (`combine_a`; 0 = uncapped).
+    // The capped count drives both the target credit and every input debit.
+    if (op.combine_a != 0u) {
+        return min(units, f32(op.combine_a));
+    }
+    return units;
 }
 
 fn gather_value(op: AccumulatorOpGpu) -> f32 {

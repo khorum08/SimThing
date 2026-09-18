@@ -1013,7 +1013,7 @@ fn combine_fn_to_kind(cf: &CombineFn) -> u32 {
         CombineFn::LastByPriority => combine_kind::LAST_BY_PRIORITY,
         CombineFn::IntegrateWithClamp { .. } => combine_kind::INTEGRATE_CLAMP,
         CombineFn::CrossingFormula { .. } => combine_kind::CROSSING_FORMULA,
-        CombineFn::MinAcrossInputs => combine_kind::MIN_ACROSS_INPUTS,
+        CombineFn::MinAcrossInputs { .. } => combine_kind::MIN_ACROSS_INPUTS,
         CombineFn::EvalEML { .. } => combine_kind::EVAL_EML,
     }
 }

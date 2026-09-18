@@ -1500,6 +1500,7 @@ fn parse_recipe_block(property: &RawProperty) -> Result<ResourceRecipeSpec, Hydr
         // order band unless the author opts into a later band explicitly.
         order_band: order_band.unwrap_or(0),
         throttle_hint_max_per_tick: require_field(throttle, "throttle", property)?,
+        max_units_per_generation: None,
     })
 }
 
