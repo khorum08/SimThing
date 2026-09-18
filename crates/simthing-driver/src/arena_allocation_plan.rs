@@ -304,47 +304,74 @@ pub(crate) fn append_residual_closure_ops(
 
     let seed_band = layout.band_layout.integration_band - 4;
     let add_allocated_band = seed_band + 1;
+    let add_own_intrinsic_band = seed_band + 2;
     let sum_children_band = seed_band + 3;
-    // SETTLEMENT RESIDUAL LAW (DA admission, relay 5690342946): EVERY
-    // balance-governed participant that lawfully owns residual work receives
-    // the one admitted residual semantics — seed from its own budget, add its
-    // own AllocatedFlow, subtract what it disbursed to children. A LEAF
-    // disburses nothing and its `intrinsic_flow_sum_col` is never produced,
-    // so its budget is its own `intrinsic_flow_col` and no subtraction op is
-    // planned. Interior participants take the byte-identical historical path.
-    for parent in layout.iter_all() {
-        let Some(rate_col) = parent.cols.balance_governing_col else {
+    // SETTLEMENT OWNERSHIP LAW (DA, relay 5730468245; supersedes the #2065
+    // leaf rule). Every balance-governed participant settles exactly the flow
+    // it OWNS, and ownership is the dual of the disbursement law above: the
+    // root disburses only its own `intrinsic_flow_col`, while every parent
+    // below it disburses its children's pooled `intrinsic_flow_sum_col`. So
+    //   * a participant owns its own intrinsic only when its parent does not
+    //     pool it (depth <= 1) — a deeper participant's intrinsic already
+    //     reached it (and its siblings) as AllocatedFlow;
+    //   * an interior below the root owns the pool it disburses;
+    //   * everyone settles the AllocatedFlow it received minus what it
+    //     disbursed to its children.
+    // Summed over any tree, received and disbursed flow cancel and every
+    // intrinsic unit settles exactly once (RF-1). The root, every deeper
+    // interior and every depth-1 leaf keep their historical op shapes.
+    for node in layout.iter_all() {
+        let Some(rate_col) = node.cols.balance_governing_col else {
             continue;
         };
-        let is_leaf = parent.children.is_empty();
-        let budget_intrinsic_col = if parent.depth == 0 || is_leaf {
-            parent.cols.intrinsic_flow_col
+        let slot = node.participant_slot.raw();
+        let is_leaf = node.children.is_empty();
+        let owns_own_intrinsic = node.depth <= 1;
+        let owns_pool = !is_leaf && node.depth >= 1;
+        let seed_col = if owns_pool {
+            Some(node.cols.intrinsic_flow_sum_col)
+        } else if owns_own_intrinsic {
+            Some(node.cols.intrinsic_flow_col)
         } else {
-            parent.cols.intrinsic_flow_sum_col
+            None
         };
+        ops_cpu.push(match seed_col {
+            Some(col) => slot_value_op(
+                slot,
+                col,
+                slot,
+                rate_col,
+                seed_band,
+                ConsumeMode::ResetTarget,
+                ScaleSpec::Identity,
+            ),
+            None => reset_op(slot, rate_col, seed_band),
+        });
         ops_cpu.push(slot_value_op(
-            parent.participant_slot.raw(),
-            budget_intrinsic_col,
-            parent.participant_slot.raw(),
-            rate_col,
-            seed_band,
-            ConsumeMode::ResetTarget,
-            ScaleSpec::Identity,
-        ));
-        ops_cpu.push(slot_value_op(
-            parent.participant_slot.raw(),
-            parent.cols.allocated_flow_col,
-            parent.participant_slot.raw(),
+            slot,
+            node.cols.allocated_flow_col,
+            slot,
             rate_col,
             add_allocated_band,
             ConsumeMode::AddToTarget,
             ScaleSpec::Identity,
         ));
+        if owns_pool && owns_own_intrinsic {
+            ops_cpu.push(slot_value_op(
+                slot,
+                node.cols.intrinsic_flow_col,
+                slot,
+                rate_col,
+                add_own_intrinsic_band,
+                ConsumeMode::AddToTarget,
+                ScaleSpec::Identity,
+            ));
+        }
         if !is_leaf {
             ops_cpu.extend(sum_accumulation_ops(
-                parent,
-                parent.participant_slot.raw(),
-                parent.cols.allocated_flow_col,
+                node,
+                slot,
+                node.cols.allocated_flow_col,
                 rate_col,
                 sum_children_band,
                 ScaleSpec::Constant(-1.0),
@@ -715,6 +742,83 @@ mod tests {
             root_ops.len() >= 3,
             "interior keeps the historical seed + add + subtraction shape"
         );
+    }
+
+    // SETTLEMENT OWNERSHIP LAW witness (DA, relay 5730468245): below depth 1
+    // a participant's intrinsic is pooled by its parent, so it never seeds its
+    // own settlement; a depth-1 interior owns BOTH the pool it disburses and
+    // its own intrinsic (which the root never disburses).
+    #[test]
+    fn settlement_ownership_mirrors_the_disbursement_law() {
+        let c = cols_governed(0);
+        let node = |slot: u32, depth: u32, children: Vec<HierarchyNode>| HierarchyNode {
+            participant_slot: SlotIndex::new(slot),
+            hosted_simthing_id: Default::default(),
+            depth,
+            children,
+            cols: c,
+        };
+        let root = node(
+            10,
+            0,
+            vec![node(11, 1, vec![node(12, 2, vec![])]), node(13, 1, vec![])],
+        );
+        let layout = build_custom_layout(
+            0,
+            &GpuArenaDescriptor {
+                name: "governed".into(),
+                flow_property_id: SimPropertyId(1),
+                balance_property_id: None,
+                max_participants: 8,
+                max_coupling_fanout: 4,
+                max_orderband_depth: 16,
+                fission_policy: Default::default(),
+                participant_range: (0, 0),
+                wildcard_max_expansion: None,
+                reserved_orderband_depth: 0,
+            },
+            c,
+            vec![root],
+        )
+        .unwrap();
+        let mut ops = Vec::new();
+        append_residual_closure_ops(&layout, &mut ops);
+        let rate = c.balance_governing_col.unwrap();
+        let reads = |slot: u32| {
+            let mut sources: Vec<String> = ops
+                .iter()
+                .filter(|op| op.targets == vec![(SlotIndex::new(slot), rate)])
+                .map(|op| match &op.source {
+                    SourceSpec::Constant(v) => format!("const {v}"),
+                    SourceSpec::SlotValue { slot: s, col } if s.raw() == slot => {
+                        if *col == c.intrinsic_flow_col {
+                            "own".to_string()
+                        } else if *col == c.intrinsic_flow_sum_col {
+                            "pool".to_string()
+                        } else if *col == c.allocated_flow_col {
+                            "allocated".to_string()
+                        } else {
+                            format!("col {}", col.raw())
+                        }
+                    }
+                    _ => "children".to_string(),
+                })
+                .collect();
+            sources.sort();
+            sources
+        };
+        assert_eq!(reads(10), ["allocated", "children", "own"], "root: historical");
+        assert_eq!(
+            reads(11),
+            ["allocated", "children", "own", "pool"],
+            "depth-1 interior owns its pool AND its own intrinsic"
+        );
+        assert_eq!(
+            reads(12),
+            ["allocated", "const 0"],
+            "a pooled leaf settles only what it received"
+        );
+        assert_eq!(reads(13), ["allocated", "own"], "an unpooled leaf keeps its own");
     }
 
     // ONE-INTEGRATION-AUTHORITY LAW witness (DA admission, relay 5690342946):

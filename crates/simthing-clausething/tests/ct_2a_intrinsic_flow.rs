@@ -233,9 +233,13 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
         .iter()
         .map(|node| node.hosted_simthing_id.raw() as u64)
         .collect();
+    // Governance is the DECLARED fact (the resolved sub-field governance the
+    // settlement plan reads), never inferred from the executed deltas.
+    let root_node = &layout.participant_roots[0];
     let participants = std::iter::once(ArenaMemberObservation {
         id: root_id,
         is_leaf: false,
+        balance_governed: root_node.cols.balance_governing_col.is_some(),
         intrinsic_flow: budget,
         allocated_flow: 0.0,
         balance_delta: Some(root_balance_delta),
@@ -245,9 +249,11 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
             .iter()
             .zip(leaf_ids.iter())
             .zip(disbursed.iter())
-            .map(|((&slot, &id), &allocated_flow)| ArenaMemberObservation {
+            .zip(root_node.children.iter())
+            .map(|(((&slot, &id), &allocated_flow), node)| ArenaMemberObservation {
                 id,
                 is_leaf: true,
+                balance_governed: node.cols.balance_governing_col.is_some(),
                 intrinsic_flow: 0.0,
                 allocated_flow,
                 balance_delta: Some(
@@ -277,7 +283,7 @@ fn gpu_micro_economy_matches_arena_allocation_oracle() {
     );
     assert!(
         report.all_pass(),
-        "unchanged RF-1 must judge ct_2a: {report:?}"
+        "RF-1 must judge ct_2a: {report:?}"
     );
     println!(
         "RF3-CT2A: participants={} disbursed={disbursed:?} residual={residual} balance_delta={root_balance_delta} rf1=PASS converged_path=active",
