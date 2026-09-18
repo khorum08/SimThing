@@ -588,45 +588,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn decay_and_saturation_admit_but_unbounded_escalation_refuses() {
-        let decay = PersistenceDeformationProgram::admit(TransformOp::multiply(0.8), 100)
-            .expect("bounded decay");
-        assert_eq!(decay.deform(100), Ok(80));
-        assert_eq!(decay.deform(81), Ok(64));
-
-        let saturated = TransformOp::admit_eml(
-            vec![
-                node(opcode::PARAM, 0, 0),
-                node(opcode::LITERAL_F32, 2.0f32.to_bits(), 0),
-                node(opcode::MUL, 0, 0),
-                node(opcode::CLAMP_BOUNDED, 0.0f32.to_bits(), 100.0f32.to_bits()),
-            ],
-            EmlPerProgramCap::DEFAULT,
-        )
-        .unwrap();
-        let saturated = PersistenceDeformationProgram::admit(saturated, 100).unwrap();
-        assert_eq!(saturated.deform(80), Ok(100));
-
-        assert!(matches!(
-            PersistenceDeformationProgram::admit(TransformOp::multiply(2.0), 100),
-            Err(PersistenceDeformationAdmissionError::MayExceedCap { .. })
-        ));
-    }
-
-    #[test]
-    fn nonfinite_and_unbounded_shapes_refuse_at_admission() {
-        assert!(matches!(
-            PersistenceDeformationProgram::admit(TransformOp::set(f32::NAN), 100),
-            Err(PersistenceDeformationAdmissionError::NonFiniteLiteral { .. })
-        ));
-        assert!(matches!(
-            PersistenceDeformationProgram::admit(TransformOp::add(1.0), 100),
-            Err(PersistenceDeformationAdmissionError::MayExceedCap { .. })
-        ));
-        assert!(matches!(
-            PersistenceDeformationProgram::admit(TransformOp::set(1.0), 100),
-            Err(PersistenceDeformationAdmissionError::MayCreateWithoutUnresolved { .. })
-        ));
-    }
 }

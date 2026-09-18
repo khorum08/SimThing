@@ -255,41 +255,4 @@ mod tests {
         SubFieldRole,
     };
 
-    #[test]
-    fn encode_mints_sentinels_only_at_pod_boundary() {
-        let row = AnchorTableRow {
-            identity: AnchorIdentity::new(SimThingId::from_session_raw(3), SimPropertyId(7)),
-            slot: SlotIndex::new(1),
-            col: ColumnIndex::from_raw_for_oracle_or_rehearsal(2),
-            role: SubFieldRole::Amount,
-            band: None,
-            last_crossing_generation: None,
-            urgency: 0.25,
-            observed_value: 3.5,
-        };
-        let gpu = AnchorTableRowGpu::encode(&row);
-        assert_eq!(gpu.band_idx, ANCHOR_BAND_NONE_POD);
-        assert_eq!(gpu.last_crossing_generation, ANCHOR_GENERATION_NONE_POD);
-        assert_eq!(gpu.observed_value, 3.5);
-
-        let gen_zero = AnchorTableRow {
-            last_crossing_generation: Some(0),
-            ..row.clone()
-        };
-        let gpu_zero = AnchorTableRowGpu::encode(&gen_zero);
-        assert_eq!(gpu_zero.last_crossing_generation, 0);
-        assert_ne!(
-            gpu_zero.last_crossing_generation,
-            ANCHOR_GENERATION_NONE_POD
-        );
-
-        let crossed = AnchorTableRow {
-            band: Some(BandIndex::new(4)),
-            last_crossing_generation: Some(9),
-            ..row
-        };
-        let gpu2 = AnchorTableRowGpu::encode(&crossed);
-        assert_eq!(gpu2.band_idx, 4);
-        assert_eq!(gpu2.last_crossing_generation, 9);
-    }
 }

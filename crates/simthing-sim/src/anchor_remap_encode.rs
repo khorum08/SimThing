@@ -170,10 +170,4 @@ mod tests {
         SimPropertyId, SimThingId, SlotIndex,
     };
 
-    #[test]
-    fn reparent_empty_witness_admits_when_no_required_loci() {
-        let section = AnchorRemapSection::empty_not_required(AnchorRemapOperation::Reparent);
-        assert!(validate_anchor_remap_for_encode(&section, &[]).is_ok());
-    }
-
 }

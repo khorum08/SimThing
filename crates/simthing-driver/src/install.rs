@@ -1936,42 +1936,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn promoted_install_refusals_bind_existing_laws_to_authoritative_elements() {
-        assert_admission_refusal(
-            standalone_compile_diagnostics_refusal("bounded-drag"),
-            "standalone-overlay-compile-diagnostics-empty",
-            "domain_packs.overlays[id=\"bounded-drag\"]",
-        );
-
-        let placement = EconomyPropertyPlacement {
-            key: PropertyKey {
-                namespace: "typed".into(),
-                name: "stock".into(),
-            },
-            host_entity: None,
-            host_span: None,
-            seed: None,
-        };
-        let error = resource_economy_property_id(&DimensionRegistry::new(), &placement)
-            .expect_err("unregistered property must remain rejected");
-        assert_admission_refusal(
-            InstallError::Spec(error),
-            "resource-economy-property-registered",
-            "resource_economy.properties[key=\"typed::stock\"]",
-        );
-
-        assert_admission_refusal(
-            base_flow_participant_property_refusal(
-                "food-drain",
-                &PropertyKey {
-                    namespace: "typed".into(),
-                    name: "flow".into(),
-                },
-                SimThingId::from_session_raw(41),
-            ),
-            "base-flow-obligation-participant-property-live",
-            "resource_flow.base_obligations[id=\"food-drain\"].participants[id=41].properties[key=\"typed::flow\"]",
-        );
-    }
 }

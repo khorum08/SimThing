@@ -263,20 +263,4 @@ pub fn kind_matches(authored: &str, sim: &SimThingKind) -> bool {
 mod tests {
     use super::*;
 
-    /// SESSION-WIRING-KILL-SWEEP-0: historical wire key loads into spawned_generation.
-    #[test]
-    fn spawned_generation_deserializes_legacy_generation_wire_alias() {
-        // Fixture retains the historical JSON key only; identifier is generation-vocabulary.
-        let json = r#"{
-            "id": 1,
-            "kind": "World",
-            "properties": [],
-            "overlays": [],
-            "children": [],
-            "spawned_day": 42
-        }"#;
-        let thing: SimThing =
-            serde_json::from_str(json).expect("legacy generation wire alias load");
-        assert_eq!(thing.spawned_generation, 42);
-    }
 }

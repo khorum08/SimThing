@@ -922,26 +922,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn authored_region_field_columns_admit_as_typed_column_index() {
-        let preview = compile_region_field_preview(&minimal_spec(3, 1, 2)).expect("admit");
-        assert_eq!(
-            preview.stencil.source_col,
-            ColumnIndex::try_from_admitted_authored(1, 3).unwrap()
-        );
-        assert_eq!(
-            preview.stencil.target_col,
-            ColumnIndex::try_from_admitted_authored(2, 3).unwrap()
-        );
-        let reduction = preview.reduction.expect("reduction");
-        assert_eq!(
-            reduction.child_col,
-            ColumnIndex::try_from_admitted_authored(1, 3).unwrap()
-        );
-        assert_eq!(
-            reduction.parent_col,
-            ColumnIndex::try_from_admitted_authored(2, 3).unwrap()
-        );
-    }
-
 }

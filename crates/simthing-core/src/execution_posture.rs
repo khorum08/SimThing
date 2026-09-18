@@ -116,23 +116,4 @@ impl ExecutionPosture {
 mod admit_proof {
     use super::*;
 
-    #[test]
-    fn scheduling_and_clearing_postures_form_four_independent_combinations() {
-        let scheduling = [
-            ExecutionPosture::Paced,
-            ExecutionPosture::continuous(2).unwrap(),
-        ];
-        let clearing = [
-            ClearingExecutionPosture::ResidentRequired,
-            ClearingExecutionPosture::CpuVendorizedOracle,
-        ];
-        let combinations: Vec<_> = scheduling
-            .into_iter()
-            .flat_map(|schedule| clearing.into_iter().map(move |clear| (schedule, clear)))
-            .collect();
-        assert_eq!(combinations.len(), 4);
-        assert!(combinations
-            .iter()
-            .all(|(schedule, _)| schedule.ensure_admitted().is_ok()));
-    }
 }

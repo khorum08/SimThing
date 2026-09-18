@@ -1,0 +1,74 @@
+E8 pin proof; stock ordinary session ingress; reference RTX 4080 Laptop / Vulkan / NVIDIA 595.79; rustc 1.95.0; --features simthing-gpu/eml-resource-profiling
+Command: cargo test --locked -p simthing-driver --features simthing-gpu/eml-resource-profiling --test rehearsal_lifecycle_construction_ingress -- --nocapture --test-threads=1
+
+EXPECTED NEGATIVE: old pin, exit 101
+running 1 test
+test construction_leaf_a_requires_qualified_ordinary_session ... adapter: AdapterInfo { name: "NVIDIA GeForce RTX 4080 Laptop GPU", vendor: 4318, device: 10144, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "595.79", backend: Vulkan }
+qualification: ResidentClearingQualification {
+    backend: "Vulkan",
+    adapter: "NVIDIA GeForce RTX 4080 Laptop GPU",
+    vendor: 4318,
+    device: 10144,
+    device_class: "DiscreteGpu",
+    driver_runtime: "NVIDIA 595.79",
+    features: "Features(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | PIPELINE_STATISTICS_QUERY | TIMESTAMP_QUERY_INSIDE_ENCODERS | TIMESTAMP_QUERY_INSIDE_PASSES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | MULTI_DRAW_INDIRECT | MULTI_DRAW_INDIRECT_COUNT | PUSH_CONSTANTS | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | POLYGON_MODE_POINT | CONSERVATIVE_RASTERIZATION | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | SPIRV_SHADER_PASSTHROUGH | MULTIVIEW | TEXTURE_FORMAT_NV12 | RAY_TRACING_ACCELERATION_STRUCTURE | RAY_QUERY | SHADER_F64 | SHADER_I16 | SHADER_PRIMITIVE_INDEX | DUAL_SOURCE_BLENDING | SHADER_INT64 | SUBGROUP | SUBGROUP_VERTEX | SUBGROUP_BARRIER | PIPELINE_CACHE | SHADER_INT64_ATOMIC_MIN_MAX | SHADER_INT64_ATOMIC_ALL_OPS)",
+    compiler: "rustc 1.95.0 (59807616e 2026-04-14)\nbinary: rustc\ncommit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860\ncommit-date: 2026-04-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.95.0\nLLVM version: 22.1.2",
+    cargo_features: "EML_RESOURCE_PROFILING",
+    shader_compiler: "wgpu 22.1.0 / naga 22.1.0",
+    cargo_lock_hash: 2005979115394712535,
+    semantic_kernel_bundle_hash: 4490818659730202317,
+    workgroups: [
+        32,
+        64,
+    ],
+    subgroup_assumption: "subgroup-independent:no-subgroup-builtins-or-size-authority",
+    abi_version: 1,
+}
+required_fingerprint: ec5a2a30afaee795
+observed_fingerprint: ee0e9ac0af830bdf
+bundle: 3e5297c713ea1ecd
+
+thread 'construction_leaf_a_requires_qualified_ordinary_session' (41368) panicked at crates\simthing-driver\tests\rehearsal_lifecycle_construction_ingress.rs:47:23:
+Leaf A stopped before economics: ResidentClearing(LiveHead(UnqualifiedAdapter { required: 17030971329449224085, observed: 17153818183069797343 }))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    construction_leaf_a_requires_qualified_ordinary_session
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.50s
+
+error: test failed, to rerun pass `-p simthing-driver --test rehearsal_lifecycle_construction_ingress`
+
+SUCCESSOR: authorized new pin, exit 0
+running 1 test
+test construction_leaf_a_requires_qualified_ordinary_session ... adapter: AdapterInfo { name: "NVIDIA GeForce RTX 4080 Laptop GPU", vendor: 4318, device: 10144, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "595.79", backend: Vulkan }
+qualification: ResidentClearingQualification {
+    backend: "Vulkan",
+    adapter: "NVIDIA GeForce RTX 4080 Laptop GPU",
+    vendor: 4318,
+    device: 10144,
+    device_class: "DiscreteGpu",
+    driver_runtime: "NVIDIA 595.79",
+    features: "Features(DEPTH_CLIP_CONTROL | DEPTH32FLOAT_STENCIL8 | TEXTURE_COMPRESSION_BC | TIMESTAMP_QUERY | INDIRECT_FIRST_INSTANCE | SHADER_F16 | RG11B10UFLOAT_RENDERABLE | BGRA8UNORM_STORAGE | FLOAT32_FILTERABLE | TEXTURE_FORMAT_16BIT_NORM | TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES | PIPELINE_STATISTICS_QUERY | TIMESTAMP_QUERY_INSIDE_ENCODERS | TIMESTAMP_QUERY_INSIDE_PASSES | MAPPABLE_PRIMARY_BUFFERS | TEXTURE_BINDING_ARRAY | BUFFER_BINDING_ARRAY | STORAGE_RESOURCE_BINDING_ARRAY | SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING | UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING | PARTIALLY_BOUND_BINDING_ARRAY | MULTI_DRAW_INDIRECT | MULTI_DRAW_INDIRECT_COUNT | PUSH_CONSTANTS | ADDRESS_MODE_CLAMP_TO_ZERO | ADDRESS_MODE_CLAMP_TO_BORDER | POLYGON_MODE_LINE | POLYGON_MODE_POINT | CONSERVATIVE_RASTERIZATION | VERTEX_WRITABLE_STORAGE | CLEAR_TEXTURE | SPIRV_SHADER_PASSTHROUGH | MULTIVIEW | TEXTURE_FORMAT_NV12 | RAY_TRACING_ACCELERATION_STRUCTURE | RAY_QUERY | SHADER_F64 | SHADER_I16 | SHADER_PRIMITIVE_INDEX | DUAL_SOURCE_BLENDING | SHADER_INT64 | SUBGROUP | SUBGROUP_VERTEX | SUBGROUP_BARRIER | PIPELINE_CACHE | SHADER_INT64_ATOMIC_MIN_MAX | SHADER_INT64_ATOMIC_ALL_OPS)",
+    compiler: "rustc 1.95.0 (59807616e 2026-04-14)\nbinary: rustc\ncommit-hash: 59807616e1fa2540724bfbac14d7976d7e4a3860\ncommit-date: 2026-04-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.95.0\nLLVM version: 22.1.2",
+    cargo_features: "EML_RESOURCE_PROFILING",
+    shader_compiler: "wgpu 22.1.0 / naga 22.1.0",
+    cargo_lock_hash: 2005979115394712535,
+    semantic_kernel_bundle_hash: 4490818659730202317,
+    workgroups: [
+        32,
+        64,
+    ],
+    subgroup_assumption: "subgroup-independent:no-subgroup-builtins-or-size-authority",
+    abi_version: 1,
+}
+required_fingerprint: ee0e9ac0af830bdf
+observed_fingerprint: ee0e9ac0af830bdf
+bundle: 3e5297c713ea1ecd
+ordinary session admitted; construction discriminator may proceed
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.26s
