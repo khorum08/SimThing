@@ -15,7 +15,7 @@ Complete inherited contract: 5725574222 and 5735376354.
 ## Binding and preserved history
 
 - Exact one-time rebase target: `0e5ff59668b737f77a4de067a113175e11735949`.
-- Code tested by this committed evidence: `71a0b6e410f2cf5316f6f387cda9451a740540b4`.
+- Code tested by this committed evidence: `a81e2dc81aaf5c08f20c77b397cc8c68da21f1e9`.
 - Historical RED heads preserved remotely: `366d7b60314f6d53ffe7afa02e621404b80f4286`
   on `codex/0088-economy-fleet-stop-366d7b60`, and
   `3d00def27be8709632bfbeb741636c60ca0faefc` on `codex/0088-economy-fleet-stop-3d00def2`.
@@ -33,7 +33,7 @@ equal trajectories. Two owner-qualified recipes remain in band zero.
 
 The isolated capped-stock gate then passed: **1 / 0 / 0 / 0 / 2 filtered**, 2.32s.
 The code-head full target: **3 passed / 1 failed / 0 ignored / 0 measured /
-0 filtered**, 9.31s, exit 101. The sole failed assertion is the new structural
+0 filtered**, 9.21s, exit 101. The sole failed assertion is the new structural
 identity floor after the forty-generation native funding probe. Parser-boundary
 diagnostics and every preceding economic assertion execute successfully.
 
@@ -43,8 +43,12 @@ bash scripts/ci/agent_scan.sh --base 0e5ff59668b737f77a4de067a113175e11735949
 cargo test --locked -p simthing-workshop --test rehearsal_lifecycle_economy_fleet -- --nocapture --test-threads=1
 ```
 
-Check PASS, 17.52s. AGENT-SCAN PASS, 34s; hard failures 0, INSPECT 0,
-TEST-BUDGET PASS. The raw companion contains the execution transcript and exact
+Check PASS. The code-head AGENT-SCAN is PASS, hard failures 0, INSPECT 0,
+TEST-BUDGET PASS. An earlier documentation-head scan at `a81f7045` identified
+four tests without explicit table form (INSPECT 1); the generator witness now
+uses a real case table containing initial energy and all eight expected batch
+counts. No waiver, suppression marker or gate edit was added. This final code
+rerun supersedes that scan. The raw companion contains the execution transcript and exact
 source/profile identities. GPU uses the existing ordinary SimSession path;
 no oracle substitution or UI feedback. Cargo target reuse is a build cache only.
 

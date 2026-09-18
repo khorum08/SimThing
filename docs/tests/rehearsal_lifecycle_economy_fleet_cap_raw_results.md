@@ -1,6 +1,6 @@
 # 2.2 cap resume: raw execution
 
-Code-head binding: `71a0b6e410f2cf5316f6f387cda9451a740540b4`; exact base `0e5ff59668b737f77a4de067a113175e11735949`.
+Code-head binding: `a81e2dc81aaf5c08f20c77b397cc8c68da21f1e9`; exact base `0e5ff59668b737f77a4de067a113175e11735949`.
 Warnings/build chatter omitted; execution output below is unedited. The final
 PR body separately binds the documentation-head rerun and hosted artifacts.
 Earlier RED packets remain byte-unchanged in their historical companion files.
@@ -324,22 +324,22 @@ RECIPES case=canonical: Some(
         emit_on_threshold: [],
     },
 )
-PROFILE_FULL case=canonical identity=fnv1a64:143ee9ebab611ca7:21555 targets={"E1": [SimThingId(218)], "pirate_generator_2": [SimThingId(215)], "terran_refinery": [SimThingId(212)], "pirate_generator_1": [SimThingId(214)], "pirate_refinery": [SimThingId(217)], "pirate_mine": [SimThingId(216)], "stellaristhing_base": [SimThingId(231)], "A1": [SimThingId(213)], "terran": [SimThingId(207)], "terran_generator_1": [SimThingId(209)], "terran_generator_2": [SimThingId(210)], "terran_mine": [SimThingId(211)], "pirate": [SimThingId(208)]}
-N0 case=canonical root=230 existing_ids={207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 230, 231, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255} targets={"E1": [SimThingId(218)], "pirate_generator_2": [SimThingId(215)], "terran_refinery": [SimThingId(212)], "pirate_generator_1": [SimThingId(214)], "pirate_refinery": [SimThingId(217)], "pirate_mine": [SimThingId(216)], "stellaristhing_base": [SimThingId(231)], "A1": [SimThingId(213)], "terran": [SimThingId(207)], "terran_generator_1": [SimThingId(209)], "terran_generator_2": [SimThingId(210)], "terran_mine": [SimThingId(211)], "pirate": [SimThingId(208)]}
+PROFILE_FULL case=canonical identity=fnv1a64:a47a936e3b6a67fd:21555 targets={"A1": [SimThingId(213)], "terran": [SimThingId(207)], "terran_generator_1": [SimThingId(209)], "pirate_mine": [SimThingId(216)], "pirate_refinery": [SimThingId(217)], "stellaristhing_base": [SimThingId(231)], "E1": [SimThingId(218)], "terran_generator_2": [SimThingId(210)], "pirate_generator_2": [SimThingId(215)], "pirate": [SimThingId(208)], "pirate_generator_1": [SimThingId(214)], "terran_mine": [SimThingId(211)], "terran_refinery": [SimThingId(212)]}
+N0 case=canonical root=230 existing_ids={207, 208, 209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 230, 231, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255} targets={"A1": [SimThingId(213)], "terran": [SimThingId(207)], "terran_generator_1": [SimThingId(209)], "pirate_mine": [SimThingId(216)], "pirate_refinery": [SimThingId(217)], "stellaristhing_base": [SimThingId(231)], "E1": [SimThingId(218)], "terran_generator_2": [SimThingId(210)], "pirate_generator_2": [SimThingId(215)], "pirate": [SimThingId(208)], "pirate_generator_1": [SimThingId(214)], "terran_mine": [SimThingId(211)], "terran_refinery": [SimThingId(212)]}
 CELL case=canonical generation=0 host=terran id=207 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=10
 CELL case=canonical generation=0 host=pirate id=208 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=8
 CELL case=canonical generation=0 host=A1 id=213 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=3
 CELL case=canonical generation=0 host=A1 id=213 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=4
 CELL case=canonical generation=0 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=3
 CELL case=canonical generation=0 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=3
-CAPACITY case=canonical generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [93, 182, 252, 71, 103, 54, 186, 53, 103, 170, 29, 61, 161, 151, 130, 220], incarnation: 1 }
+CAPACITY case=canonical generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [102, 78, 123, 220, 208, 220, 203, 66, 87, 70, 18, 58, 144, 75, 19, 183], incarnation: 1 }
 CELL case=canonical generation=1 host=terran id=207 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=10
 CELL case=canonical generation=1 host=pirate id=208 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=8
 CELL case=canonical generation=1 host=A1 id=213 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=4
 CELL case=canonical generation=1 host=A1 id=213 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=5
 CELL case=canonical generation=1 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=4
 CELL case=canonical generation=1 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=4
-CAPACITY case=canonical generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [93, 182, 252, 71, 103, 54, 186, 53, 103, 170, 29, 61, 161, 151, 130, 220], incarnation: 1 }
+CAPACITY case=canonical generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [102, 78, 123, 220, 208, 220, 203, 66, 87, 70, 18, 58, 144, 75, 19, 183], incarnation: 1 }
 OBSERVED_ALLOY_DELTA case=canonical generation=1 terran=1 pirate=1
 CELL case=canonical generation=2 host=terran id=207 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=10
 CELL case=canonical generation=2 host=pirate id=208 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=8
@@ -347,7 +347,7 @@ CELL case=canonical generation=2 host=A1 id=213 slot=Some(SlotIndex(26)) propert
 CELL case=canonical generation=2 host=A1 id=213 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=7
 CELL case=canonical generation=2 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=3
 CELL case=canonical generation=2 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=6
-CAPACITY case=canonical generation=2 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [93, 182, 252, 71, 103, 54, 186, 53, 103, 170, 29, 61, 161, 151, 130, 220], incarnation: 1 }
+CAPACITY case=canonical generation=2 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [102, 78, 123, 220, 208, 220, 203, 66, 87, 70, 18, 58, 144, 75, 19, 183], incarnation: 1 }
 OBSERVED_ALLOY_DELTA case=canonical generation=2 terran=3 pirate=3
 CELL case=canonical generation=3 host=terran id=207 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=10
 CELL case=canonical generation=3 host=pirate id=208 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=8
@@ -355,9 +355,9 @@ CELL case=canonical generation=3 host=A1 id=213 slot=Some(SlotIndex(26)) propert
 CELL case=canonical generation=3 host=A1 id=213 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=8
 CELL case=canonical generation=3 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=4
 CELL case=canonical generation=3 host=E1 id=218 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=7
-CAPACITY case=canonical generation=3 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [93, 182, 252, 71, 103, 54, 186, 53, 103, 170, 29, 61, 161, 151, 130, 220], incarnation: 1 }
+CAPACITY case=canonical generation=3 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [102, 78, 123, 220, 208, 220, 203, 66, 87, 70, 18, 58, 144, 75, 19, 183], incarnation: 1 }
 OBSERVED_ALLOY_DELTA case=canonical generation=3 terran=4 pirate=4
-SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpzr2kC1\stellaristhing_base.clause identity=fnv1a64:874543addf5480a4:5797 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
+SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpBYqJUn\stellaristhing_base.clause identity=fnv1a64:874543addf5480a4:5797 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
 GAME_MODE_PROJECTION identity=fnv1a64:beaa4408e5b3f4aa:8892
 RECIPES case=energy-withheld: Some(
     ResourceEconomySpec {
@@ -463,22 +463,22 @@ RECIPES case=energy-withheld: Some(
         emit_on_threshold: [],
     },
 )
-PROFILE_FULL case=energy-withheld identity=fnv1a64:14d71d1a4d404ff5:21554 targets={"pirate_refinery": [SimThingId(268)], "terran_refinery": [SimThingId(263)], "stellaristhing_base": [SimThingId(282)], "terran": [SimThingId(258)], "A1": [SimThingId(264)], "E1": [SimThingId(269)], "pirate": [SimThingId(259)], "pirate_generator_1": [SimThingId(265)], "pirate_generator_2": [SimThingId(266)], "pirate_mine": [SimThingId(267)], "terran_generator_1": [SimThingId(260)], "terran_generator_2": [SimThingId(261)], "terran_mine": [SimThingId(262)]}
-N0 case=energy-withheld root=281 existing_ids={258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 281, 282, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306} targets={"pirate_refinery": [SimThingId(268)], "terran_refinery": [SimThingId(263)], "stellaristhing_base": [SimThingId(282)], "terran": [SimThingId(258)], "A1": [SimThingId(264)], "E1": [SimThingId(269)], "pirate": [SimThingId(259)], "pirate_generator_1": [SimThingId(265)], "pirate_generator_2": [SimThingId(266)], "pirate_mine": [SimThingId(267)], "terran_generator_1": [SimThingId(260)], "terran_generator_2": [SimThingId(261)], "terran_mine": [SimThingId(262)]}
+PROFILE_FULL case=energy-withheld identity=fnv1a64:c3d3019992eb2315:21554 targets={"pirate_generator_1": [SimThingId(265)], "E1": [SimThingId(269)], "pirate_generator_2": [SimThingId(266)], "pirate_refinery": [SimThingId(268)], "terran_generator_1": [SimThingId(260)], "A1": [SimThingId(264)], "pirate_mine": [SimThingId(267)], "stellaristhing_base": [SimThingId(282)], "terran_generator_2": [SimThingId(261)], "terran_mine": [SimThingId(262)], "terran_refinery": [SimThingId(263)], "terran": [SimThingId(258)], "pirate": [SimThingId(259)]}
+N0 case=energy-withheld root=281 existing_ids={258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 281, 282, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306} targets={"pirate_generator_1": [SimThingId(265)], "E1": [SimThingId(269)], "pirate_generator_2": [SimThingId(266)], "pirate_refinery": [SimThingId(268)], "terran_generator_1": [SimThingId(260)], "A1": [SimThingId(264)], "pirate_mine": [SimThingId(267)], "stellaristhing_base": [SimThingId(282)], "terran_generator_2": [SimThingId(261)], "terran_mine": [SimThingId(262)], "terran_refinery": [SimThingId(263)], "terran": [SimThingId(258)], "pirate": [SimThingId(259)]}
 CELL case=energy-withheld generation=0 host=terran id=258 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=0
 CELL case=energy-withheld generation=0 host=pirate id=259 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=0
 CELL case=energy-withheld generation=0 host=A1 id=264 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=3
 CELL case=energy-withheld generation=0 host=A1 id=264 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=4
 CELL case=energy-withheld generation=0 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=3
 CELL case=energy-withheld generation=0 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=3
-CAPACITY case=energy-withheld generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [74, 239, 225, 50, 30, 249, 114, 20, 73, 13, 69, 28, 80, 147, 73, 199], incarnation: 1 }
+CAPACITY case=energy-withheld generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [68, 200, 59, 198, 253, 84, 32, 29, 58, 203, 127, 11, 204, 46, 165, 117], incarnation: 1 }
 CELL case=energy-withheld generation=1 host=terran id=258 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=0
 CELL case=energy-withheld generation=1 host=pirate id=259 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=0
 CELL case=energy-withheld generation=1 host=A1 id=264 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=4
 CELL case=energy-withheld generation=1 host=A1 id=264 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=5
 CELL case=energy-withheld generation=1 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=4
 CELL case=energy-withheld generation=1 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=4
-CAPACITY case=energy-withheld generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [74, 239, 225, 50, 30, 249, 114, 20, 73, 13, 69, 28, 80, 147, 73, 199], incarnation: 1 }
+CAPACITY case=energy-withheld generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [68, 200, 59, 198, 253, 84, 32, 29, 58, 203, 127, 11, 204, 46, 165, 117], incarnation: 1 }
 OBSERVED_ALLOY_DELTA case=energy-withheld generation=1 terran=1 pirate=1
 CELL case=energy-withheld generation=2 host=terran id=258 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=0
 CELL case=energy-withheld generation=2 host=pirate id=259 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=0
@@ -486,7 +486,7 @@ CELL case=energy-withheld generation=2 host=A1 id=264 slot=Some(SlotIndex(26)) p
 CELL case=energy-withheld generation=2 host=A1 id=264 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=7
 CELL case=energy-withheld generation=2 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=3
 CELL case=energy-withheld generation=2 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=6
-CAPACITY case=energy-withheld generation=2 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [74, 239, 225, 50, 30, 249, 114, 20, 73, 13, 69, 28, 80, 147, 73, 199], incarnation: 1 }
+CAPACITY case=energy-withheld generation=2 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [68, 200, 59, 198, 253, 84, 32, 29, 58, 203, 127, 11, 204, 46, 165, 117], incarnation: 1 }
 OBSERVED_ALLOY_DELTA case=energy-withheld generation=2 terran=3 pirate=3
 CELL case=energy-withheld generation=3 host=terran id=258 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=0
 CELL case=energy-withheld generation=3 host=pirate id=259 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=0
@@ -494,12 +494,12 @@ CELL case=energy-withheld generation=3 host=A1 id=264 slot=Some(SlotIndex(26)) p
 CELL case=energy-withheld generation=3 host=A1 id=264 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=8
 CELL case=energy-withheld generation=3 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=4
 CELL case=energy-withheld generation=3 host=E1 id=269 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=7
-CAPACITY case=energy-withheld generation=3 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [74, 239, 225, 50, 30, 249, 114, 20, 73, 13, 69, 28, 80, 147, 73, 199], incarnation: 1 }
+CAPACITY case=energy-withheld generation=3 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [68, 200, 59, 198, 253, 84, 32, 29, 58, 203, 127, 11, 204, 46, 165, 117], incarnation: 1 }
 OBSERVED_ALLOY_DELTA case=energy-withheld generation=3 terran=4 pirate=4
 ok
-test rehearsal_economy_fleet_generator_stock_preserves_frozen_economy ... SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpxyxZMg\stellaristhing_base.clause identity=fnv1a64:1c9b4ba3b71f9886:7490 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
+test rehearsal_economy_fleet_generator_stock_preserves_frozen_economy ... SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpbfSzGg\stellaristhing_base.clause identity=fnv1a64:1c9b4ba3b71f9886:7490 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
 GAME_MODE_PROJECTION identity=fnv1a64:48da411d262ba5cd:7690
-PROFILE_FULL case=generator-stock identity=fnv1a64:c41483b17d8d7520:21574 targets={"pirate_generator_2": [SimThingId(317)], "A1": [SimThingId(315)], "pirate_mine": [SimThingId(318)], "E1": [SimThingId(320)], "terran": [SimThingId(309)], "pirate_generator_1": [SimThingId(316)], "stellaristhing_base": [SimThingId(333)], "terran_generator_2": [SimThingId(312)], "terran_refinery": [SimThingId(314)], "terran_mine": [SimThingId(313)], "pirate": [SimThingId(310)], "pirate_refinery": [SimThingId(319)], "terran_generator_1": [SimThingId(311)]}
+PROFILE_FULL case=generator-stock identity=fnv1a64:685a2ee5597a26b4:21574 targets={"stellaristhing_base": [SimThingId(333)], "terran_refinery": [SimThingId(314)], "E1": [SimThingId(320)], "pirate_generator_2": [SimThingId(317)], "terran": [SimThingId(309)], "pirate": [SimThingId(310)], "pirate_generator_1": [SimThingId(316)], "pirate_refinery": [SimThingId(319)], "terran_generator_1": [SimThingId(311)], "A1": [SimThingId(315)], "terran_generator_2": [SimThingId(312)], "terran_mine": [SimThingId(313)], "pirate_mine": [SimThingId(318)]}
 AUTHORED_N0 case=generator-stock site=terran_mine minerals=20
 AUTHORED_N0 case=generator-stock site=pirate_mine minerals=14
 STOCK_CELL case=generator-stock generation=0 host=terran_mine id=313 slot=Some(SlotIndex(29)) property=PropertyKey { namespace: "meridian", name: "minerals" } role=Named("balance") value=20
@@ -571,9 +571,9 @@ STOCK_FLOW case=generator-stock generation=8 owner=terran energy_before=17 settl
 GENERATOR_FLOW case=generator-stock generation=8 owner=terran authored_effective_flow=[2.0, 2.0]
 STOCK_FLOW case=generator-stock generation=8 owner=pirate energy_before=15 settled=2 consumed=1 energy_after=16 minerals_before=21 minerals_after=22 alloys_before=10 alloys_after=11
 GENERATOR_FLOW case=generator-stock generation=8 owner=pirate authored_effective_flow=[2.0, 2.0]
-SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpELMmJk\stellaristhing_base.clause identity=fnv1a64:f06b9153291843ee:7489 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
+SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpMkXBRy\stellaristhing_base.clause identity=fnv1a64:f06b9153291843ee:7489 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
 GAME_MODE_PROJECTION identity=fnv1a64:48da411d262ba5cd:7690
-PROFILE_FULL case=generator-withheld-restored identity=fnv1a64:0c82b6be168297fe:21573 targets={"A1": [SimThingId(366)], "stellaristhing_base": [SimThingId(384)], "terran_generator_1": [SimThingId(362)], "pirate_mine": [SimThingId(369)], "pirate": [SimThingId(361)], "E1": [SimThingId(371)], "pirate_refinery": [SimThingId(370)], "terran_generator_2": [SimThingId(363)], "terran_mine": [SimThingId(364)], "pirate_generator_1": [SimThingId(367)], "terran": [SimThingId(360)], "terran_refinery": [SimThingId(365)], "pirate_generator_2": [SimThingId(368)]}
+PROFILE_FULL case=generator-withheld-restored identity=fnv1a64:ee0559d82c28ccaa:21573 targets={"stellaristhing_base": [SimThingId(384)], "terran": [SimThingId(360)], "terran_generator_1": [SimThingId(362)], "terran_refinery": [SimThingId(365)], "pirate_refinery": [SimThingId(370)], "E1": [SimThingId(371)], "pirate_generator_2": [SimThingId(368)], "A1": [SimThingId(366)], "terran_generator_2": [SimThingId(363)], "terran_mine": [SimThingId(364)], "pirate_generator_1": [SimThingId(367)], "pirate_mine": [SimThingId(369)], "pirate": [SimThingId(361)]}
 AUTHORED_N0 case=generator-withheld-restored site=terran_mine minerals=20
 AUTHORED_N0 case=generator-withheld-restored site=pirate_mine minerals=14
 STOCK_CELL case=generator-withheld-restored generation=0 host=terran_mine id=364 slot=Some(SlotIndex(29)) property=PropertyKey { namespace: "meridian", name: "minerals" } role=Named("balance") value=20
@@ -646,11 +646,11 @@ GENERATOR_FLOW case=generator-withheld-restored generation=8 owner=terran author
 STOCK_FLOW case=generator-withheld-restored generation=8 owner=pirate energy_before=4 settled=2 consumed=1 energy_after=5 minerals_before=31 minerals_after=32 alloys_before=5 alloys_after=6
 GENERATOR_FLOW case=generator-withheld-restored generation=8 owner=pirate authored_effective_flow=[2.0, 2.0]
 ok
-test rehearsal_economy_fleet_native_funded_output_must_birth_fleets ... BIRTH_AUTHORING_REFUSAL case=action-band source=fnv1a64:83ca57616a8b8522:8628 error=SourceResolution("0088-INGRESS-FIDELITY-0 refusal before activation; file \\\\?\\C:\\Users\\mvorm\\AppData\\Local\\Temp\\.tmp93WmTm\\stellaristhing_base.clause: ClauseThing hydration error at token 753: unsupported scenario field `action_band`")
-BIRTH_AUTHORING_REFUSAL case=structural-effect source=fnv1a64:c087b12816730a57:8736 error=SourceResolution("0088-INGRESS-FIDELITY-0 refusal before activation; file \\\\?\\C:\\Users\\mvorm\\AppData\\Local\\Temp\\.tmp1YDeMm\\stellaristhing_base.clause: ClauseThing hydration error at token 769: unsupported effect field `add_child`")
-SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpm5BNgM\stellaristhing_base.clause identity=fnv1a64:7512f765f444cb46:8594 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
+test rehearsal_economy_fleet_native_funded_output_must_birth_fleets ... BIRTH_AUTHORING_REFUSAL case=action-band source=fnv1a64:83ca57616a8b8522:8628 error=SourceResolution("0088-INGRESS-FIDELITY-0 refusal before activation; file \\\\?\\C:\\Users\\mvorm\\AppData\\Local\\Temp\\.tmpMqhT86\\stellaristhing_base.clause: ClauseThing hydration error at token 753: unsupported scenario field `action_band`")
+BIRTH_AUTHORING_REFUSAL case=structural-effect source=fnv1a64:c087b12816730a57:8736 error=SourceResolution("0088-INGRESS-FIDELITY-0 refusal before activation; file \\\\?\\C:\\Users\\mvorm\\AppData\\Local\\Temp\\.tmplu11e1\\stellaristhing_base.clause: ClauseThing hydration error at token 769: unsupported effect field `add_child`")
+SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpmMtFP6\stellaristhing_base.clause identity=fnv1a64:7512f765f444cb46:8594 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
 GAME_MODE_PROJECTION identity=fnv1a64:e30be03d782da9fb:10670
-PROFILE_FULL case=funded-output-birth-gap identity=fnv1a64:8597b5ec7a63b549:25113 targets={"E1": [SimThingId(452)], "terran_refinery": [SimThingId(445)], "terran_shipyard": [SimThingId(441)], "pirate_mine": [SimThingId(450)], "terran_generator_2": [SimThingId(443)], "terran_generator_1": [SimThingId(442)], "pirate_shipyard": [SimThingId(447)], "stellaristhing_base": [SimThingId(467)], "pirate_generator_2": [SimThingId(449)], "pirate": [SimThingId(440)], "pirate_refinery": [SimThingId(451)], "pirate_generator_1": [SimThingId(448)], "terran_mine": [SimThingId(444)], "A1": [SimThingId(446)], "terran": [SimThingId(439)]}
+PROFILE_FULL case=funded-output-birth-gap identity=fnv1a64:6b165b63acacb0d5:25113 targets={"terran_shipyard": [SimThingId(441)], "terran_refinery": [SimThingId(445)], "terran_mine": [SimThingId(444)], "pirate_shipyard": [SimThingId(447)], "pirate": [SimThingId(440)], "stellaristhing_base": [SimThingId(467)], "E1": [SimThingId(452)], "pirate_mine": [SimThingId(450)], "pirate_generator_1": [SimThingId(448)], "A1": [SimThingId(446)], "pirate_generator_2": [SimThingId(449)], "pirate_refinery": [SimThingId(451)], "terran_generator_1": [SimThingId(442)], "terran": [SimThingId(439)], "terran_generator_2": [SimThingId(443)]}
 STOCK_CELL case=funded-output-birth-gap generation=0 host=terran_mine id=444 slot=Some(SlotIndex(30)) property=PropertyKey { namespace: "meridian", name: "minerals" } role=Named("balance") value=20
 STOCK_CELL case=funded-output-birth-gap generation=0 host=A1 id=446 slot=Some(SlotIndex(26)) property=PropertyKey { namespace: "meridian_material", name: "A1_alloys_quantity" } role=Amount value=4
 STOCK_CELL case=funded-output-birth-gap generation=0 host=pirate_mine id=450 slot=Some(SlotIndex(36)) property=PropertyKey { namespace: "meridian", name: "minerals" } role=Named("balance") value=14
@@ -895,50 +895,50 @@ STOCK_CELL case=funded-output-birth-gap generation=40 host=pirate_mine id=450 sl
 STOCK_CELL case=funded-output-birth-gap generation=40 host=E1 id=452 slot=Some(SlotIndex(32)) property=PropertyKey { namespace: "meridian_material", name: "E1_alloys_quantity" } role=Amount value=1
 FUNDING_FLOW generation=40 owner=terran shipyard_id=441 energy_before=11 settled=1 energy_after=12 alloys_before=1 alloys_after=2 scalar_funded_total=7 scalar_funded_delta=0 action_generation=None
 FUNDING_FLOW generation=40 owner=pirate shipyard_id=447 energy_before=15 settled=1 energy_after=12 alloys_before=6 alloys_after=1 scalar_funded_total=7 scalar_funded_delta=1 action_generation=None
-BIRTH_GAP first_funding=[Some(5), Some(5)] funded_total=[7.0, 7.0] n0_ids={439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 466, 467, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491} g40_ids={439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 466, 467, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491} fresh_ids=[] n0_capacity=76 g40_capacity=76 action_generation=None
 
-thread 'rehearsal_economy_fleet_native_funded_output_must_birth_fleets' (32072) panicked at crates\simthing-workshop\tests\rehearsal_lifecycle_economy_fleet.rs:801:5:
+thread 'rehearsal_economy_fleet_native_funded_output_must_birth_fleets' (27116) panicked at crates\simthing-workshop\tests\rehearsal_lifecycle_economy_fleet.rs:818:5:
 2.2 STOP: both corvette recipes were funded, but native scenario execution produced no fresh structural fleet identities; no authored funded-birth consequence reaches the existing 2.1 ActionBand door
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+BIRTH_GAP first_funding=[Some(5), Some(5)] funded_total=[7.0, 7.0] n0_ids={439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 466, 467, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491} g40_ids={439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 466, 467, 470, 471, 472, 473, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485, 486, 487, 488, 489, 490, 491} fresh_ids=[] n0_capacity=76 g40_capacity=76 action_generation=None
 FAILED
-test rehearsal_economy_fleet_refinery_retains_every_authored_cost ... SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpZemAOG\stellaristhing_base.clause identity=fnv1a64:42ee87791f36157c:5978 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
+test rehearsal_economy_fleet_refinery_retains_every_authored_cost ... SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpZn6Vjx\stellaristhing_base.clause identity=fnv1a64:42ee87791f36157c:5978 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
 GAME_MODE_PROJECTION identity=fnv1a64:8d561ec899c02e11:9132
 AUTHORED_TWO_COSTS case=minerals-then-energy recipe=material_conversion_recipe_terran_refining hydrated=[("meridian", "energy", 1.0, Some("terran"), Named("balance")), ("meridian_material", "A1_minerals_quantity", 2.0, Some("A1"), Amount)]
 AUTHORED_TWO_COSTS case=minerals-then-energy recipe=material_conversion_recipe_pirate_refining hydrated=[("meridian", "energy", 1.0, Some("pirate"), Named("balance")), ("meridian_material", "E1_minerals_quantity", 2.0, Some("E1"), Amount)]
-PROFILE_FULL case=minerals-then-energy identity=fnv1a64:a363f43c74606500:21795 targets={"E1": [SimThingId(505)], "pirate_generator_2": [SimThingId(502)], "pirate_mine": [SimThingId(503)], "pirate_refinery": [SimThingId(504)], "stellaristhing_base": [SimThingId(518)], "terran": [SimThingId(494)], "terran_generator_1": [SimThingId(496)], "A1": [SimThingId(500)], "pirate_generator_1": [SimThingId(501)], "terran_generator_2": [SimThingId(497)], "terran_mine": [SimThingId(498)], "terran_refinery": [SimThingId(499)], "pirate": [SimThingId(495)]}
+PROFILE_FULL case=minerals-then-energy identity=fnv1a64:a30d248b6ac1b06e:21795 targets={"A1": [SimThingId(500)], "pirate_mine": [SimThingId(503)], "terran_generator_2": [SimThingId(497)], "terran_refinery": [SimThingId(499)], "pirate_generator_2": [SimThingId(502)], "terran": [SimThingId(494)], "pirate_refinery": [SimThingId(504)], "E1": [SimThingId(505)], "pirate_generator_1": [SimThingId(501)], "pirate": [SimThingId(495)], "stellaristhing_base": [SimThingId(518)], "terran_mine": [SimThingId(498)], "terran_generator_1": [SimThingId(496)]}
 CELL case=minerals-then-energy generation=0 host=terran id=494 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=10
 CELL case=minerals-then-energy generation=0 host=pirate id=495 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=8
 CELL case=minerals-then-energy generation=0 host=A1 id=500 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=3
 CELL case=minerals-then-energy generation=0 host=A1 id=500 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=4
 CELL case=minerals-then-energy generation=0 host=E1 id=505 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=3
 CELL case=minerals-then-energy generation=0 host=E1 id=505 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=3
-CAPACITY case=minerals-then-energy generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [137, 96, 132, 236, 142, 6, 119, 107, 208, 196, 164, 131, 197, 125, 206, 130], incarnation: 1 }
+CAPACITY case=minerals-then-energy generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [39, 103, 150, 181, 167, 211, 16, 217, 140, 174, 144, 109, 186, 195, 198, 105], incarnation: 1 }
 CELL case=minerals-then-energy generation=1 host=terran id=494 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=9
 CELL case=minerals-then-energy generation=1 host=pirate id=495 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=7
 CELL case=minerals-then-energy generation=1 host=A1 id=500 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=4
 CELL case=minerals-then-energy generation=1 host=A1 id=500 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=5
 CELL case=minerals-then-energy generation=1 host=E1 id=505 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=4
 CELL case=minerals-then-energy generation=1 host=E1 id=505 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=4
-CAPACITY case=minerals-then-energy generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [137, 96, 132, 236, 142, 6, 119, 107, 208, 196, 164, 131, 197, 125, 206, 130], incarnation: 1 }
-SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpsvcMBt\stellaristhing_base.clause identity=fnv1a64:33eaa5da797b5a26:5978 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
+CAPACITY case=minerals-then-energy generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [39, 103, 150, 181, 167, 211, 16, 217, 140, 174, 144, 109, 186, 195, 198, 105], incarnation: 1 }
+SOURCE path=C:\Users\mvorm\AppData\Local\Temp\.tmpmhf1k7\stellaristhing_base.clause identity=fnv1a64:33eaa5da797b5a26:5978 dependencies={"stellaristhing_base.base.json": "fnv1a64:c49f9ca3c8c75e77:20370", "stellaristhing_base.dependencies.json": "fnv1a64:2f064bfb3e043aa0:72"}
 GAME_MODE_PROJECTION identity=fnv1a64:8d561ec899c02e11:9132
 AUTHORED_TWO_COSTS case=energy-then-minerals recipe=material_conversion_recipe_terran_refining hydrated=[("meridian", "energy", 1.0, Some("terran"), Named("balance")), ("meridian_material", "A1_minerals_quantity", 2.0, Some("A1"), Amount)]
 AUTHORED_TWO_COSTS case=energy-then-minerals recipe=material_conversion_recipe_pirate_refining hydrated=[("meridian", "energy", 1.0, Some("pirate"), Named("balance")), ("meridian_material", "E1_minerals_quantity", 2.0, Some("E1"), Amount)]
-PROFILE_FULL case=energy-then-minerals identity=fnv1a64:1d7ed91b2d58a028:21795 targets={"terran_refinery": [SimThingId(550)], "pirate_refinery": [SimThingId(555)], "A1": [SimThingId(551)], "pirate_mine": [SimThingId(554)], "pirate": [SimThingId(546)], "E1": [SimThingId(556)], "pirate_generator_1": [SimThingId(552)], "stellaristhing_base": [SimThingId(569)], "terran": [SimThingId(545)], "terran_generator_1": [SimThingId(547)], "terran_generator_2": [SimThingId(548)], "terran_mine": [SimThingId(549)], "pirate_generator_2": [SimThingId(553)]}
+PROFILE_FULL case=energy-then-minerals identity=fnv1a64:36074a1f1c921a1a:21795 targets={"pirate_mine": [SimThingId(554)], "terran_mine": [SimThingId(549)], "A1": [SimThingId(551)], "E1": [SimThingId(556)], "pirate_refinery": [SimThingId(555)], "terran": [SimThingId(545)], "terran_generator_1": [SimThingId(547)], "terran_refinery": [SimThingId(550)], "stellaristhing_base": [SimThingId(569)], "pirate": [SimThingId(546)], "pirate_generator_2": [SimThingId(553)], "terran_generator_2": [SimThingId(548)], "pirate_generator_1": [SimThingId(552)]}
 CELL case=energy-then-minerals generation=0 host=terran id=545 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=10
 CELL case=energy-then-minerals generation=0 host=pirate id=546 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=8
 CELL case=energy-then-minerals generation=0 host=A1 id=551 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=3
 CELL case=energy-then-minerals generation=0 host=A1 id=551 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=4
 CELL case=energy-then-minerals generation=0 host=E1 id=556 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=3
 CELL case=energy-then-minerals generation=0 host=E1 id=556 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=3
-CAPACITY case=energy-then-minerals generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [168, 119, 122, 236, 207, 122, 167, 111, 118, 239, 203, 81, 15, 152, 176, 20], incarnation: 1 }
+CAPACITY case=energy-then-minerals generation=0 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [74, 69, 96, 70, 66, 36, 134, 87, 208, 127, 20, 137, 124, 61, 37, 239], incarnation: 1 }
 CELL case=energy-then-minerals generation=1 host=terran id=545 slot=Some(SlotIndex(2)) property=meridian::energy role=Named("balance") value=9
 CELL case=energy-then-minerals generation=1 host=pirate id=546 slot=Some(SlotIndex(3)) property=meridian::energy role=Named("balance") value=7
 CELL case=energy-then-minerals generation=1 host=A1 id=551 slot=Some(SlotIndex(26)) property=meridian_material::A1_minerals_quantity role=Amount value=4
 CELL case=energy-then-minerals generation=1 host=A1 id=551 slot=Some(SlotIndex(26)) property=meridian_material::A1_alloys_quantity role=Amount value=5
 CELL case=energy-then-minerals generation=1 host=E1 id=556 slot=Some(SlotIndex(31)) property=meridian_material::E1_minerals_quantity role=Amount value=4
 CELL case=energy-then-minerals generation=1 host=E1 id=556 slot=Some(SlotIndex(31)) property=meridian_material::E1_alloys_quantity role=Amount value=4
-CAPACITY case=energy-then-minerals generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [168, 119, 122, 236, 207, 122, 167, 111, 118, 239, 203, 81, 15, 152, 176, 20], incarnation: 1 }
+CAPACITY case=energy-then-minerals generation=1 live_rows=36 allocator_capacity=36 execution=PersistedTreeExecutionIdentity { realm_bytes: [74, 69, 96, 70, 66, 36, 134, 87, 208, 127, 20, 137, 124, 61, 37, 239], incarnation: 1 }
 CONJUNCTION-FIRST PASS both authored orders, both factions, ordinary admission and execution
 ok
 
@@ -947,7 +947,7 @@ failures:
 failures:
     rehearsal_economy_fleet_native_funded_output_must_birth_fleets
 
-test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.31s
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.21s
 
 error: test failed, to rerun pass `-p simthing-workshop --test rehearsal_lifecycle_economy_fleet`
 
