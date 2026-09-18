@@ -729,4 +729,77 @@ mod tests {
             .collect()
     }
 
+    #[test]
+    fn changed_qualification_tuple_fails_typed_before_execution() {
+        let ctx = GpuContext::new_blocking().expect("qualification fixture adapter");
+        let mut record = ResidentClearingQualification::capture(&ctx).expect("capture tuple");
+        let qualified = record.fingerprint();
+        record.abi_version ^= 1;
+        eprintln!(
+            "E8 ABI MUTANT qualified={qualified:016x} mutant={:016x}",
+            record.fingerprint()
+        );
+        assert!(matches!(
+            record.ensure_production_qualified(),
+            Err(ResidentLiveHeadError::UnqualifiedAdapter { .. })
+        ));
+    }
+
+    #[test]
+    fn child_share_semantics_are_independently_bound_into_qualification() {
+        let mut components = qualification_components();
+        let qualified = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        assert_eq!(
+            qualified,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
+        let (_, bytes) = components
+            .iter_mut()
+            .find(|(name, _)| *name == "crates/simthing-driver/src/child_share_eml.rs")
+            .unwrap();
+        bytes[0] ^= 1;
+        let mutant = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        eprintln!("E8 CHILD-SHARE MUTANT qualified={qualified:016x} mutant={mutant:016x}");
+        assert_ne!(
+            mutant,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
+    }
+
+    #[test]
+    fn temporal_15_2_semantics_are_independently_bound_into_qualification() {
+        let mut components = qualification_components();
+        let qualified = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        let (_, bytes) = components
+            .iter_mut()
+            .find(|(name, _)| {
+                *name
+                    == "crates/simthing-kernel/src/shaders/resident_recursive_intake_transform.wgsl"
+            })
+            .unwrap();
+        bytes[0] ^= 1;
+        let mutant = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        eprintln!("E8 TEMPORAL-15.2 MUTANT qualified={qualified:016x} mutant={mutant:016x}");
+        assert_ne!(
+            mutant,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
+    }
+
+    #[test]
+    fn production_planner_semantics_are_independently_bound_into_qualification() {
+        let mut components = qualification_components();
+        let qualified = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        let (_, bytes) = components
+            .iter_mut()
+            .find(|(name, _)| *name == "crates/simthing-driver/src/arena_allocation_plan.rs")
+            .unwrap();
+        bytes[0] ^= 1;
+        let mutant = semantic_kernel_bundle_fingerprint(&component_views(&components));
+        eprintln!("E8 PLANNER MUTANT qualified={qualified:016x} mutant={mutant:016x}");
+        assert_ne!(
+            mutant,
+            ResidentClearingQualification::semantic_kernel_bundle_hash()
+        );
+    }
 }
