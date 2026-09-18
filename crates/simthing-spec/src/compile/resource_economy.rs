@@ -611,12 +611,12 @@ mod tests {
             )
         };
         assert!(
-            compile(vec![recipe("terran", "terran"), recipe("pirate", "pirate")]).is_ok(),
+            compile(vec![recipe("east", "east"), recipe("west", "west")]).is_ok(),
             "distinct hosts are distinct cells"
         );
         assert!(
             matches!(
-                compile(vec![recipe("first", "terran"), recipe("second", "terran")]),
+                compile(vec![recipe("first", "east"), recipe("second", "east")]),
                 Err(SpecError::ResourceEconomyConsumedInputContention { .. })
             ),
             "the same host cell still contends"
