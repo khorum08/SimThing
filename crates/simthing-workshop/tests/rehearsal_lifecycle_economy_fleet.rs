@@ -1,5 +1,5 @@
 //! 2.2 authoring-boundary probe for the existing Meridian Arm asset.
-//! Board 5737285324: conjunction-first, capped-stock, then funded-birth ingress.
+//! Board 5738509297: conjunction-first, capped-stock, then native funded births.
 //! The refinery assertion expresses the frozen two-input contract. No spec/session
 //! mutation, economic readback feedback, replacement model, or test-side birth is used.
 
@@ -7,8 +7,8 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use simthing_core::{
-    GenerationStamp, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-    PropertyTransformDelta, SimThing, SubFieldRole, TransformOp,
+    GenerationStamp, ObjectResidencyRelation, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
+    OverlaySource, PropertyTransformDelta, SimThing, SubFieldRole, TransformOp,
 };
 use simthing_driver::{observe_hosted_property_cell, AnchorTableSnapshot, SimSession};
 use simthing_feeder::BoundaryRequest;
@@ -20,6 +20,7 @@ use simthing_mapeditor::studio_live_session_bridge::{
     authored_live_profile_from_pack, driver_scenario_field_bearing_from_profile,
     field_bearing_game_mode, StudioAuthoredLiveProfile,
 };
+use simthing_sim::BoundaryDeltaEntry;
 use simthing_spec::PropertyKey;
 
 fn source() -> PathBuf {
@@ -683,8 +684,8 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
 /// Continue from the GREEN rate gate using only native content. The shipyard
 /// owns ordinary energy WIP allocated from the SAME generator flow. Giving it
 /// a separate owned stock avoids two recipes consuming the same cell in band 0;
-/// there is no additional source or permit resource. `corvette` is deliberately
-/// only the existing recipe's scalar output, NOT evidence of a born fleet.
+/// there is no additional source or permit resource. The scalar funded count
+/// drives native structural products; actual delta-log births are checked below.
 fn funded_output_source() -> String {
     let mut text = generator_stock_source(false);
     for (owner, site) in [("terran", "A1"), ("pirate", "E1")] {
@@ -712,33 +713,49 @@ fn funded_output_source() -> String {
     }}
 {recipe}"#));
     }
+    // Admit the shared hull column through a zero-valued existing site. This
+    // carries no fleet identity or economic endowment at N0.
+    text = text.replace(
+        "    properties = { property = {",
+        r#"    property_value = { property = "corvette::hull" Amount = 0 }
+    properties = { property = {
+      id = corvette_hull
+      namespace = corvette
+      name = hull
+      sub_field = { role = Amount }
+    } property = {"#,
+    );
+    let products = [("terran", "A1"), ("pirate", "E1")].map(|(owner, site)| format!(r#"
+  structural_product = {owner}_corvettes {{
+    funding = {{ entity = {site} property = "meridian_material::{site}_corvette_quantity" role = Amount }}
+    count = 2
+    parent = {site}
+    template = {{
+      kind = Fleet
+      owner_ref = {owner}
+      property_value = {{ property = "corvette::hull" Amount = 1 }}
+      overlays = {{ modifier = {{ id = {owner}_hull targets_property = "corvette::hull" sub_field = Amount amount_mult = 2 }} }}
+      children = {{
+        child = crew {{ kind = Cohort }}
+        child = engine {{ kind = Cohort }}
+      }}
+    }}
+  }}
+"#)).concat();
+    let end = text.rfind('}').unwrap();
+    text.insert_str(end, &products);
     text
 }
 
 #[test]
 fn rehearsal_economy_fleet_native_funded_output_must_birth_fleets() {
     let text = funded_output_source();
-    // These are boundary diagnostics, not invented supported syntax. Neither
-    // the ActionBand surface nor an AddChild effect is accepted by this native
-    // container. Keep the precise refusal alongside the executable scalar case.
-    for (label, declaration, expected) in [
-        ("action-band", "action_band = funded_corvette {}", "unsupported scenario field `action_band`"),
-        ("structural-effect", "commitment = funded_corvette { threshold = 0.5 event_kind = 1 field_urgency = { source = A1 weight = 1 } effect = { add_child = corvette } }", "unsupported effect field `add_child`"),
-    ] {
-        let end = text.rfind('}').unwrap();
-        let candidate = format!("{}\n{declaration}\n{}", &text[..end], &text[end..]);
-        let refused_bundle = variant(&candidate);
-        let error = ingest_clause_scenario_path(
-            &refused_bundle.path().join("stellaristhing_base.clause"),
-            &ClauseScenarioIngestOptions::default(),
-        ).expect_err("unmapped structural authoring must not silently activate");
-        println!("BIRTH_AUTHORING_REFUSAL case={label} source={} error={error:?}", clause_source_content_identity(candidate.as_bytes()));
-        assert!(format!("{error:?}").contains(expected));
-    }
+    println!("NATIVE_SOURCE_BEGIN case=native-funded-birth\n{text}\nNATIVE_SOURCE_END");
     let directory = variant(&text);
     let result = ingest(&directory.path().join("stellaristhing_base.clause"));
     let profile = authored_live_profile_from_pack(&result.pack).unwrap();
-    pin_profile(&profile, "funded-output-birth-gap");
+    pin_profile(&profile, "native-funded-birth");
+    assert_eq!(profile.game_mode.structural_products.len(), 2);
     let economy = profile.game_mode.resource_economy.as_ref().unwrap();
     assert_eq!(economy.recipes.len(), 4);
     assert!(economy.emissions.is_empty() && economy.transfers.is_empty());
@@ -760,7 +777,7 @@ fn rehearsal_economy_fleet_native_funded_output_must_birth_fleets() {
     let mut session =
         SimSession::open_from_spec(scenario, &field_bearing_game_mode(&profile.game_mode)).unwrap();
     let initial_capacity = session.state.n_slots;
-    let mut previous = stock_snapshot(&session, &profile, "funded-output-birth-gap");
+    let mut previous = stock_snapshot(&session, &profile, "native-funded-birth");
     assert_eq!(
         [previous[2], previous[3], previous[4], previous[5]],
         [20.0, 4.0, 14.0, 3.0]
@@ -768,11 +785,40 @@ fn rehearsal_economy_fleet_native_funded_output_must_birth_fleets() {
     let mut work = [0.0; 2];
     let mut produced = [0.0; 2];
     let mut first_funding = [None; 2];
+    let mut births = [Vec::new(), Vec::new()];
+    let mut funding_generations = [Vec::new(), Vec::new()];
+    let mut cursor = 0;
+    let initial_live = session.proto.allocator.live_count();
     for generation in 1..=40 {
         session
             .step_once()
             .expect("ordinary same-asset funded-output generation");
-        let current = stock_snapshot(&session, &profile, "funded-output-birth-gap");
+        let log = session.proto.delta_log();
+        for entry in &log[cursor..] {
+            match entry {
+                BoundaryDeltaEntry::SimThingAdded { parent, node, .. } => {
+                    let faction = if *parent == profile.install_targets["A1"][0] {
+                        0
+                    } else {
+                        assert_eq!(*parent, profile.install_targets["E1"][0]);
+                        1
+                    };
+                    assert!(!initial_ids.contains(&node.id().raw()));
+                    births[faction].push((generation, node.id()));
+                    println!(
+                        "NATIVE_BIRTH generation={generation} parent={} id={} faction={faction}",
+                        parent.raw(),
+                        node.id().raw()
+                    );
+                }
+                BoundaryDeltaEntry::GrowthResidencyRefused { .. } => {
+                    panic!("unexpected refusal in a non-exhausting birth witness: {entry:?}")
+                }
+                _ => {}
+            }
+        }
+        cursor = log.len();
+        let current = stock_snapshot(&session, &profile, "native-funded-birth");
         for (faction, owner, site, alloy) in [(0, "terran", "A1", 3), (1, "pirate", "E1", 5)] {
             let total = observe_hosted_property_cell(
                 &session.proto.registry,
@@ -793,6 +839,9 @@ fn rehearsal_economy_fleet_native_funded_output_must_birth_fleets() {
             if made > 0.0 && first_funding[faction].is_none() {
                 first_funding[faction] = Some(generation);
             }
+            if made > 0.0 {
+                funding_generations[faction].push(generation);
+            }
             println!("FUNDING_FLOW generation={generation} owner={owner} shipyard_id={} energy_before={} settled={settled} energy_after={energy} alloys_before={} alloys_after={} scalar_funded_total={total} scalar_funded_delta={made} action_generation={:?}", profile.install_targets[&yard][0].raw(), work[faction], previous[alloy], current[alloy], session.action_band_execution_generation());
             work[faction] = energy;
             produced[faction] = total;
@@ -812,8 +861,201 @@ fn rehearsal_economy_fleet_native_funded_output_must_birth_fleets() {
         }
     }
     let new_ids: Vec<_> = final_ids.difference(&initial_ids).copied().collect();
-    println!("BIRTH_GAP first_funding={first_funding:?} funded_total={produced:?} n0_ids={initial_ids:?} g40_ids={final_ids:?} fresh_ids={new_ids:?} n0_capacity={initial_capacity} g40_capacity={} action_generation={:?}", session.state.n_slots, session.action_band_execution_generation());
-    // This necessary structural floor is intentionally RED. A scalar recipe
-    // result cannot stand in for the absent source-to-ActionBand consequence.
-    assert!(new_ids.len() >= 2, "2.2 STOP: both corvette recipes were funded, but native scenario execution produced no fresh structural fleet identities; no authored funded-birth consequence reaches the existing 2.1 ActionBand door");
+    for (faction, owner, site) in [(0, "terran", "A1"), (1, "pirate", "E1")] {
+        assert_eq!(
+            births[faction].len(),
+            2,
+            "both authored products actually born"
+        );
+        for (index, &(generation, id)) in births[faction].iter().enumerate() {
+            assert_eq!(
+                generation,
+                funding_generations[faction][index] + 1,
+                "funding at end Gk births at boundary G(k+1)"
+            );
+            let tree = &session.proto.root;
+            let snapshot = tree.snapshot_node(id).unwrap();
+            assert_eq!(snapshot.children.len(), 2);
+            assert_eq!(snapshot.overlay_ids.len(), 1);
+            for member in std::iter::once(id).chain(snapshot.children.iter().copied()) {
+                assert!(
+                    !initial_ids.contains(&member.raw()),
+                    "whole subtree detached at N0"
+                );
+                assert_eq!(tree.owner_of(member).unwrap().as_str(), owner);
+            }
+            assert_eq!(
+                session.proto.allocator.relation_of(id),
+                Some(ObjectResidencyRelation::ChildOf(
+                    profile.install_targets[site][0]
+                ))
+            );
+            assert_eq!(
+                session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(tree.id(), id)
+                    .unwrap()
+                    .quantity(),
+                3
+            );
+            let hull = observe_hosted_property_cell(
+                &session.proto.registry,
+                &session.proto.allocator,
+                &AnchorTableSnapshot::from_session(&session),
+                id,
+                &PropertyKey::new("corvette", "hull"),
+                &SubFieldRole::Amount,
+            )
+            .unwrap();
+            assert_eq!(
+                hull,
+                2.0_f32.powi((40 - generation) as i32),
+                "the authored recurring hull overlay runs once per post-birth generation"
+            );
+            println!("BIRTH_SHAPE owner={owner} id={} children={:?} hull={hull} extent=3 parent={} generation={generation}", id.raw(), snapshot.children, profile.install_targets[site][0].raw());
+        }
+    }
+    assert_eq!(new_ids.len(), 12);
+    assert_eq!(session.proto.allocator.live_count(), initial_live + 12);
+    assert_eq!(session.state.n_slots, initial_capacity);
+    println!("NATIVE_BIRTH_PASS first_funding={first_funding:?} funded_total={produced:?} n0_ids={initial_ids:?} fresh_ids={new_ids:?} capacity={initial_capacity}");
+}
+
+/// The first post-birth economy floor: a genuinely born fleet carrying the
+/// SAME energy property must join its participating spatial parent's RF tree.
+/// This discriminates structural membership from economic participation. No
+/// test-side arena enrollment, accumulator install, or readback feedback occurs.
+#[test]
+fn rehearsal_economy_fleet_born_energy_upkeep_participates_in_resource_flow() {
+    struct UpkeepCase {
+        label: &'static str,
+        flow: i32,
+        expected_surplus: f32,
+    }
+    const CASES: [UpkeepCase; 2] = [
+        UpkeepCase {
+            label: "zero-upkeep-control",
+            flow: 0,
+            expected_surplus: 2.0,
+        },
+        UpkeepCase {
+            label: "one-energy-upkeep",
+            flow: -1,
+            expected_surplus: 1.0,
+        },
+    ];
+    let mut failures = Vec::new();
+    for case in CASES {
+        let text = funded_output_source().replace(
+            "      kind = Fleet",
+            &format!("      kind = Fleet\n      property_value = {{ property = \"meridian::energy\" flow = {} weight = 0 balance = 0 }}", case.flow),
+        );
+        println!(
+            "NATIVE_SOURCE_BEGIN case={}\n{text}\nNATIVE_SOURCE_END",
+            case.label
+        );
+        let directory = variant(&text);
+        let result = ingest(&directory.path().join("stellaristhing_base.clause"));
+        let profile = authored_live_profile_from_pack(&result.pack).unwrap();
+        pin_profile(&profile, case.label);
+        let mut session = SimSession::open_from_spec(
+            driver_scenario_field_bearing_from_profile(&profile).unwrap(),
+            &field_bearing_game_mode(&profile.game_mode),
+        )
+        .unwrap();
+        let energy_id = session.proto.registry.id_of("meridian", "energy").unwrap();
+        let arena = session
+            .spec_state
+            .arena_registry
+            .arenas
+            .iter()
+            .position(|a| a.flow_property_id == energy_id)
+            .unwrap() as u32;
+        let mut born = Vec::new();
+        let mut cursor = 0;
+        for generation in 1..=8 {
+            session.step_once().unwrap();
+            let log = session.proto.delta_log();
+            for entry in &log[cursor..] {
+                if let BoundaryDeltaEntry::SimThingAdded { parent, node, .. } = entry {
+                    born.push((*parent, node.id()));
+                    println!(
+                        "UPKEEP_BIRTH case={} generation={generation} parent={} id={}",
+                        case.label,
+                        parent.raw(),
+                        node.id().raw()
+                    );
+                }
+            }
+            cursor = log.len();
+            for owner in ["terran", "pirate"] {
+                let refinery = energy_cell(
+                    &session,
+                    &profile,
+                    &format!("{owner}_refinery"),
+                    "balance_rate",
+                );
+                let yard = energy_cell(
+                    &session,
+                    &profile,
+                    &format!("{owner}_shipyard"),
+                    "balance_rate",
+                );
+                println!("UPKEEP_SETTLEMENT case={} generation={generation} owner={owner} refinery_rate={refinery} yard_rate={yard} surplus={} live={}", case.label, refinery + yard, session.proto.allocator.live_count());
+                if generation == 8 && (refinery + yard - case.expected_surplus).abs() > 0.0001 {
+                    failures.push(format!(
+                        "{}/{owner}: G8 net spendable energy {}, expected {} after one born fleet",
+                        case.label,
+                        refinery + yard,
+                        case.expected_surplus
+                    ));
+                }
+            }
+        }
+        assert_eq!(born.len(), 2, "one genuinely new fleet per faction by G8");
+        for (parent, id) in born {
+            let flow = observe_hosted_property_cell(
+                &session.proto.registry,
+                &session.proto.allocator,
+                &AnchorTableSnapshot::from_session(&session),
+                id,
+                &PropertyKey::new("meridian", "energy"),
+                &SubFieldRole::Named("flow".into()),
+            )
+            .unwrap();
+            assert_eq!(
+                flow, case.flow as f32,
+                "authored born flow is installed and observable"
+            );
+            let registry = &session.spec_state.arena_registry;
+            assert!(
+                registry
+                    .participants
+                    .iter()
+                    .any(|p| p.arena_idx == arena && p.subtree_root == parent),
+                "spatial parent is an existing energy participant"
+            );
+            let members: Vec<_> = registry
+                .participants
+                .iter()
+                .filter(|p| p.subtree_root == id)
+                .collect();
+            println!("UPKEEP_MEMBERSHIP case={} born={} parent={} slot={:?} authored_observed_flow={flow} energy_arena={arena} members={members:?}", case.label, id.raw(), parent.raw(), session.proto.allocator.slot_of(id));
+            if !members
+                .iter()
+                .any(|p| p.arena_idx == arena && p.parent == Some(parent))
+            {
+                failures.push(format!(
+                    "{}/{}: born energy property is absent from parent RF arena",
+                    case.label,
+                    id.raw()
+                ));
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "2.2 STOP: native born properties do not enter ongoing RF upkeep: {failures:#?}"
+    );
 }
