@@ -30,7 +30,7 @@ use crate::resource_economy_compile::{
 };
 use crate::resource_flow_compile::compile_and_materialize_resource_flow;
 use crate::resource_flow_derivation::{
-    derive_resource_flow_admission, ResourceFlowDerivationError,
+    derive_resource_flow_admission_with_declared_growth, ResourceFlowDerivationError,
 };
 use crate::resource_flow_enrollment::resolve_resource_flow_enrollment;
 use crate::resource_flow_preflight::validate_resource_flow_preflight;
@@ -277,11 +277,12 @@ pub fn compile_and_install(
     // ── 4b. Resource Flow admission: populated resource properties + typed
     //      parent edges derive the default arena. ResourceFlowSpec remains an
     //      override surface and is resolved onto the same downstream plan.
-    let derived_resource_flow = derive_resource_flow_admission(
+    let derived_resource_flow = derive_resource_flow_admission_with_declared_growth(
         game_mode.resource_flow.as_ref(),
         registry,
         root,
         allocator,
+        &crate::structural_product::declared_growth_by_property(&game_mode.structural_products),
     )?;
     state.resource_flow_derivation = derived_resource_flow.report;
 

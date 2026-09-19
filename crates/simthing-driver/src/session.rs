@@ -361,6 +361,10 @@ pub struct SimSession {
     /// Last boundary dynamic Resource Flow fission enrollment report (E-2B-5R).
     pub last_resource_flow_dynamic_enrollment_report:
         Option<crate::resource_flow_fission_enrollment::DynamicFissionEnrollmentReport>,
+    /// Last boundary structural-addition Resource Flow enrollment report
+    /// (relay 5743461789): carriers inside successfully added subtrees.
+    pub last_resource_flow_structural_enrollment_report:
+        Option<crate::resource_flow_structural_enrollment::StructuralEnrollmentReport>,
     /// CT-3b+4a Line 3: profile-gated in-loop mapping state. `None` unless
     /// the game mode authored `SparseRegionFieldV1` + a region field with a
     /// pressure binding; presence alone never wires anything.
@@ -1002,6 +1006,7 @@ impl SimSession {
             resident_clearing: None,
             ordinary_flow_continuation: Default::default(),
             last_resource_flow_dynamic_enrollment_report: None,
+            last_resource_flow_structural_enrollment_report: None,
             mapping: None,
             mapping_commitments: Vec::new(),
             action_band_execution: None,
@@ -2285,7 +2290,7 @@ impl SimSession {
         self.dispatch_action_band_boundary(&outcome, summary)?;
         summary.boundaries_run += 1;
         self.react_to_fission_clones(&outcome);
-        self.react_to_fission_resource_flow_enrollment(&outcome)?;
+        self.react_to_resource_flow_enrollment(&outcome)?;
         self.sync_resource_economy()?;
         self.execution_lease
             .finish_generation(&mut generation_permit, next_generation)
@@ -2470,7 +2475,7 @@ impl SimSession {
                 // S5 follow-up (same as `run`): register capability
                 // instances + threshold registrations for fission clones.
                 self.react_to_fission_clones(&outcome);
-                self.react_to_fission_resource_flow_enrollment(&outcome)?;
+                self.react_to_resource_flow_enrollment(&outcome)?;
                 self.sync_resource_economy()?;
                 self.execution_lease
                     .finish_generation(&mut generation_permit, next_generation)
@@ -2624,17 +2629,29 @@ impl SimSession {
         registered
     }
 
-    /// E-2B-5 Policy A: enroll fission-spawned SimThings into the parent's
-    /// Resource Flow arenas on the child's existing row.
-    pub fn react_to_fission_resource_flow_enrollment(
+    /// Every ordinary boundary: fission enrollment under its own policy, then
+    /// structural-addition enrollment (relay 5743461789), then ONE sync.
+    pub fn react_to_resource_flow_enrollment(
         &mut self,
         outcome: &BoundaryOutcome,
     ) -> Result<(), SessionError> {
+        let fission = self.enroll_fission_resource_flow(outcome);
+        let structural = self.enroll_structural_resource_flow(outcome);
+        if fission || structural {
+            self.sync_resource_flow()?;
+            self.bind_or_rebind_resident_clearing_to_current_arena()?;
+        }
+        Ok(())
+    }
+
+    /// E-2B-5 Policy A: enroll fission-spawned SimThings into the parent's
+    /// Resource Flow arenas on the child's existing row.
+    fn enroll_fission_resource_flow(&mut self, outcome: &BoundaryOutcome) -> bool {
         if outcome.fission.fission_pairs.is_empty()
             || self.spec_state.arena_registry.arenas.is_empty()
         {
             self.last_resource_flow_dynamic_enrollment_report = None;
-            return Ok(());
+            return false;
         }
         let report =
             crate::resource_flow_fission_enrollment::react_to_fission_resource_flow_enrollment(
@@ -2642,17 +2659,34 @@ impl SimSession {
                 &mut self.spec_state.arena_registry,
                 &self.proto.allocator,
             );
-        let should_sync = report.any_admissions();
+        let admitted = report.any_admissions();
         if !report.admissions.is_empty() || !report.rejections.is_empty() {
             self.last_resource_flow_dynamic_enrollment_report = Some(report);
         } else {
             self.last_resource_flow_dynamic_enrollment_report = None;
         }
-        if should_sync {
-            self.sync_resource_flow()?;
-            self.bind_or_rebind_resident_clearing_to_current_arena()?;
+        admitted
+    }
+
+    /// Consumes the boundary's own record of successful additions. Only
+    /// `AddChild` allocates there; fission children stay on their own path.
+    fn enroll_structural_resource_flow(&mut self, outcome: &BoundaryOutcome) -> bool {
+        let added = &outcome.maintainer.allocated;
+        if added.is_empty() || self.spec_state.arena_registry.arenas.is_empty() {
+            self.last_resource_flow_structural_enrollment_report = None;
+            return false;
         }
-        Ok(())
+        let report = crate::resource_flow_structural_enrollment::react_to_structural_resource_flow_enrollment(
+            added,
+            &self.proto.root,
+            &self.proto.registry,
+            &mut self.spec_state.arena_registry,
+            &self.spec_state.resource_flow_derivation,
+            &self.proto.allocator,
+        );
+        let admitted = report.any_admissions();
+        self.last_resource_flow_structural_enrollment_report = Some(report);
+        admitted
     }
 }
 

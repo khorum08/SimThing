@@ -56,6 +56,7 @@ crates/simthing-driver/src/resource_flow_derivation.rs	compile-plan	Admission-ti
 crates/simthing-driver/src/resource_flow_dynamic_enrollment_soak.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/resource_flow_enrollment.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/resource_flow_fission_enrollment.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
+crates/simthing-driver/src/resource_flow_structural_enrollment.rs	executed	Live boundary-time structural-addition admission into the recursive RF arena registry (sibling of fission enrollment)
 crates/simthing-driver/src/resource_flow_convergence_burn_in.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/resource_flow_preflight.rs	executed	Live driver/kernel execution or residency path in the recursive RF / arena stack
 crates/simthing-driver/src/rf_conservation_oracle.rs	oracle	CPU/judge independence surface for conservation or plan parity

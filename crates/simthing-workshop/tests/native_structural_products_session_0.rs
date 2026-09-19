@@ -339,6 +339,136 @@ fn product_meaning_is_independent_of_declaration_order() {
     assert_eq!(outcomes[0].len(), 4, "two births per faction");
 }
 
+/// Two powered corvettes: the fleet and its reactor carry energy, the crew
+/// carries none. An interior fleet participates with its children's upsweep
+/// weight, so reactor weight 2 keeps A1's split dyadic (4 x 1 + 2 x 2): f32
+/// settlement is then exact and the comparison below can be exact.
+fn powered_product(flow: i32) -> String {
+    format!(
+        r#"
+  structural_product = terran_corvettes {{
+    funding = {{ entity = A1 property = "meridian_material::A1_corvettes_quantity" role = Amount }}
+    count = 2
+    parent = A1
+    template = {{
+      kind = Fleet
+      owner_ref = terran
+      property_value = {{ property = "meridian::energy" flow = {flow} weight = 1 }}
+      children = {{
+        child = reactor {{ kind = Cohort
+          property_value = {{ property = "meridian::energy" flow = 0 weight = 2 }}
+        }}
+        child = crew {{ kind = Cohort }}
+      }}
+    }}
+  }}
+"#
+    )
+}
+
+/// One generation's settled Balance deltas summed across `meridian_energy`,
+/// each delta taken and summed in f64 so the harness adds no rounding.
+fn settled_energy(live: &mut Live) -> f64 {
+    let session = &live.sim;
+    let arena = session
+        .spec_state
+        .arena_registry
+        .arenas
+        .iter()
+        .position(|arena| arena.name == "meridian_energy")
+        .unwrap() as u32;
+    let layout = simthing_driver::build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
+        .unwrap()
+        .arenas
+        .into_iter()
+        .find(|layout| layout.arena_idx == arena)
+        .unwrap();
+    let n_dims = session.proto.registry.total_columns as u32;
+    let before = live.sim.state.read_values();
+    live.sim.step_once().expect("ordinary generation");
+    let after = live.sim.state.read_values();
+    layout
+        .iter_all()
+        .into_iter()
+        .map(|node| {
+            let at = (node.participant_slot.raw() * n_dims + node.cols.balance_col.unwrap().raw_u32())
+                as usize;
+            after[at] as f64 - before[at] as f64
+        })
+        .sum()
+}
+
+/// Structural-addition RF admission on the native path (DA, relay 5743461789).
+/// catches: a funded birth left out of the existing derived energy arena, its
+/// energy-less crew enrolled by inheritance, a resource parent other than its
+/// structural host, declared growth not sized into the derived cap (the second
+/// birth would refuse on capacity), or settlement that does not move by
+/// exactly the born flows.
+#[test]
+fn funded_births_join_the_energy_arena_and_settle_their_authored_flow() {
+    let mut settled = Vec::new();
+    for flow in [0, -1] {
+        let mut live = open(&source(&[powered_product(flow)], 2)).unwrap();
+        let a1 = live.targets["A1"][0];
+        let arena = live
+            .sim
+            .spec_state
+            .arena_registry
+            .arenas
+            .iter()
+            .position(|arena| arena.name == "meridian_energy")
+            .unwrap() as u32;
+        let n0_members = live.sim.spec_state.arena_registry.participants.len();
+        let mut births = Vec::new();
+        let mut cursor = live.sim.proto.delta_log().len();
+        for generation in 1..=4 {
+            live.sim.step_once().expect("ordinary generation");
+            let log = live.sim.proto.delta_log();
+            let fresh: Vec<SimThingId> = log[cursor..]
+                .iter()
+                .filter_map(|entry| match entry {
+                    BoundaryDeltaEntry::SimThingAdded { node, .. } => Some(node.id()),
+                    BoundaryDeltaEntry::GrowthResidencyRefused { .. } => {
+                        panic!("placement is available")
+                    }
+                    _ => None,
+                })
+                .collect();
+            cursor = log.len();
+            for id in fresh {
+                let report = live
+                    .sim
+                    .last_resource_flow_structural_enrollment_report
+                    .clone()
+                    .expect("the birth was consumed by enrollment");
+                println!("G{generation} birth {id:?}: {report:?}");
+                assert!(report.refusals.is_empty(), "{report:?}");
+                assert_eq!(report.admissions.len(), 2, "fleet and reactor, never the crew");
+                births.push(id);
+            }
+        }
+        assert_eq!(births.len(), 2, "both declared units are born");
+        let registry = &live.sim.spec_state.arena_registry;
+        for &fleet in &births {
+            let children = live.sim.proto.root.snapshot_node(fleet).unwrap().children;
+            let parent_of = |id| {
+                registry
+                    .participants
+                    .iter()
+                    .find(|member| member.arena_idx == arena && member.subtree_root == id)
+                    .map(|member| member.parent)
+            };
+            assert_eq!(parent_of(fleet), Some(Some(a1)), "joined under its structural host");
+            assert_eq!(parent_of(children[0]), Some(Some(fleet)), "the powered reactor joins");
+            assert_eq!(parent_of(children[1]), None, "the energy-less crew never joins");
+        }
+        assert_eq!(registry.participants.len(), n0_members + 4);
+        settled.push(settled_energy(&mut live));
+    }
+    println!("settled energy with born flow 0 / -1: {settled:?}");
+    assert_eq!(settled[1] - settled[0], -2.0, "exactly the two born fleets' authored flow");
+}
+
 /// catches: an unknown or ambiguous funding locus, host, parent, owner, or
 /// template property, or an owner seat used as a spatial parent, being
 /// retargeted, defaulted, or dropped instead of refused before activation.

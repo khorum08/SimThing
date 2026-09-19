@@ -426,3 +426,33 @@ fn find(node: &SimThing, id: SimThingId) -> Option<&SimThing> {
     }
     node.children.iter().find_map(|child| find(child, id))
 }
+
+/// Carriers of each resource property `(namespace, name)` that the declared
+/// products will birth: `count` times the template nodes carrying it. Derived
+/// arena capacity is sized from this at session build (relay 5743461789).
+pub(crate) fn declared_growth_by_property(
+    products: &[StructuralProductSpec],
+) -> std::collections::BTreeMap<(String, String), u32> {
+    fn carriers(
+        node: &StructuralTemplateNodeSpec,
+        per_unit: &mut std::collections::BTreeMap<(String, String), u32>,
+    ) {
+        for cell in &node.property_values {
+            *per_unit
+                .entry((cell.property.namespace.clone(), cell.property.name.clone()))
+                .or_default() += 1;
+        }
+        for child in &node.children {
+            carriers(child, per_unit);
+        }
+    }
+    let mut growth = std::collections::BTreeMap::new();
+    for product in products {
+        let mut per_unit = std::collections::BTreeMap::new();
+        carriers(&product.template, &mut per_unit);
+        for (key, count) in per_unit {
+            *growth.entry(key).or_default() += count * product.count.get();
+        }
+    }
+    growth
+}

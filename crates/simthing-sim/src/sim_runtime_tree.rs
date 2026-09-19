@@ -235,6 +235,15 @@ impl SimRuntimeTree {
         find_node(&self.inner, id)?.properties.get(&property)
     }
 
+    /// Read a node's authored resource-parent edges (resource-channel
+    /// parentage, never spatial containment) without exposing its kind.
+    pub fn resource_parent_edges_of(
+        &self,
+        id: SimThingId,
+    ) -> Option<&[simthing_core::ResourceParentEdge]> {
+        find_node(&self.inner, id).map(|node| node.resource_parent_edges.as_slice())
+    }
+
     pub fn owner_of(
         &self,
         id: SimThingId,
