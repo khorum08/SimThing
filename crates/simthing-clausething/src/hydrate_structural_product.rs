@@ -193,7 +193,12 @@ fn parse_template(
                 {
                     return Err(refuse(entry, format!("unknown owner_ref `{owner}`")));
                 }
-                set_once(&mut owner_ref, owner, entry, "structural_product.template")?
+                set_once(
+                    &mut owner_ref,
+                    simthing_core::owner_channel::OwnerRef::new(owner),
+                    entry,
+                    "structural_product.template",
+                )?
             }
             "property_value" => {
                 let cell = parse_property_value(entry)?;

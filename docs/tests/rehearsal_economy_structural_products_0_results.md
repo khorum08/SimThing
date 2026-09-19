@@ -120,3 +120,15 @@ literal gains the empty field). The lowering itself lives in the new, unsealed
   unsealed module. It was never on master.
 - Pin chain: `…0xa3e6…` → `0x9993…` → `0x17a0_d148_7d18_f02e`.
 - **Battery at floor:** parity 1/1 + mutant matrix, score-and-bands 3/3, runtime 4/4.
+
+## Clean-checkout proof
+
+- commit: `d51e877c` (the exact seventeenth-roll commit)
+- command: fresh `git clone` with `core.autocrlf=false` (canonical LF checkout) at that exact commit,
+  in sibling directory `simthing-e8-roll17-verify` (not under %TEMP%);
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 17a0d1487d18f02e`; referee
+  `1 passed; 0 failed`. The fresh canonical-LF clone reproduces the pinned fingerprint.
+- The later typed-owner commit touches only unsealed files (`OwnerRef` replaces a stringly
+  `owner_ref`, per the doctrine scan's `SPEC-STRING-CHANNEL`). The product witnesses stay GREEN
+  on the pin.

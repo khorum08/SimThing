@@ -11,6 +11,7 @@
 use crate::spec::overlay::OverlaySpec;
 use crate::spec::script::PropertyKey;
 use serde::{Deserialize, Serialize};
+use simthing_core::owner_channel::OwnerRef;
 use simthing_core::{SimThingKind, SubFieldRole};
 use std::num::NonZeroU32;
 
@@ -52,7 +53,7 @@ pub struct StructuralTemplateNodeSpec {
     pub kind: SimThingKind,
     /// Explicit owner binding; absent inherits from the structural parent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub owner_ref: Option<String>,
+    pub owner_ref: Option<OwnerRef>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub property_values: Vec<StructuralTemplatePropertySpec>,
     /// Overlays owned by the born node itself (origin and affects = the node).

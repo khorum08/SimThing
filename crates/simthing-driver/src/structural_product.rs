@@ -14,7 +14,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use simthing_core::owner_channel::{bind_owner, OwnerRef, UNOWNED_OWNER_REF};
+use simthing_core::owner_channel::bind_owner;
 use simthing_core::{
     DimensionRegistry, Direction, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
     EmlExpressionRegistry, SimPropertyId, SimThing, SimThingId, SimThingKind, SlotIndex,
@@ -358,10 +358,13 @@ fn instantiate(
     }
     let mut node = SimThing::new(template.kind.clone(), 0);
     if let Some(owner) = &template.owner_ref {
-        if owner != UNOWNED_OWNER_REF && !owners.contains(owner) {
-            return Err(refuse(format!("owner `{owner}` is not a declared owner")));
+        if !owner.is_unowned() && !owners.contains(owner.as_str()) {
+            return Err(refuse(format!(
+                "owner `{}` is not a declared owner",
+                owner.as_str()
+            )));
         }
-        bind_owner(&mut node, &OwnerRef::new(owner.clone()));
+        bind_owner(&mut node, owner);
     }
     for cell in &template.property_values {
         let key = format!("{}::{}", cell.property.namespace, cell.property.name);
