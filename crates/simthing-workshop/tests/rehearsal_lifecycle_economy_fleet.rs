@@ -7,8 +7,8 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use simthing_core::{
-    GenerationStamp, ObjectResidencyRelation, Overlay, OverlayId, OverlayKind, OverlayLifecycle,
-    OverlaySource, PropertyTransformDelta, SimThing, SubFieldRole, TransformOp,
+    ClampBehavior, GenerationStamp, ObjectResidencyRelation, Overlay, OverlayId, OverlayKind,
+    OverlayLifecycle, OverlaySource, PropertyTransformDelta, SimThing, SubFieldRole, TransformOp,
 };
 use simthing_driver::{observe_hosted_property_cell, AnchorTableSnapshot, SimSession};
 use simthing_feeder::BoundaryRequest;
@@ -678,6 +678,48 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
     assert!(
         contract_failures.is_empty(),
         "2.2 STOP: frozen refinery throughput not preserved: {contract_failures:#?}"
+    );
+
+    // The next storage obligation needs a finite bound on the actual spendable
+    // cell, not owner-silo metadata or a second stock lane. This is an ingress
+    // probe of existing core Bounded semantics; it claims no overflow policy or
+    // completed runtime storage proof. Keep the two GREEN stock cases above.
+    let unbounded = generator_stock_source(false);
+    let balance = "sub_field = { role = balance governed_by = balance_rate accumulator = Balance }";
+    assert_eq!(unbounded.matches(balance).count(), 2);
+    // Minerals are the first declaration, energy the second. Both endowments
+    // fit within this finite diagnostic bound; the frozen rates are unchanged.
+    let bounded = unbounded.replacen(
+        balance,
+        "sub_field = { role = balance governed_by = balance_rate accumulator = Balance clamp = Bounded { min = 0 max = 24 } }",
+        1,
+    );
+    println!("BOUNDED_STORAGE_INGRESS source={bounded}");
+    let directory = variant(&bounded);
+    let path = directory.path().join("stellaristhing_base.clause");
+    let result = ingest_clause_scenario_path(&path, &ClauseScenarioIngestOptions::default())
+        .unwrap_or_else(|error| panic!(
+            "2.2 STOP: native source cannot express the finite mineral Balance bound (0..24) needed by bounded storage: {error:?}"
+        ));
+    let mineral = result
+        .pack
+        .game_mode
+        .properties
+        .iter()
+        .find(|property| property.namespace == "meridian" && property.name == "minerals")
+        .unwrap();
+    let stock = mineral
+        .sub_fields
+        .iter()
+        .find(|field| field.role == SubFieldRole::Named("balance".into()))
+        .unwrap();
+    assert_eq!(
+        stock.clamp,
+        ClampBehavior::Bounded {
+            min: 0.0,
+            max: 24.0
+        },
+        "native hydration must preserve the authored stock bound"
     );
 }
 
