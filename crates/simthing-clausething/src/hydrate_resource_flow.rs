@@ -146,6 +146,7 @@ pub fn hydrate_resource_flow_pack(
             resource_economy: None,
             region_fields: vec![],
             mapping_execution_profile: Default::default(),
+            structural_products: Vec::new(),
         },
         produces_rate: produces.1,
         upkeep_rate: upkeep.1,

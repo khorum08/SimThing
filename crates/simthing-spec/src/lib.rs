@@ -582,6 +582,10 @@ pub use spec::region_field::{
     RegionFieldOperatorSpec, RegionFieldReductionSpec, RegionFieldSourcePolicySpec,
     RegionFieldSpec, RegionFieldSummaryPolicySpec,
 };
+pub use spec::structural_product::{
+    StructuralFundingSpec, StructuralProductSpec, StructuralTemplateNodeSpec,
+    StructuralTemplatePropertySpec,
+};
 pub use spec::resource_economy::{
     EmissionFormulaSpec, EmitBufferSpec, EmitOnThresholdSpec, RecipeInputSpec, ResourceEconomySpec,
     ResourceEmissionSpec, ResourceRecipeSpec, ResourceTransferSpec,

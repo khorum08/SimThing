@@ -425,6 +425,7 @@ pub fn hydrate_shipsize_decoder_pack(
             resource_economy: None,
             region_fields: vec![],
             mapping_execution_profile: Default::default(),
+            structural_products: Vec::new(),
         },
         decoded_keys,
         ship_class_custom_kinds: custom_kinds,
