@@ -123,6 +123,28 @@ pub fn derive_resource_flow_admission(
     root: &SimThing,
     allocator: &SlotAllocator,
 ) -> Result<ResolvedResourceFlowAdmission, ResourceFlowDerivationError> {
+    derive_resource_flow_admission_with_declared_growth(
+        authored,
+        registry,
+        root,
+        allocator,
+        &BTreeMap::new(),
+    )
+}
+
+/// As [`derive_resource_flow_admission`], with DECLARED structural growth
+/// (relay 5743461789): per resource property `(namespace, name)`, the carriers
+/// that authored structural products will birth. A derived arena's capacity
+/// counts them with its N0 carriers, so the bound is derived from everything
+/// the source declares will carry the flow property. It is never widened at
+/// runtime. Authored arena caps stay authoritative.
+pub fn derive_resource_flow_admission_with_declared_growth(
+    authored: Option<&ResourceFlowSpec>,
+    registry: &DimensionRegistry,
+    root: &SimThing,
+    allocator: &SlotAllocator,
+    declared_growth: &BTreeMap<(String, String), u32>,
+) -> Result<ResolvedResourceFlowAdmission, ResourceFlowDerivationError> {
     let populated = collect_populated_nodes(root);
     let mut candidates = Vec::new();
 
@@ -253,7 +275,17 @@ pub fn derive_resource_flow_admission(
         if let Some(index) = override_index {
             resolved.arenas[index].explicit_participants = explicit_participants;
         } else {
-            let participant_cap = (participants.len() as u32).max(1).next_power_of_two();
+            let declared = declared_growth
+                .get(&(
+                    candidate.property.namespace.clone(),
+                    candidate.property.name.clone(),
+                ))
+                .copied()
+                .unwrap_or(0);
+            let participant_cap = (participants.len() as u32)
+                .saturating_add(declared)
+                .max(1)
+                .next_power_of_two();
             resolved.arenas.push(ArenaSpec {
                 name: candidate.arena.clone(),
                 flow_property: candidate.property.clone(),
