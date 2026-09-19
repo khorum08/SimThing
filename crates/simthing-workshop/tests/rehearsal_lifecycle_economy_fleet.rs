@@ -975,11 +975,40 @@ fn rehearsal_economy_fleet_born_energy_upkeep_participates_in_resource_flow() {
         let mut born = Vec::new();
         let mut cursor = 0;
         for generation in 1..=8 {
+            let registry_generation = session.spec_state.arena_registry.generation;
             session.step_once().unwrap();
             let log = session.proto.delta_log();
+            let mut born_this_boundary = 0;
             for entry in &log[cursor..] {
                 if let BoundaryDeltaEntry::SimThingAdded { parent, node, .. } = entry {
+                    born_this_boundary += 1;
                     born.push((*parent, node.id()));
+                    let registry = &session.spec_state.arena_registry;
+                    let member = registry
+                        .participants
+                        .iter()
+                        .find(|p| p.arena_idx == arena && p.subtree_root == node.id())
+                        .expect("automatic admission at the successful birth boundary");
+                    assert_eq!(member.parent, Some(*parent));
+                    assert_eq!(
+                        Some(member.slot),
+                        session.proto.allocator.slot_of(node.id())
+                    );
+                    for child in session
+                        .proto
+                        .root
+                        .snapshot_node(node.id())
+                        .unwrap()
+                        .children
+                    {
+                        assert!(
+                            !registry
+                                .participants
+                                .iter()
+                                .any(|p| p.subtree_root == child),
+                            "non-carrier child must not inherit RF membership"
+                        );
+                    }
                     println!(
                         "UPKEEP_BIRTH case={} generation={generation} parent={} id={}",
                         case.label,
@@ -987,6 +1016,17 @@ fn rehearsal_economy_fleet_born_energy_upkeep_participates_in_resource_flow() {
                         node.id().raw()
                     );
                 }
+            }
+            if born_this_boundary > 0 {
+                let report = session
+                    .last_resource_flow_structural_enrollment_report
+                    .as_ref()
+                    .unwrap();
+                assert!(report.refusals.is_empty());
+                assert_eq!(report.admissions.len(), born_this_boundary);
+                assert_eq!(report.generation_before, registry_generation);
+                assert_eq!(report.generation_after, registry_generation + 1);
+                println!("UPKEEP_BIRTH_ENROLLMENT case={} generation={generation} non_carriers_excluded=true report={report:?}", case.label);
             }
             cursor = log.len();
             for owner in ["terran", "pirate"] {
@@ -1003,7 +1043,8 @@ fn rehearsal_economy_fleet_born_energy_upkeep_participates_in_resource_flow() {
                     "balance_rate",
                 );
                 println!("UPKEEP_SETTLEMENT case={} generation={generation} owner={owner} refinery_rate={refinery} yard_rate={yard} surplus={} live={}", case.label, refinery + yard, session.proto.allocator.live_count());
-                if generation == 8 && (refinery + yard - case.expected_surplus).abs() > 0.0001 {
+                // All splits in this fixture are dyadic, so equality is exact.
+                if generation == 8 && refinery + yard != case.expected_surplus {
                     failures.push(format!(
                         "{}/{owner}: G8 net spendable energy {}, expected {} after one born fleet",
                         case.label,
