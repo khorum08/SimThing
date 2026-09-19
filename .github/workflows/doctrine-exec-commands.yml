@@ -782,6 +782,28 @@ jobs:
           fetch-depth: 0
           token: ${{ github.token }}
 
+      # ROUTING LAW COMES FROM THE DEFAULT BRANCH, never from the branch under
+      # judgment (DA ruling, relay 5745626815). This job checks out the PR
+      # branch so the router scans the PR's CONTENT; the router and its decision
+      # tables are then restored from the default branch, because landed law is
+      # in force the moment it lands, not when a branch happens to sync. The
+      # PR's own `base.sha` is NOT used: on an open PR it is the stale base
+      # recorded at last sync, which is exactly the defect. Evidence the PR
+      # itself authors (triage_log, inspect_justifications, clearance_ledger)
+      # stays branch-side. For `issue_comment` events GitHub always runs the
+      # default branch's copy of this workflow, so a branch cannot remove this
+      # step for its own clearance. A missing or renamed law file fails the step
+      # loudly rather than silently routing on branch tables.
+      - name: Pin routing law to the default branch
+        run: |
+          set -euo pipefail
+          LAW_REF="${{ github.event.repository.default_branch }}"
+          [ -n "$LAW_REF" ] || LAW_REF="master"
+          git fetch --no-tags origin "$LAW_REF"
+          git checkout FETCH_HEAD --             scripts/ci/clearance_check.sh             scripts/ci/class_predicates.tsv             scripts/ci/precedented_classes.tsv             scripts/ci/binding_conditions.tsv             scripts/ci/da_review_profile.tsv             scripts/ci/doctrine_anchors.tsv             scripts/ci/anchor_triggers.tsv
+          echo "routing law pinned to ${LAW_REF} @ $(git rev-parse --short FETCH_HEAD)"
+          git --no-pager diff --stat HEAD -- scripts/ci || true
+
       - name: Post PENDING clearance placeholder (head-bound; prevents stale-sticky misread)
         env:
           GH_TOKEN: ${{ github.token }}
