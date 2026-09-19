@@ -58,6 +58,7 @@ pub mod semantic_local_effects;
 pub mod semantic_local_effects_recursive_rf_source;
 pub mod semantic_participant_delta_preview;
 pub mod session_resource_flow;
+pub mod structural_product;
 pub mod spatial_local_grid;
 pub mod stress_compose;
 pub mod structural_edit;

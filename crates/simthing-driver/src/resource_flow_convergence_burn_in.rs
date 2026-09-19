@@ -297,6 +297,7 @@ fn base_game_mode(id: &str) -> GameModeSpec {
         resource_economy: None,
         region_fields: vec![],
         mapping_execution_profile: Default::default(),
+        structural_products: Vec::new(),
     }
 }
 

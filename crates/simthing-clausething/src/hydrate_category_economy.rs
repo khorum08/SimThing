@@ -322,6 +322,7 @@ pub fn hydrate_category_economy_pack(
             resource_economy: None,
             region_fields,
             mapping_execution_profile: mapping_profile,
+            structural_products: Vec::new(),
         },
         scenario_registry,
         contributions,
@@ -695,6 +696,7 @@ pub fn hydrate_daily_economy_game_mode(
         }),
         region_fields: vec![],
         mapping_execution_profile: Default::default(),
+        structural_products: Vec::new(),
     })
 }
 

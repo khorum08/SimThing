@@ -287,6 +287,7 @@ fn hydrate_field_operator_body(
             resource_economy: None,
             region_fields: vec![region_field],
             mapping_execution_profile: MappingExecutionProfile::Disabled,
+            structural_products: Vec::new(),
         },
         w_impedance_compose,
         stress_compose,

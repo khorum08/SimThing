@@ -54,6 +54,8 @@ fn mint_fresh_execution_identity(
 pub enum SessionError {
     #[error("gpu init: {0}")]
     Gpu(#[from] simthing_gpu::GpuInitError),
+    #[error("structural product: {0}")]
+    StructuralProduct(#[from] crate::structural_product::StructuralProductError),
     #[error("scenario: {0}")]
     Scenario(#[from] crate::scenario::ScenarioError),
     #[error("replay: {0}")]
@@ -1740,14 +1742,26 @@ impl SimSession {
     where
         F: FnOnce(u32) -> FieldSweepCompilerResult,
     {
+        // FUNDED STRUCTURAL PRODUCTS (relay 5737649159): births place only
+        // through the canonical implicit residency market, so a game mode that
+        // declares products carries that substrate beside its authored arenas
+        // (the composition every graduated 2.1 construction session ran on).
+        let structural_growth = !game_mode.structural_products.is_empty();
+        let mut scenario = scenario;
+        if structural_growth {
+            crate::resident_clearing_runtime::install_default_resident_rf_property(
+                &mut scenario.registry,
+                &mut scenario.root,
+            );
+        }
         let mut session = Self::open(scenario)?;
         // I1: `install_atomic` clones registry/root/allocator before
         // running the install, so a failed install leaves the
         // just-built `BoundaryProtocol` untouched. See
         // `docs/adr/install_clone_then_commit.md`.
         let mut admitted = session.scenario.root.clone();
-        let authored_replaces_resident_fallback =
-            game_mode.resource_flow.as_ref().is_some_and(|flow| {
+        let authored_replaces_resident_fallback = !structural_growth
+            && game_mode.resource_flow.as_ref().is_some_and(|flow| {
                 !flow.arenas.is_empty()
                     && !flow.arenas.iter().any(|arena| {
                         arena.name == crate::resident_clearing_runtime::RESIDENT_MARKET_RF_ARENA
@@ -1825,6 +1839,18 @@ impl SimSession {
         }
         session.install_spec_state(spec_state)?;
         session.install_session_mapping(game_mode, field_sweep_install)?;
+        // Lowered once, here, at tick zero, into the one frozen ActionBand
+        // session product; the existing install door refuses any later bind.
+        if let Some(commitments) = crate::structural_product::lower_structural_products(
+            &game_mode.structural_products,
+            &session.proto.registry,
+            &session.scenario.root,
+            &session.proto.root,
+            &session.proto.allocator,
+            &session.scenario.install_targets,
+        )? {
+            session.install_action_band_commitments(commitments)?;
+        }
         Ok(session)
     }
 

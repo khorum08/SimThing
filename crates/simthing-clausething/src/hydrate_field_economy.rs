@@ -911,7 +911,7 @@ fn parse_weight_profile(
 /// DUPLICATE-FIELD LAW (relay 5730468245, rule 6): assign an authored scalar
 /// exactly once. A second occurrence is a typed refusal carrying the repeated
 /// field's own span — never a silent last-wins overwrite of economic meaning.
-fn set_once<T>(
+pub(crate) fn set_once<T>(
     slot: &mut Option<T>,
     value: T,
     field: &RawProperty,

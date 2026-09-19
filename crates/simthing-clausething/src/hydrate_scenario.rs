@@ -55,6 +55,8 @@ use crate::raw::{RawBlock, RawDocument, RawHeaderValue, RawProperty, RawSpan, Ra
 
 #[path = "rehearsal_ingress_fields.rs"]
 pub(crate) mod rehearsal_ingress_fields;
+#[path = "hydrate_structural_product.rs"]
+mod hydrate_structural_product;
 
 pub const PR3_MAX_LINK_FANOUT: usize = 4;
 /// PR4 admits one scenario-contained SaturatingFlux field operator per document.
@@ -393,6 +395,7 @@ pub fn hydrate_scenario_with_source_base(
     let mut palma_feedstock_draft = None;
     let mut commitment_count = 0_usize;
     let mut commitment_draft = None;
+    let mut structural_product_fields = Vec::new();
 
     for field in &body.properties {
         reject_forbidden_scenario_field(field)?;
@@ -516,6 +519,8 @@ pub fn hydrate_scenario_with_source_base(
                 }
                 palma_feedstock_draft = Some(parse_palma_feedstock_property(field)?);
             }
+            // Resolved once owners are known, after the whole scenario hydrates.
+            "structural_product" => structural_product_fields.push(field.clone()),
             "commitment" => {
                 commitment_count += 1;
                 if commitment_count > PR6_MAX_SCENARIO_COMMITMENT {
@@ -804,6 +809,11 @@ pub fn hydrate_scenario_with_source_base(
         field_economy,
     };
     rehearsal_ingress_fields::apply_source_fields(scenario, &mut pack)?;
+    pack.game_mode.structural_products = hydrate_structural_product::parse_structural_products(
+        &structural_product_fields,
+        &pack.owners,
+        &mut seen_overlay_ids,
+    )?;
     Ok(pack)
 }
 

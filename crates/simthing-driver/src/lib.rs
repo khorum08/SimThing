@@ -78,6 +78,7 @@ pub mod semantic_local_effects_compile;
 pub mod semantic_local_effects_recursive_source_compile;
 pub mod semantic_participant_delta_preview_compile;
 pub mod session;
+pub mod structural_product;
 pub mod session_resource_flow_silos;
 pub mod simulation_fabric;
 pub mod spec_replay;
@@ -362,6 +363,7 @@ pub use resource_flow_fission_enrollment::{
     DynamicFissionEnrollmentRejection, DynamicFissionEnrollmentReport,
 };
 pub use resource_flow_preflight::validate_resource_flow_preflight;
+pub use structural_product::StructuralProductError;
 pub use rf_conservation_oracle::{
     allocator_eps_bound, allocator_from_disbursements, check_allocator_step,
     check_arena_structural, check_conservation, check_recipe_exact,

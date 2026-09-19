@@ -39,4 +39,9 @@ pub struct GameModeSpec {
     /// Mapping execution opt-in profile. Default Disabled; spec presence alone does not enable runtime.
     #[serde(default)]
     pub mapping_execution_profile: super::region_field::MappingExecutionProfile,
+    /// Funded structural products (relay 5737649159): detached templates born
+    /// through the existing ActionBand -> AddChild door, lowered at session
+    /// build. Empty for every game mode that declares none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub structural_products: Vec<super::structural_product::StructuralProductSpec>,
 }

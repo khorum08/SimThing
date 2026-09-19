@@ -1862,6 +1862,7 @@ mod tests {
             resource_economy: None,
             region_fields: vec![],
             mapping_execution_profile: Default::default(),
+            structural_products: Vec::new(),
         }
     }
 
@@ -1898,6 +1899,7 @@ mod tests {
             resource_economy: None,
             region_fields: vec![],
             mapping_execution_profile: Default::default(),
+            structural_products: Vec::new(),
         }
     }
 
