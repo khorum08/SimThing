@@ -132,3 +132,9 @@ literal gains the empty field). The lowering itself lives in the new, unsealed
 - The later typed-owner commit touches only unsealed files (`OwnerRef` replaces a stringly
   `owner_ref`, per the doctrine scan's `SPEC-STRING-CHANNEL`). The product witnesses stay GREEN
   on the pin.
+- **Overlay-germ census:** the lowering's `instantiate` pushes compiled template overlays onto a
+  DETACHED, not-yet-born node. It is classified as residue (`authoring-product`,
+  GENUINELY-STRUCTURAL / keep) in `overlay_germ_archaeology_census.tsv`. Those overlays enter the
+  tree only through the classified `AddChild` structural apply, so the site is no runtime attach or
+  lifecycle route (the same reason ClauseThing authoring is out of census scope). The gate logic is
+  unchanged.
