@@ -81,7 +81,10 @@ bounded to `0..1` and an otherwise identical unbounded control.
 - an unknown bound key silently ignored → hydration RED;
 - `Floored` accepting `max` → hydration RED.
 
-**Regression:** SWEEPLINE
+**Regression** (0 failures): clausething 47 (45 + this law's 2), spec 16, core 32, workshop 16
+(15 + this law's 1), mapeditor 25. One mapeditor attempt aborted on a corrupted incremental
+state left by concurrent builds (`only metadata stub found for rlib dependency core`); rerun
+alone it passes 25/0. No E8 roll: `rehearsal_ingress_fields.rs` is not a `build.rs` component.
 
 ## Fence carried to #2075 (not settled here)
 
