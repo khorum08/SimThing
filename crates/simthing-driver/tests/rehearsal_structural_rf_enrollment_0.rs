@@ -439,3 +439,55 @@ fn a_birth_past_the_orderband_budget_refuses_before_any_mutation() {
         world.session.step_once().expect("the session keeps running either way");
     }
 }
+
+/// catches: a birth placed on the retired slot of a removed member, whose arena
+/// row persists until departure is law, aliasing two members onto one slot
+/// instead of refusing typed.
+#[test]
+fn a_birth_on_a_slot_still_held_by_a_removed_member_refuses_typed() {
+    let mut world = world(9, false);
+    let registry = world.session.proto.registry.clone();
+    let first = carrier(&registry, world.energy, SimThingKind::Fleet, 0.0, 1.0);
+    let first_id = first.id;
+    let hub = world.hub;
+    add(&mut world, hub, first);
+    let slot = world.session.proto.allocator.slot_of(first_id).unwrap().raw();
+    world
+        .session
+        .tx
+        .submit_boundary(BoundaryRequest::Remove { target: first_id })
+        .unwrap();
+    world.session.step_once().expect("ordinary removal");
+    assert!(!world.session.proto.root.contains_id(first_id));
+    assert_eq!(
+        member_parent(&world, first_id),
+        Some(Some(hub)),
+        "departure is not yet law: the removed member's row persists"
+    );
+
+    let before = world.session.spec_state.arena_registry.participants.len();
+    let generation = world.session.spec_state.arena_registry.generation;
+    let second = carrier(&registry, world.energy, SimThingKind::Fleet, 0.0, 1.0);
+    let second_id = second.id;
+    add(&mut world, hub, second);
+    assert_eq!(
+        world.session.proto.allocator.slot_of(second_id).map(|slot| slot.raw()),
+        Some(slot),
+        "placement reuses the retired slot"
+    );
+    let report = world.session.last_resource_flow_structural_enrollment_report.clone().unwrap();
+    println!("reused slot {slot}: {:?}", report.refusals);
+    assert!(report.admissions.is_empty());
+    assert_eq!(
+        report.refusals,
+        vec![StructuralEnrollmentRefusal::SlotHeld {
+            simthing_id: second_id,
+            arena: "energy".into(),
+            slot,
+            holder: first_id,
+        }]
+    );
+    assert_eq!(world.session.spec_state.arena_registry.participants.len(), before);
+    assert_eq!(world.session.spec_state.arena_registry.generation, generation);
+    world.session.step_once().expect("the session keeps running");
+}

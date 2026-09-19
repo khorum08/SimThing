@@ -3,7 +3,7 @@
 //! with a shipyard recipe whose funded output births a source-authored,
 //! detached fleet subtree through the existing 2.1 ActionBand -> AddChild door.
 use simthing_core::{ObjectResidencyRelation, SimThingId};
-use simthing_driver::{build_execution_plan, SimSession};
+use simthing_driver::SimSession;
 use simthing_mapeditor::clause_scenario_ingest::{
     load_clause_studio_session_from_path, ClauseScenarioIngestOptions,
 };
@@ -339,68 +339,6 @@ fn product_meaning_is_independent_of_declaration_order() {
     assert_eq!(outcomes[0].len(), 4, "two births per faction");
 }
 
-/// catches: an unknown or ambiguous funding locus, host, parent, owner, or
-/// template property, or an owner seat used as a spatial parent, being
-/// retargeted, defaulted, or dropped instead of refused before activation.
-#[test]
-fn malformed_product_declarations_refuse_before_activation() {
-    let good = product("terran", "A1", 2, 1);
-    let cases: Vec<(String, &str)> = vec![
-        (
-            good.replace("A1_corvettes_quantity\"", "A1_frigates_quantity\""),
-            "is not registered",
-        ),
-        (
-            good.replace("role = Amount }", "role = reserve }"),
-            "is not a scalar sub-field",
-        ),
-        (
-            good.replace("funding = { entity = A1", "funding = { entity = nowhere"),
-            "not in install_targets",
-        ),
-        (
-            good.replace("parent = A1", "parent = nowhere"),
-            "not in install_targets",
-        ),
-        (good.replace("parent = A1", "parent = terran"), "is an owner seat"),
-        (
-            good.replace("owner_ref = terran", "owner_ref = nobody"),
-            "unknown owner_ref",
-        ),
-        (
-            good.replace("count = 2", "count = 0"),
-            "count must be a positive integer",
-        ),
-        (
-            good.replace("funding = { entity = A1", "funding = { entity = E1"),
-            "does not carry",
-        ),
-        (
-            good.replace(
-                "A1_alloys_quantity\" Amount = 1",
-                "A1_rubble_quantity\" Amount = 1",
-            ),
-            "is not registered",
-        ),
-        (
-            format!(
-                "{good}{}",
-                good.replace("terran_corvette_hull", "terran_corvette_hull_b")
-            ),
-            "duplicate structural_product id",
-        ),
-    ];
-    for (declaration, expected) in cases {
-        assert_ne!(declaration, good, "the case must alter the declaration");
-        let error = match open(&source(&[declaration.clone()], 2)) {
-            Ok(_) => panic!("must refuse before activation: {declaration}"),
-            Err(error) => error,
-        };
-        println!("refused ({expected}): {error}");
-        assert!(error.contains(expected), "{expected}: {error}");
-    }
-}
-
 /// Two powered corvettes: the fleet and its reactor carry energy, the crew
 /// carries none. An interior fleet participates with its children's upsweep
 /// weight, so reactor weight 2 keeps A1's split dyadic (4 x 1 + 2 x 2): f32
@@ -439,7 +377,7 @@ fn settled_energy(live: &mut Live) -> f64 {
         .iter()
         .position(|arena| arena.name == "meridian_energy")
         .unwrap() as u32;
-    let layout = build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
+    let layout = simthing_driver::build_execution_plan(&session.proto.registry, &session.spec_state.arena_registry)
         .unwrap()
         .arenas
         .into_iter()
@@ -529,4 +467,66 @@ fn funded_births_join_the_energy_arena_and_settle_their_authored_flow() {
     }
     println!("settled energy with born flow 0 / -1: {settled:?}");
     assert_eq!(settled[1] - settled[0], -2.0, "exactly the two born fleets' authored flow");
+}
+
+/// catches: an unknown or ambiguous funding locus, host, parent, owner, or
+/// template property, or an owner seat used as a spatial parent, being
+/// retargeted, defaulted, or dropped instead of refused before activation.
+#[test]
+fn malformed_product_declarations_refuse_before_activation() {
+    let good = product("terran", "A1", 2, 1);
+    let cases: Vec<(String, &str)> = vec![
+        (
+            good.replace("A1_corvettes_quantity\"", "A1_frigates_quantity\""),
+            "is not registered",
+        ),
+        (
+            good.replace("role = Amount }", "role = reserve }"),
+            "is not a scalar sub-field",
+        ),
+        (
+            good.replace("funding = { entity = A1", "funding = { entity = nowhere"),
+            "not in install_targets",
+        ),
+        (
+            good.replace("parent = A1", "parent = nowhere"),
+            "not in install_targets",
+        ),
+        (good.replace("parent = A1", "parent = terran"), "is an owner seat"),
+        (
+            good.replace("owner_ref = terran", "owner_ref = nobody"),
+            "unknown owner_ref",
+        ),
+        (
+            good.replace("count = 2", "count = 0"),
+            "count must be a positive integer",
+        ),
+        (
+            good.replace("funding = { entity = A1", "funding = { entity = E1"),
+            "does not carry",
+        ),
+        (
+            good.replace(
+                "A1_alloys_quantity\" Amount = 1",
+                "A1_rubble_quantity\" Amount = 1",
+            ),
+            "is not registered",
+        ),
+        (
+            format!(
+                "{good}{}",
+                good.replace("terran_corvette_hull", "terran_corvette_hull_b")
+            ),
+            "duplicate structural_product id",
+        ),
+    ];
+    for (declaration, expected) in cases {
+        assert_ne!(declaration, good, "the case must alter the declaration");
+        let error = match open(&source(&[declaration.clone()], 2)) {
+            Ok(_) => panic!("must refuse before activation: {declaration}"),
+            Err(error) => error,
+        };
+        println!("refused ({expected}): {error}");
+        assert!(error.contains(expected), "{expected}: {error}");
+    }
 }

@@ -9,7 +9,8 @@
 //! - one matching resource-parent edge is authoritative, and two refuse;
 //! - absent an edge, the physical parent is the resource parent only when it
 //!   is itself a member of that arena; otherwise the node joins flat;
-//! - the node's slot is the one the boundary already committed.
+//! - the node's slot is the one the boundary already committed, and a slot
+//!   still held by another member of the arena refuses.
 //!
 //! Only DERIVED arenas take structural additions. Derived membership is a
 //! definition ("every carrier of the flow property"), so a newly added carrier
@@ -61,6 +62,15 @@ pub enum StructuralEnrollmentRefusal {
     MissingSlot {
         simthing_id: SimThingId,
         arena: String,
+    },
+    /// The committed slot already hosts another member of this arena, such as
+    /// a removed identity's row (departure is not yet law). One slot is never
+    /// two members.
+    SlotHeld {
+        simthing_id: SimThingId,
+        arena: String,
+        slot: u32,
+        holder: SimThingId,
     },
     Capacity {
         arena: String,
@@ -221,6 +231,19 @@ pub fn react_to_structural_resource_flow_enrollment(
                 });
                 continue;
             };
+            if let Some(holder) = arena_registry
+                .participants
+                .iter()
+                .find(|member| member.arena_idx == arena_idx && member.slot.raw() == slot.raw())
+            {
+                report.refusals.push(StructuralEnrollmentRefusal::SlotHeld {
+                    simthing_id: *id,
+                    arena: arena.name.clone(),
+                    slot: slot.raw(),
+                    holder: holder.subtree_root,
+                });
+                continue;
+            }
             planned_members.insert((*id, arena_idx));
             *planned_per_arena.entry(arena_idx).or_default() += 1;
             planned.push(StructuralEnrollmentAdmission {
