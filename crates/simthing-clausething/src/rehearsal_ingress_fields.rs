@@ -22,6 +22,7 @@ pub(super) fn parse_subfield(property: &RawProperty) -> Result<SubFieldSpec, Hyd
     let mut default = 0.0;
     let mut governed_by = None;
     let mut accumulator = None;
+    let mut clamp = None;
     let mut fields = BTreeSet::new();
     for field in &block.properties {
         if !fields.insert(&field.key.text) {
@@ -30,6 +31,7 @@ pub(super) fn parse_subfield(property: &RawProperty) -> Result<SubFieldSpec, Hyd
         match field.key.text.as_str() {
             "role" => role = Some(parse_role(&read_scalar_text(field, "role")?)),
             "default" => default = finite(field)?,
+            "clamp" => clamp = Some(parse_clamp(field)?),
             "governed_by" => {
                 governed_by = Some(parse_role(&read_scalar_text(field, "governed_by")?))
             }
@@ -84,7 +86,7 @@ pub(super) fn parse_subfield(property: &RawProperty) -> Result<SubFieldSpec, Hyd
         display_name: format!("{role:?}"),
         role,
         width: 1,
-        clamp: ClampBehavior::Unbounded,
+        clamp: clamp.unwrap_or(ClampBehavior::Unbounded),
         velocity_max: None,
         default,
         display_range: None,
@@ -93,6 +95,58 @@ pub(super) fn parse_subfield(property: &RawProperty) -> Result<SubFieldSpec, Hyd
         soft_aggregate_guard: None,
         accumulator_spec: accumulator,
     })
+}
+
+/// Direct projection of the existing core `ClampBehavior` onto authored cells.
+/// Omitted stays `Unbounded`, so every historical document is unchanged. Bounds
+/// must be finite and ordered; every other shape refuses before activation.
+fn parse_clamp(field: &RawProperty) -> Result<ClampBehavior, HydrateError> {
+    match &field.value {
+        RawValue::Scalar(value) if value.text == "Unbounded" => Ok(ClampBehavior::Unbounded),
+        RawValue::Scalar(value) => Err(failure(
+            field,
+            format!("unsupported clamp `{}`", value.text),
+        )),
+        RawValue::Header(header) => {
+            let RawValue::Block(body) = header.payload.as_ref() else {
+                return Err(failure(field, "clamp requires a bounds block"));
+            };
+            let mut seen = BTreeSet::new();
+            let mut min = None;
+            let mut max = None;
+            for bound in &body.properties {
+                if !seen.insert(&bound.key.text) {
+                    return Err(failure(bound, "duplicate clamp bound"));
+                }
+                match bound.key.text.as_str() {
+                    "min" => min = Some(finite(bound)?),
+                    "max" => max = Some(finite(bound)?),
+                    other => {
+                        return Err(failure(bound, format!("unsupported clamp bound `{other}`")))
+                    }
+                }
+            }
+            match header.header.text.as_str() {
+                "Bounded" => {
+                    let min = min.ok_or_else(|| failure(field, "Bounded clamp requires min"))?;
+                    let max = max.ok_or_else(|| failure(field, "Bounded clamp requires max"))?;
+                    if min > max {
+                        return Err(failure(field, "Bounded clamp requires min <= max"));
+                    }
+                    Ok(ClampBehavior::Bounded { min, max })
+                }
+                "Floored" => {
+                    if max.is_some() {
+                        return Err(failure(field, "Floored clamp declares min only"));
+                    }
+                    let min = min.ok_or_else(|| failure(field, "Floored clamp requires min"))?;
+                    Ok(ClampBehavior::Floored { min })
+                }
+                other => Err(failure(field, format!("unsupported clamp `{other}`"))),
+            }
+        }
+        _ => Err(failure(field, "invalid clamp declaration")),
+    }
 }
 
 fn failure(property: &RawProperty, message: impl Into<String>) -> HydrateError {
