@@ -6,20 +6,23 @@
 //! crosses `k + 0.5` on the authored funding locus and dispatches one
 //! `StructuralAuthorization(AddChild)` consequence carrying a freshly minted,
 //! detached instance of the authored template. Nothing here executes a birth:
-//! the frozen session is installed at tick zero through
-//! [`crate::SimSession::install_action_band_commitments`], and the ordinary
-//! boundary performs structural authorization and residency placement.
+//! each unit's crossing is the ordinary values-plane threshold on the funding
+//! cell (the boundary's band-crossing source), the frozen session is installed
+//! at tick zero through [`crate::SimSession::install_action_band_commitments`],
+//! and the ordinary boundary performs structural authorization and residency
+//! placement.
 
 use std::collections::{BTreeSet, HashMap};
 
 use simthing_core::owner_channel::{bind_owner, OwnerRef, UNOWNED_OWNER_REF};
 use simthing_core::{
-    DimensionRegistry, EmitOnThresholdBuffer, EmitOnThresholdRegistration, EmlExpressionRegistry,
-    SimThing, SimThingId, SimThingKind, SlotIndex, ThresholdDirection,
+    DimensionRegistry, Direction, EmitOnThresholdBuffer, EmitOnThresholdRegistration,
+    EmlExpressionRegistry, SimPropertyId, SimThing, SimThingId, SimThingKind, SlotIndex,
+    ThresholdDirection,
 };
 use simthing_feeder::BoundaryRequest;
 use simthing_gpu::SlotAllocator;
-use simthing_sim::{SimRuntimeTree, ThresholdRegistry};
+use simthing_sim::{CostBandSemantic, SimRuntimeTree, ThresholdRegistry, VelocityAlertRegistration};
 use simthing_spec::{
     compile_overlay, is_owner_entity_kind, owner_entity_id, ActionBandAdmissionBudgetSpec, ActionBandBandSpec,
     ActionBandChannelBindingSpec, ActionBandChannelKind, ActionBandSessionBuildDoor,
@@ -72,8 +75,44 @@ pub enum StructuralProductError {
 
 struct Resolved {
     parent: SimThingId,
+    host: SimThingId,
     host_slot: SlotIndex,
+    property: SimPropertyId,
     column: simthing_core::ColumnIndex,
+}
+
+/// The session-build product: the frozen consequence session plus the
+/// values-plane crossing registrations its bands consume.
+pub(crate) struct LoweredStructuralProducts {
+    commitments: CrossingConsequenceSession,
+    crossings: Vec<VelocityAlertRegistration>,
+}
+
+/// Lower and install every declared product at tick zero: register each
+/// unit's ordinary values-plane crossing, sync, then bind the frozen session
+/// through the one existing install door (which refuses any later bind).
+pub(crate) fn install_structural_products(
+    session: &mut crate::SimSession,
+    products: &[StructuralProductSpec],
+) -> Result<(), crate::SessionError> {
+    let Some(lowered) = lower_structural_products(
+        products,
+        &session.proto.registry,
+        &session.scenario.root,
+        &session.proto.root,
+        &session.proto.allocator,
+        &session.scenario.install_targets,
+    )?
+    else {
+        return Ok(());
+    };
+    for crossing in lowered.crossings {
+        session.proto.register_velocity_alert(crossing);
+    }
+    session
+        .proto
+        .initial_gpu_sync(&session.coord, &mut session.state)?;
+    session.install_action_band_commitments(lowered.commitments)
 }
 
 /// Lower every declared product into ONE frozen consequence session, or
@@ -86,7 +125,7 @@ pub(crate) fn lower_structural_products(
     runtime_root: &SimRuntimeTree,
     allocator: &SlotAllocator,
     install_targets: &HashMap<String, Vec<SimThingId>>,
-) -> Result<Option<CrossingConsequenceSession>, StructuralProductError> {
+) -> Result<Option<LoweredStructuralProducts>, StructuralProductError> {
     if products.is_empty() {
         return Ok(None);
     }
@@ -102,6 +141,7 @@ pub(crate) fn lower_structural_products(
     let owners = declared_owners(scenario_root);
 
     let mut thresholds = Vec::new();
+    let mut crossings = Vec::new();
     let mut templates = Vec::new();
     let mut consequences = Vec::new();
     let mut instance_slots = Vec::new();
@@ -120,6 +160,14 @@ pub(crate) fn lower_structural_products(
                 direction: ThresholdDirection::Upward,
                 event_kind: row,
                 buffer: EmitOnThresholdBuffer::Values,
+            });
+            crossings.push(VelocityAlertRegistration {
+                sim_thing_id: resolved.host,
+                property_id: resolved.property,
+                sub_field: product.funding.role.clone(),
+                threshold: bound,
+                direction: Direction::Rising,
+                cost_band: CostBandSemantic::observation(),
             });
             templates.push(ActionBandTemplateSpec {
                 id: format!("{}#{unit}", product.id),
@@ -197,9 +245,13 @@ pub(crate) fn lower_structural_products(
             )
         })
         .collect::<Vec<_>>();
-    compile_crossing_consequence_session(&frozen, &eml, &consequences, &active, &lanes)
-        .map(Some)
-        .map_err(|error| StructuralProductError::Admission(error.to_string()))
+    let commitments =
+        compile_crossing_consequence_session(&frozen, &eml, &consequences, &active, &lanes)
+            .map_err(|error| StructuralProductError::Admission(error.to_string()))?;
+    Ok(Some(LoweredStructuralProducts {
+        commitments,
+        crossings,
+    }))
 }
 
 fn resolve(
@@ -276,7 +328,9 @@ fn resolve(
     })?;
     Ok(Resolved {
         parent,
+        host,
         host_slot,
+        property,
         column,
     })
 }

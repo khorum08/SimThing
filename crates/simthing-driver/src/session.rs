@@ -1841,16 +1841,10 @@ impl SimSession {
         session.install_session_mapping(game_mode, field_sweep_install)?;
         // Lowered once, here, at tick zero, into the one frozen ActionBand
         // session product; the existing install door refuses any later bind.
-        if let Some(commitments) = crate::structural_product::lower_structural_products(
+        crate::structural_product::install_structural_products(
+            &mut session,
             &game_mode.structural_products,
-            &session.proto.registry,
-            &session.scenario.root,
-            &session.proto.root,
-            &session.proto.allocator,
-            &session.scenario.install_targets,
-        )? {
-            session.install_action_band_commitments(commitments)?;
-        }
+        )?;
         Ok(session)
     }
 
