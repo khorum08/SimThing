@@ -130,7 +130,27 @@ flow F, a powered reactor, and an energy-less crew.
   `Capacity { declared: 16, computed: 17 }`;
 - M8: no held-slot check → the reused-slot birth is admitted onto slot 12, and the witness goes RED.
 
-**Existing law GREEN on the new pin:** see the sweep line below.
+**Existing law GREEN on the new pin.** The workspace sweep has 0 failures:
+- core 32;
+- spec 16;
+- kernel 55;
+- sim 26;
+- gpu 7 (`eml-resource-profiling`);
+- driver 54:
+  - the 2.1 floor (recipe 8/8, WIP 3/3, discriminator 2/2, ingress 1/1);
+  - settlement 1/1;
+  - this law 5/5;
+- clausething 45;
+- mapeditor 25;
+- embedder 10;
+- workshop 15 (#2079's four product proofs plus this law's native witness).
+
+feeder, mapgenerator and tools declare no tests. One mapeditor attempt failed at `link.exe`
+(exit 1102) while a concurrent probe build was linking; it was rerun alone and passed.
+Local doctrine gates:
+- every step of `doctrine-scan.yml` PASS;
+- `TEST-BUDGET` INSPECT justified in `inspect_justifications.tsv`;
+- DEAD-EXPORT (52) and exit-proof INSPECTs are identical on base.
 
 ## Adjacent defects fixed in passing
 
@@ -197,4 +217,11 @@ edge accessor). The law itself lives in the new unsealed module.
 
 ## Clean-checkout proof
 
-CLEAN-CHECKOUT-PENDING
+- commit: `2e08aeec` (the exact eighteenth-roll commit);
+- command: fresh `git clone` with `core.autocrlf=false` (canonical LF checkout) at that exact commit,
+  in sibling directory `simthing-e8-roll18-verify` (not under %TEMP%);
+  `cargo test -p simthing-workshop --features simthing-gpu/eml-resource-profiling --test resident_clearing_parity_0 -- --nocapture --test-threads=1`
+- observed: `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: ee3712f2ef186934`; referee
+  `1 passed; 0 failed`. The fresh canonical-LF clone reproduces the pinned fingerprint.
+- Later commits touch no `build.rs` component. They add the held-slot preflight in the unsealed
+  module, witnesses, ledger/taxonomy/justification data, and this packet.
