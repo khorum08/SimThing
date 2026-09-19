@@ -2629,18 +2629,6 @@ impl SimSession {
         registered
     }
 
-    /// E-2B-5 Policy A: enroll fission-spawned SimThings into the parent's
-    /// Resource Flow arenas on the child's existing row.
-    pub fn react_to_fission_resource_flow_enrollment(
-        &mut self,
-        outcome: &BoundaryOutcome,
-    ) -> Result<(), SessionError> {
-        if self.enroll_fission_resource_flow(outcome) {
-            self.sync_after_resource_flow_enrollment()?;
-        }
-        Ok(())
-    }
-
     /// Every ordinary boundary: fission enrollment under its own policy, then
     /// structural-addition enrollment (relay 5743461789), then ONE sync.
     pub fn react_to_resource_flow_enrollment(
@@ -2650,11 +2638,14 @@ impl SimSession {
         let fission = self.enroll_fission_resource_flow(outcome);
         let structural = self.enroll_structural_resource_flow(outcome);
         if fission || structural {
-            self.sync_after_resource_flow_enrollment()?;
+            self.sync_resource_flow()?;
+            self.bind_or_rebind_resident_clearing_to_current_arena()?;
         }
         Ok(())
     }
 
+    /// E-2B-5 Policy A: enroll fission-spawned SimThings into the parent's
+    /// Resource Flow arenas on the child's existing row.
     fn enroll_fission_resource_flow(&mut self, outcome: &BoundaryOutcome) -> bool {
         if outcome.fission.fission_pairs.is_empty()
             || self.spec_state.arena_registry.arenas.is_empty()
@@ -2677,28 +2668,16 @@ impl SimSession {
         admitted
     }
 
-    /// Consumes the boundary's own record of successful additions; fission
-    /// children stay on their own policy path.
+    /// Consumes the boundary's own record of successful additions. Only
+    /// `AddChild` allocates there; fission children stay on their own path.
     fn enroll_structural_resource_flow(&mut self, outcome: &BoundaryOutcome) -> bool {
-        let fission_children: std::collections::BTreeSet<simthing_core::SimThingId> = outcome
-            .fission
-            .fission_pairs
-            .iter()
-            .map(|&(_, child)| child)
-            .collect();
-        let added: Vec<simthing_core::SimThingId> = outcome
-            .maintainer
-            .allocated
-            .iter()
-            .copied()
-            .filter(|id| !fission_children.contains(id))
-            .collect();
+        let added = &outcome.maintainer.allocated;
         if added.is_empty() || self.spec_state.arena_registry.arenas.is_empty() {
             self.last_resource_flow_structural_enrollment_report = None;
             return false;
         }
         let report = crate::resource_flow_structural_enrollment::react_to_structural_resource_flow_enrollment(
-            &added,
+            added,
             &self.proto.root,
             &self.proto.registry,
             &mut self.spec_state.arena_registry,
@@ -2708,11 +2687,6 @@ impl SimSession {
         let admitted = report.any_admissions();
         self.last_resource_flow_structural_enrollment_report = Some(report);
         admitted
-    }
-
-    fn sync_after_resource_flow_enrollment(&mut self) -> Result<(), SessionError> {
-        self.sync_resource_flow()?;
-        self.bind_or_rebind_resident_clearing_to_current_arena()
     }
 }
 

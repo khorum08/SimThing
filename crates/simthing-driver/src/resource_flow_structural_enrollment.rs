@@ -15,8 +15,9 @@
 //! definition ("every carrier of the flow property"), so a newly added carrier
 //! belongs by that same definition. Authored-row arenas (explicit, enrollment
 //! or wildcard) are an enumeration and stay closed: a carrier there is
-//! reported, never admitted. The whole batch is preflighted, capacity
-//! included, before any mutation, and any refusal admits nothing. A successful
+//! reported, never admitted. The whole batch is preflighted, participant
+//! capacity and OrderBand depth budget included, before any mutation, and any
+//! refusal admits nothing. A successful
 //! batch bumps the registry generation exactly once and the caller syncs once.
 //! Fission keeps its own policy path.
 
@@ -26,6 +27,7 @@ use simthing_core::{DimensionRegistry, ObjectResidencyRelation, SimThingId};
 use simthing_gpu::SlotAllocator;
 use simthing_sim::SimRuntimeTree;
 
+use crate::arena_hierarchy::{resolve_node_columns_for_property, ArenaBandLayout};
 use crate::arena_registry::{ArenaIdx, ArenaRegistry};
 use crate::resource_flow_derivation::{ArenaAdmissionOrigin, ResourceFlowDerivationReport};
 
@@ -65,6 +67,12 @@ pub enum StructuralEnrollmentRefusal {
         declared: u32,
         computed: u32,
     },
+    /// The admitted subtree would deepen the arena past its OrderBand budget.
+    DepthBudget {
+        arena: String,
+        needed: u32,
+        max: u32,
+    },
 }
 
 impl StructuralEnrollmentRefusal {
@@ -90,8 +98,11 @@ impl StructuralEnrollmentReport {
 }
 
 /// Admit the carriers inside the boundary's successfully added subtrees.
+/// `allocated` is the boundary's own record: every node of each added
+/// subtree, parents first. The walk starts only at its true roots, the nodes
+/// whose committed parent was not itself allocated.
 pub fn react_to_structural_resource_flow_enrollment(
-    added_roots: &[SimThingId],
+    allocated: &[SimThingId],
     tree: &SimRuntimeTree,
     registry: &DimensionRegistry,
     arena_registry: &mut ArenaRegistry,
@@ -99,13 +110,25 @@ pub fn react_to_structural_resource_flow_enrollment(
     allocator: &SlotAllocator,
 ) -> StructuralEnrollmentReport {
     let generation_before = arena_registry.generation;
+    let committed_parent = |id: SimThingId| match allocator.relation_of(id) {
+        Some(ObjectResidencyRelation::ChildOf(parent)) => Some(parent),
+        _ => None,
+    };
+    let in_batch: BTreeSet<SimThingId> = allocated.iter().copied().collect();
+    let mut seen = BTreeSet::new();
+    let added_roots: Vec<SimThingId> = allocated
+        .iter()
+        .copied()
+        .filter(|&id| !committed_parent(id).is_some_and(|parent| in_batch.contains(&parent)))
+        .filter(|&id| seen.insert(id))
+        .collect();
     let mut report = StructuralEnrollmentReport {
-        added_roots: added_roots.to_vec(),
+        added_roots,
         generation_before,
         generation_after: generation_before,
         ..Default::default()
     };
-    if added_roots.is_empty() || arena_registry.arenas.is_empty() {
+    if report.added_roots.is_empty() || arena_registry.arenas.is_empty() {
         return report;
     }
     let derived: BTreeSet<&str> = derivation
@@ -119,12 +142,8 @@ pub fn react_to_structural_resource_flow_enrollment(
     // before its children. Only the added subtrees and each root's committed
     // structural parent are read; the global registry is never re-derived.
     let mut nodes = Vec::new();
-    for &root in added_roots {
-        let parent = match allocator.relation_of(root) {
-            Some(ObjectResidencyRelation::ChildOf(parent)) => Some(parent),
-            _ => None,
-        };
-        let mut pending = vec![(root, parent)];
+    for &root in &report.added_roots {
+        let mut pending = vec![(root, committed_parent(root))];
         while let Some((id, parent)) = pending.pop() {
             let Some(snapshot) = tree.snapshot_node(id) else {
                 continue;
@@ -220,6 +239,41 @@ pub fn react_to_structural_resource_flow_enrollment(
                 arena: arena.name.clone(),
                 declared: arena.max_participants,
                 computed,
+            });
+        }
+        // The resulting tree must still fit the arena's OrderBand budget, or
+        // the post-admission sync would fail after mutating the registry.
+        let parents: BTreeMap<SimThingId, Option<SimThingId>> = arena_registry
+            .participants
+            .iter()
+            .filter(|member| member.arena_idx == arena_idx)
+            .map(|member| (member.subtree_root, member.parent))
+            .chain(
+                planned
+                    .iter()
+                    .filter(|admission| admission.arena_idx == arena_idx)
+                    .map(|admission| (admission.simthing_id, admission.parent)),
+            )
+            .collect();
+        let depth = |mut id: SimThingId| {
+            let mut depth = 0u32;
+            while let Some(Some(parent)) = parents.get(&id) {
+                depth += 1;
+                id = *parent;
+            }
+            depth
+        };
+        let max_depth = parents.keys().map(|&id| depth(id)).max().unwrap_or(0) + 1;
+        let governed = resolve_node_columns_for_property(registry, arena.flow_property_id, &arena.name)
+            .map(|cols| cols.balance_governing_col.is_some())
+            .unwrap_or(false);
+        let needed = ArenaBandLayout::for_depth_with_residual_closure(max_depth, governed)
+            .total_bands_used;
+        if needed > arena.max_orderband_depth {
+            report.refusals.push(StructuralEnrollmentRefusal::DepthBudget {
+                arena: arena.name.clone(),
+                needed,
+                max: arena.max_orderband_depth,
             });
         }
     }

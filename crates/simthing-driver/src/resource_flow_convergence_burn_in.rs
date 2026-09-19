@@ -685,7 +685,7 @@ pub fn open_fixture_session(fixture: &RfT2BurnInFixture) -> Result<RfT2Session, 
             fission,
             ..Default::default()
         };
-        session.react_to_fission_resource_flow_enrollment(&outcome)?;
+        session.react_to_resource_flow_enrollment(&outcome)?;
         if let Some(report) = session
             .last_resource_flow_dynamic_enrollment_report
             .as_ref()

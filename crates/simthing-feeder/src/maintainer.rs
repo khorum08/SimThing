@@ -65,7 +65,8 @@ pub struct MaintainerOutcome {
     /// Requests deferred because they reference state not yet implemented
     /// (everything, currently — see TODO list at module top).
     pub deferred: u32,
-    /// New `SimThingId`s allocated this cycle (one per `AddChild`).
+    /// New `SimThingId`s allocated this cycle: every node of each `AddChild`
+    /// subtree, parents before children.
     pub allocated: Vec<SimThingId>,
     /// `SimThingId`s tombstoned this cycle.
     pub tombstoned: Vec<SimThingId>,
