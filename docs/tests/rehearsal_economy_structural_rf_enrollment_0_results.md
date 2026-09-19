@@ -119,10 +119,10 @@ flow F, a powered reactor, and an energy-less crew.
   weight 2 to keep A1's split dyadic and the comparison exact. The shipped 1/6 split rounds per
   node in f32 (control `3.9999997`); arithmetic conservation holds either way.
 
-**Mutants (8/8 RED, each restored):**
-- M1: enrollment never admits → driver 3/4 RED + native RED;
-- M2: non-carriers inherit → 3/4 RED;
-- M3: batch not atomic → 3/4 RED;
+**Mutants (8/8 RED, each restored).** M1–M6 ran against the driver target's first four tests:
+- M1: enrollment never admits → driver 3 of 4 RED + native RED;
+- M2: non-carriers inherit → 3 of 4 RED;
+- M3: batch not atomic → 3 of 4 RED;
 - M4: edges ignored → the edge test RED;
 - M5: no depth preflight → the depth test RED;
 - M6: no capacity preflight → the capacity test RED;
@@ -142,7 +142,8 @@ flow F, a powered reactor, and an energy-less crew.
 - `install.rs` kept an unused import of the no-growth derivation wrapper. It now imports the
   growth-aware form it calls.
 - `ArenaRegistry::admit_participant_runtime` checks only capacity, never slot uniqueness. The
-  structural preflight now refuses a held slot (`SlotHeld`); fission's own path is untouched.
+  structural preflight now refuses a held slot (`SlotHeld`). Fission's own path is untouched and
+  shares the exposure, so the follow-on below covers both.
 - The E-2B-5 fission-enrollment law has no standing test left in the tree: its battery was reaped
   with the pen, and the burn-in/soak harnesses are src-only. The fission path here is a pure
   call-site refactor. A temporary probe ran both dynamic fission burn-in fixtures through the new
@@ -187,9 +188,10 @@ edge accessor). The law itself lives in the new unsealed module.
 
   The two derivations agree.
 - **Roll:** both literals `0x17a0_d148_7d18_f02e` → `0xee37_12f2_ef18_6934`. No comparator,
-  component-list, `build.rs` or Cargo change. Branch checkpoints carried intermediate pins
-  (`0x295e_d730_727b_b9f3`, `0x1310_cac5_2a07_bcef`); each was superseded before the final sealed
-  bytes and none was pushed as a roll.
+  component-list, `build.rs` or Cargo change. Two intermediate rolls existed only in the working
+  tree (`0x295e_d730_727b_b9f3`, `0x1310_cac5_2a07_bcef`) and were superseded by later sealed edits.
+  No commit carries them: the pre-roll checkpoint `fd8b16a1` holds the seventeenth pin. The refusal
+  was recaptured on the final sealed bytes.
 - Pin chain: `…0x9993…` → `0x17a0…` → `0xee37_12f2_ef18_6934`.
 - **Battery at floor:** parity 1/1 + mutant matrix, score-and-bands 3/3, runtime 4/4.
 
