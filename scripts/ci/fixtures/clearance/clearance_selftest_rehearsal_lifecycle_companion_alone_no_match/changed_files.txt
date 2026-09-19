@@ -1,0 +1,2 @@
+crates/simthing-workshop/tests/native_structural_products_session_0.rs
+scripts/ci/test_inventory.tsv

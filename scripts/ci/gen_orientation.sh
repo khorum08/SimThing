@@ -3047,7 +3047,11 @@ def render_orientation(active_info: dict) -> tuple:
     "",
     ])
     active_classes = [r for r in class_rows if len(r) > 4 and r[4] != "retired"]
-    lines.extend(table(["class_id", "envelope", "requirements", "status", "promotion_blocker"], [r[:5] for r in active_classes]))
+    lines.extend(table(["class_id", "scope_globs", "envelope", "requirements", "status", "promotion_blocker"], [r[:6] for r in active_classes]))
+    lines.extend([
+    "",
+    "Routing never reads `scope_globs` above for a class with a `class_predicates.tsv` row: that table's `match_any_globs` fire the class and its `scope_globs` bound the full admitted envelope, companions included.",
+    ])
     lines.extend([
     "",
     "## Binding Conditions",

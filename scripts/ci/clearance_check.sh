@@ -1837,6 +1837,10 @@ run_selftest() {
     clearance_selftest_rehearsal_studio_legacy_companion_rejects_engine_src
     clearance_selftest_rehearsal_measurement_clearable
     clearance_selftest_rehearsal_lifecycle_clearable
+    clearance_selftest_rehearsal_lifecycle_native_companion_clearable
+    clearance_selftest_rehearsal_lifecycle_companion_alone_no_match
+    clearance_selftest_rehearsal_lifecycle_other_workshop_test_rejects
+    clearance_selftest_rehearsal_lifecycle_native_companion_rejects_engine_src
     clearance_selftest_rehearsal_docgrad_stamp_clearable
     clearance_selftest_rehearsal_docgrad_rejects_anchor_table
     clearance_selftest_rehearsal_measurement_reachlog_clearable
