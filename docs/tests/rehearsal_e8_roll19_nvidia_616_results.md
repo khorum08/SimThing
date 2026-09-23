@@ -87,6 +87,17 @@ The successor is qualified by RUNNING the battery on the new environment, never 
 
 The clone was deleted after the proof: the evidence is the reproduced fingerprint, not the directory.
 
+## Ambient wall-clock debt paid by this PR (disclosed)
+
+Unrelated to the roll: the 7-day lease on `docs/workshop/archive/field_policy/README.md` expired on
+2026-09-23, so `ARTIFACT-EXPIRY` fails for EVERY PR until someone pays it, and the roll PR is the
+one that must be green. The safe reaper refuses `docs/` paths by design, so the disposition is by
+hand and it is a deletion: the archive is superseded probe residue whose own README names the live
+generic `structured_field_stencil` code that replaced it, its instrument has been compile-broken
+since 2026-08-30, its track 0.0.8.7 closed on 2026-09-08, and nothing references the path. The
+directory and its lease row are reaped together (only the README carried a row, so the three files
+it indexed go with it). Leases are now 0; the deletion guard passes.
+
 ## Ruling: ONE exact fingerprint stays the law
 
 The relay asked explicitly whether 595.79 and 616.92 should both remain admitted. **They should
