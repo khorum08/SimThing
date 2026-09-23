@@ -19,7 +19,7 @@ use thiserror::Error;
 use wgpu::{Buffer, BufferDescriptor, BufferUsages, CommandEncoder, MapMode};
 
 const PRODUCT_BYTES: u64 = std::mem::size_of::<ResidentConstrainedProduct>() as u64;
-pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0xee37_12f2_ef18_6934;
+pub const QUALIFIED_RESIDENT_CLEARING_FINGERPRINT: u64 = 0xef92_b0f2_866c_ef5d;
 
 mod build_provenance {
     include!(concat!(
