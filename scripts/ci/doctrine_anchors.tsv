@@ -1,5 +1,5 @@
 anchor_id	doc	section	trigger_domains	content_hash	lifecycle
-field-policy-time-decisions	docs/simthing_core_design.md	heading:## 8. Time, decisions, and the CPU's only job	sim,driver,wgsl,sim-clock,field-policy	007c4ddc0b04199f5b941d1b3256e93ad61a35c0229c34d9b8b4a4ca8c62ed1d	canonical
+field-policy-time-decisions	docs/simthing_core_design.md	intro:## 8. Time, decisions, and the CPU's only job	sim,driver,wgsl,sim-clock,field-policy	176985050e00259ae8b524201edf73d1a2bb89e5459dd4bf111b818d3b67955f	canonical
 admission-ladder-necessity-test	docs/design_0_0_8_3.md	heading:### 0.9 Doctrine-as-Type, the kernel authority, and residue-as-tripwire (carry-forward)	none-ci-owned,seal	4bedf826f6f77b675a6080dc3289c17849fb825026d449472d44df324e2062dd	canonical
 seal-residue-cross-crate	docs/simthing_core_design.md	heading:### 1.8.1 The kernel crate, the cross-crate seal law, and residue-as-tripwire	kernel,gpu,unsafe-adjacent,seal	c61c33d90efc4c35d5bde431cd91f66e1cf71a3e173abe6e8dc2be3ebf9666a9	canonical
 stead-spatial-contract-core	docs/stead_spatial_contract.md	lines:23-59	map,spatial,mapgenerator,clausething-spatial,stead	8585db4ac631f2fb390a6735409a6bc7d61760390a371ea5d6292328cf4accf3	canonical
