@@ -175,14 +175,23 @@ SECTIONS_DA = {
     "Clearance Ledger (recent)", "Escalation / DA-RESERVE Posture",
     "Relay Lint Required Blocks", "Orientation Receipt (ORIENT-RECEIPT)",
 }
+# The orchestrator routes verdicts, relays and dispatches; it never classifies a diff or runs
+# the coder's inner loop, so the class table and coding-only sections stay in the digest file.
+SECTIONS_ORCHESTRATOR = {
+    "Source Stamps", "Next Rung Pointer", "Cold-Start Spine (constitutional pointers)",
+    "Clearance Router Verdict Meanings", "Binding Conditions", "Clearance Ledger (recent)",
+    "Relay Lint Required Blocks", "tested_code_sha + coverage_basis Rule",
+    "Escalation / DA-RESERVE Posture", "Orientation Receipt (ORIENT-RECEIPT)",
+    "Doctrine Anchors (ANCHOR-ACK)", "HD Owner Interface", "GHA Comment Commands",
+}
 
 def section_wanted(name, wanted):
     if name in wanted:
         return True
-    # Active track heading is dynamic: Active Track / Rung Summary (`design_...`)
-    if name.startswith("Active Track / Rung Summary") and role == "da":
+    # Dynamic headings: the active-track title names its doc; MANDATORY names its command.
+    if name.startswith("Active Track / Rung Summary") and role in ("da", "orchestrator"):
         return True
-    return False
+    return name.startswith("MANDATORY") and role == "orchestrator"
 
 ROLE_EXTRAS = {
     "coding": [
@@ -227,19 +236,16 @@ def split_sections(body):
 sections = split_sections(text)
 header = "\n".join(sections.get("_header", [])).strip()
 
-if role == "orchestrator":
-    body_out = text.rstrip() + "\n\n" + "\n".join(ROLE_EXTRAS["orchestrator"])
-else:
-    wanted = SECTIONS_CODING if role == "coding" else SECTIONS_DA
-    parts = [header, ""]
-    for name, content in sections.items():
-        if name == "_header":
-            continue
-        if section_wanted(name, wanted):
-            parts.append("\n".join(content).rstrip())
-            parts.append("")
-    parts.extend(ROLE_EXTRAS.get(role, []))
-    body_out = "\n".join(parts).rstrip() + "\n"
+wanted = {"coding": SECTIONS_CODING, "orchestrator": SECTIONS_ORCHESTRATOR, "da": SECTIONS_DA}[role]
+parts = [header, ""]
+for name, content in sections.items():
+    if name == "_header":
+        continue
+    if section_wanted(name, wanted):
+        parts.append("\n".join(content).rstrip())
+        parts.append("")
+parts.extend(ROLE_EXTRAS.get(role, []))
+body_out = "\n".join(parts).rstrip() + "\n"
 
 print(f"ORIENT-RECEIPT: {receipt}")
 print(f"role: {role}")

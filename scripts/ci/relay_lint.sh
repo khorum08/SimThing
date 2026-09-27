@@ -335,37 +335,8 @@ if fixture_dir:
     if req_path.is_file():
         required_role = req_path.read_text(encoding="utf-8").strip().lower()
 
-def lines_slice(path, spec):
-    import re as _re
-    m = _re.match(r"lines:(\d+)-(\d+)$", spec)
-    start, end = int(m.group(1)), int(m.group(2))
-    lines = read_normalized(path).splitlines()
-    return "\n".join(lines[start - 1 : end]) + "\n"
-
-def heading_section(path, heading):
-    h = heading.removeprefix("heading:")
-    lines = read_normalized(path).splitlines()
-    start = None
-    for i, line in enumerate(lines):
-        if line.strip() == h or line.strip().startswith(h):
-            start = i
-            break
-    if start is None:
-        raise KeyError(heading)
-    out = [lines[start]]
-    for line in lines[start + 1 :]:
-        if line.startswith("## ") and not line.startswith("###"):
-            break
-        out.append(line)
-    return "\n".join(out).rstrip() + "\n"
-
-def extract_anchor_text(doc_rel, section):
-    path = repo_root / doc_rel
-    if section.startswith("heading:"):
-        return heading_section(path, section)
-    if section.startswith("lines:"):
-        return lines_slice(path, section)
-    raise ValueError(section)
+sys.path.insert(0, str(repo_root / "scripts" / "ci"))
+from anchor_text import extract as extract_anchor_section  # noqa: E402
 
 def load_anchor_state():
     import csv
@@ -381,7 +352,7 @@ def load_anchor_state():
         for row in csv.DictReader(fh, delimiter="\t"):
             if not row.get("anchor_id"):
                 continue
-            text = extract_anchor_text(row["doc"], row["section"])
+            text = extract_anchor_section(repo_root / row["doc"], row["section"])
             live = hashlib.sha256(text.encode("utf-8")).hexdigest()
             state[row["anchor_id"]] = {
                 "live_hash": live,

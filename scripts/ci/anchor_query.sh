@@ -116,7 +116,6 @@ import fnmatch
 import hashlib
 import os
 import pathlib
-import re
 import sys
 from pathlib import PurePosixPath
 
@@ -150,50 +149,7 @@ if str(reach_log).endswith("anchor_reach_log.tsv") and not reach_log.parent.exis
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
 from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
-
-
-def normalize_text(raw: bytes) -> str:
-    if raw.startswith(b"\xef\xbb\xbf"):
-        raw = raw[3:]
-    return raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
-
-
-def read_normalized(path: pathlib.Path) -> str:
-    return normalize_text(path.read_bytes())
-
-
-def lines_slice(path: pathlib.Path, spec: str) -> str:
-    m = re.match(r"lines:(\d+)-(\d+)$", spec)
-    start, end = int(m.group(1)), int(m.group(2))
-    lines = read_normalized(path).splitlines()
-    return "\n".join(lines[start - 1 : end]) + "\n"
-
-
-def heading_section(path: pathlib.Path, heading: str) -> str:
-    h = heading.removeprefix("heading:")
-    lines = read_normalized(path).splitlines()
-    start = None
-    for i, line in enumerate(lines):
-        if line.strip() == h or line.strip().startswith(h):
-            start = i
-            break
-    if start is None:
-        raise KeyError(h)
-    out = [lines[start]]
-    for line in lines[start + 1 :]:
-        if line.startswith("## ") and not line.startswith("###"):
-            break
-        out.append(line)
-    return "\n".join(out).rstrip() + "\n"
-
-
-def extract_text(doc_rel: str, section: str) -> str:
-    path = repo / doc_rel
-    if section.startswith("heading:"):
-        return heading_section(path, section)
-    if section.startswith("lines:"):
-        return lines_slice(path, section)
-    raise ValueError(section)
+from anchor_text import extract  # noqa: E402
 
 
 def glob_match(path: str, pattern: str) -> bool:
@@ -239,7 +195,7 @@ def load_anchors():
                 print("ANCHOR-QUERY-VERDICT: FAIL(anchor-table)")
                 sys.exit(1)
             domains = [d.strip() for d in (row.get("trigger_domains") or "").split(",") if d.strip()]
-            text = extract_text(row["doc"], row["section"])
+            text = extract(repo / row["doc"], row["section"])
             rows.append({
                 "anchor_id": row["anchor_id"],
                 "doc": row["doc"],
@@ -465,8 +421,7 @@ run_selftest() {
     echo "PASS query_grep_miss"
   fi
   out="$(DOMAIN_ARG=rf-market-core run_query_python domain || true)"
-  if ! printf '%s
-' "$out" | grep -q "rf-market"; then
+  if ! grep -q "rf-market" <<<"$out"; then
     echo "FAIL query_domain_until_lifecycle"; echo "  got: $out"; failures=$((failures+1))
   else
     echo "PASS query_domain_until_lifecycle"
