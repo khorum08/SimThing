@@ -538,7 +538,7 @@ import os
 import sys
 
 sys.path.insert(0, os.environ["ANCHOR_CI_DIR"])
-from anchor_text import heading_section, row_section
+from anchor_text import MAX_ANCHOR_BYTES, enclosing_unit, heading_section, row_section
 
 doc = """# Title
 Preamble.
@@ -561,7 +561,11 @@ checks = {
     "extract_section_keeps_its_subsections": heading_section(doc, "## A").endswith("### A.2\na2 body\n"),
     "extract_subsection_stops_at_sibling": heading_section(doc, "### A.1") == "### A.1\na1 body\n#### A.1.1\ndeep\n",
     "extract_row_is_one_table_row": row_section(doc, "R-TWO-0") == "| 2 | `R-TWO-0` | open |\n",
+    "unit_of_a_row_match_is_the_row": enclosing_unit(doc, 14) == "| 2 | `R-TWO-0` | open |\n",
+    "unit_of_a_prose_match_is_its_smallest_section": enclosing_unit(doc, 5) == "### A.1\na1 body\n#### A.1.1\ndeep\n",
 }
+big = ["## Big", "x" * MAX_ANCHOR_BYTES, "", "first", "needle here", "", "tail"]
+checks["unit_in_an_oversized_section_is_its_paragraph"] = enclosing_unit(big, 4) == "first\nneedle here\n"
 try:
     row_section(doc, "R-ABSENT-0")
     checks["extract_absent_row_refuses"] = False
@@ -573,7 +577,7 @@ PY
 )"
   printf '%s\n' "$out"
   # Count passes, not failures: a crash before any output must not read as green.
-  SELFTEST_FAILURES=$((SELFTEST_FAILURES + 5 - $(printf '%s\n' "$out" | grep -c '^PASS' || true)))
+  SELFTEST_FAILURES=$((SELFTEST_FAILURES + 8 - $(printf '%s\n' "$out" | grep -c '^PASS' || true)))
 
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-budget-XXXXXX")"
   mkdir -p "$tmp/docs"
@@ -739,7 +743,7 @@ run_selftest() {
   run_resync_selftests
   run_pending_selftests
   run_extract_selftests
-  local total=$((${#fixtures[@]} + 13))
+  local total=$((${#fixtures[@]} + 16))
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
     echo "ANCHOR-CHECK-SELFTEST: PASS (${total} fixtures)"
     return 0

@@ -10,15 +10,16 @@ Section specs (the `section` column of doctrine_anchors.tsv):
   row:<ID>           the one markdown table row that has a cell reading `ID` (a ladder rung).
   lines:<a>-<b>      a fixed line range. It is fragile under edits; prefer the two above.
 
-An anchor is a bounded citation, not a document. MAX_ANCHOR_BYTES admits every section an
-agent can read in one sitting, and it fits a single `/anchor` reply comment (GitHub caps a
-comment at 65,536 characters). Nine anchors once cited a whole closed-track ladder, so one
-query served 365 KB (~92k tokens).
+An anchor is a bounded citation, not a document. MAX_ANCHOR_BYTES comes from the one physical
+limit in the chain: every anchor must fit a single `/anchor` reply, the orchestrator's only
+channel, and a GitHub comment holds 65,536 characters including the report header. A `--grep`
+renders at most the same amount, so any single anchor always fits one query. Nine anchors once
+cited a whole closed-track ladder, so one query served 365 KB (~92k tokens).
 """
 import pathlib
 import re
 
-MAX_ANCHOR_BYTES = 40_000
+MAX_ANCHOR_BYTES = 60_000
 _HEADING = re.compile(r"(#{1,6}) ")
 
 
@@ -55,6 +56,28 @@ def row_section(lines, row_id: str) -> str:
     if len(rows) != 1:
         raise KeyError(f"row {row_id!r} matches {len(rows)} table rows")
     return rows[0].rstrip() + "\n"
+
+
+def enclosing_unit(lines, i: int) -> str:
+    """The smallest citation around line i: its table row, else its section, else its paragraph.
+
+    `--grep` renders this for a match outside every anchored section, so a term that lives in
+    one rung of a long ladder arrives as that rung, never as the whole ladder.
+    """
+    if lines[i].startswith("|"):
+        return lines[i].rstrip() + "\n"
+    for j in range(i, -1, -1):
+        if _level(lines[j]):
+            section = heading_section(lines[j:], lines[j].strip())
+            if len(section.encode("utf-8")) <= MAX_ANCHOR_BYTES:
+                return section
+            break
+    start, end = i, i + 1
+    while start > 0 and lines[start - 1].strip():
+        start -= 1
+    while end < len(lines) and lines[end].strip():
+        end += 1
+    return "\n".join(lines[start:end]).rstrip() + "\n"
 
 
 def lines_slice(lines, span: str) -> str:
