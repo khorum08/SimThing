@@ -7,8 +7,10 @@ text it acknowledges.
 Section specs (the `section` column of doctrine_anchors.tsv):
   heading:<heading>  that heading down to the next `##`-or-deeper heading at the same or a
                      higher level. Subsections stay in; a `#` title spans only its preamble.
+  intro:<heading>    only that heading's own text, up to its first subheading. Use it when the
+                     subsections carry anchors of their own.
   row:<ID>           the one markdown table row that has a cell reading `ID` (a ladder rung).
-  lines:<a>-<b>      a fixed line range. It is fragile under edits; prefer the two above.
+  lines:<a>-<b>      a fixed line range. It is fragile under edits; prefer the ones above.
 
 An anchor is a bounded citation, not a document. MAX_ANCHOR_BYTES comes from the one physical
 limit in the chain: every anchor must fit a single `/anchor` reply, the orchestrator's only
@@ -34,13 +36,28 @@ def _level(line: str) -> int:
     return len(match.group(1)) if match else 0
 
 
-def heading_section(lines, heading: str) -> str:
+def _heading_start(lines, heading: str) -> int:
     start = next(
         (i for i, line in enumerate(lines) if line.strip() == heading or line.strip().startswith(heading)),
         None,
     )
     if start is None:
         raise KeyError(f"missing heading {heading!r}")
+    return start
+
+
+def intro_section(lines, heading: str) -> str:
+    start = _heading_start(lines, heading)
+    out = [lines[start]]
+    for line in lines[start + 1 :]:
+        if _level(line) >= 2:
+            break
+        out.append(line)
+    return "\n".join(out).rstrip() + "\n"
+
+
+def heading_section(lines, heading: str) -> str:
+    start = _heading_start(lines, heading)
     deepest_stop = max(_level(lines[start]), 2)
     out = [lines[start]]
     for line in lines[start + 1 :]:
@@ -90,7 +107,7 @@ def lines_slice(lines, span: str) -> str:
 
 def extract(path: pathlib.Path, section: str) -> str:
     kind, _, arg = section.partition(":")
-    selector = {"heading": heading_section, "row": row_section, "lines": lines_slice}.get(kind)
+    selector = {"heading": heading_section, "intro": intro_section, "row": row_section, "lines": lines_slice}.get(kind)
     if selector is None:
         raise ValueError(f"unsupported section spec: {section}")
     return selector(normalize_text(path.read_bytes()).splitlines(), arg)
