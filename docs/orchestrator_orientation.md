@@ -101,7 +101,7 @@ Pointers only — resolve verbatim doctrine via `anchor_query.sh`; do not raw-gr
 - Founding ontology §0.3 (all conflict is resource flow) → `founding-ontology-invariants`
 - Invariants registry → `docs/invariants.md` (via `founding-ontology-invariants`)
 - Drift detectors §9 → `drift-detectors-six-line` (`bash scripts/ci/anchor_query.sh --domain drift-detectors`)
-- Doctrine lookup entrypoint: `bash scripts/ci/anchor_query.sh --domain <d> --paths <files...> --grep <term>`
+- Doctrine lookup entrypoint: `bash scripts/ci/anchor_query.sh --domain <d|anchor_id> --paths <files...> --grep <term[|term]>` (grep searches every anchored doc in full; a match outside anchors renders as its row or section)
 - Cold-start receipt: `bash scripts/ci/orient.sh --role=coding|orchestrator|da` → carry `ORIENT-RECEIPT`
 
 ## Clearance Router Verdict Meanings

@@ -26,9 +26,9 @@ FIXTURE_DIR=""
 usage() {
   cat <<'EOF'
 usage:
-  bash scripts/ci/anchor_query.sh --domain <domain>
+  bash scripts/ci/anchor_query.sh --domain <domain|anchor_id>
   bash scripts/ci/anchor_query.sh --paths <files...>
-  bash scripts/ci/anchor_query.sh --grep <term>
+  bash scripts/ci/anchor_query.sh --grep <term>[|<term>...]
   bash scripts/ci/anchor_query.sh --dead-listeners
   bash scripts/ci/anchor_query.sh --prune [days] [--dry-run]
   bash scripts/ci/anchor_query.sh --selftest
@@ -116,6 +116,7 @@ import fnmatch
 import hashlib
 import os
 import pathlib
+import re
 import sys
 from pathlib import PurePosixPath
 
@@ -149,7 +150,9 @@ if str(reach_log).endswith("anchor_reach_log.tsv") and not reach_log.parent.exis
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
 from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
-from anchor_text import extract  # noqa: E402
+from anchor_text import MAX_ANCHOR_BYTES, enclosing_unit, extract, normalize_text  # noqa: E402
+
+LOCATION_LIMIT = 50
 
 
 def glob_match(path: str, pattern: str) -> bool:
@@ -283,6 +286,45 @@ def emit_hits(ids, rows_by_id):
         print("")
 
 
+def emit_grep(ids, located, rows_by_id):
+    # One `/anchor` reply's worth of text per query: anchors first (they carry the hashes an
+    # ACK needs), then unanchored units. Whatever does not fit is listed by location, never
+    # silently dropped, and an anchor never exceeds the budget, so `--domain <id>` shows it.
+    budget = MAX_ANCHOR_BYTES
+    print(f"ANCHOR-QUERY-VERDICT: PASS ids={len(ids)} located={len(located)}")
+    print(f"anchors: {','.join(ids) if ids else 'none'}")
+    for aid in ids:
+        meta = rows_by_id[aid]
+        print(f"--- {aid} ---")
+        print(f"doc: {meta['doc']}")
+        print(f"section: {meta['section']}")
+        print(f"content_hash: {meta['hash']}")
+        print(f"lifecycle: {meta['lifecycle']}")
+        size = len(meta["text"].encode("utf-8"))
+        if size <= budget:
+            print(meta["text"].rstrip())
+            budget -= size
+        else:
+            print(f"(text past this query's {MAX_ANCHOR_BYTES}-byte budget: `--domain {aid}` shows it)")
+        print("")
+    overflow = []
+    for doc, line_no, unit in located:
+        size = len(unit.encode("utf-8"))
+        if size <= budget:
+            print(f"--- unanchored: {doc}:{line_no} ---")
+            print(unit.rstrip())
+            print("")
+            budget -= size
+        else:
+            overflow.append(f"{doc}:{line_no}  {unit.splitlines()[0][:100]}")
+    if overflow:
+        print(f"--- {len(overflow)} more unanchored matches past the {MAX_ANCHOR_BYTES}-byte budget ---")
+        for where in overflow[:LOCATION_LIMIT]:
+            print(where)
+        if len(overflow) > LOCATION_LIMIT:
+            print(f"... and {len(overflow) - LOCATION_LIMIT} more; narrow the term")
+
+
 anchors = load_anchors()
 by_id = {r["anchor_id"]: r for r in anchors}
 
@@ -341,7 +383,8 @@ if mode == "prune":
     sys.exit(0)
 
 if mode == "domain":
-    ids = sorted(r["anchor_id"] for r in anchors if domain_arg in r["domains"])
+    # An anchor id is accepted too: agents reach for ids first (33 logged misses were ids).
+    ids = sorted(r["anchor_id"] for r in anchors if domain_arg in r["domains"] or r["anchor_id"] == domain_arg)
     append_reach(f"--domain {domain_arg}", ids, "hit" if ids else "none")
     emit_hits(ids, by_id)
     sys.exit(0)
@@ -357,15 +400,36 @@ if mode == "paths":
     sys.exit(0)
 
 if mode == "grep":
-    term = grep_arg.lower()
-    ids = []
-    for r in anchors:
-        blob = f"{r['anchor_id']}\n{r['doc']}\n{r['section']}\n{','.join(r['domains'])}\n{r['text']}".lower()
-        if term in blob:
-            ids.append(r["anchor_id"])
-    ids = sorted(ids)
-    append_reach(f"--grep {grep_arg}", ids, "hit" if ids else "none")
-    emit_hits(ids, by_id)
+    # `a|b|c` (or grep's `a\|b`) means any of them: agents write alternations (26 logged
+    # misses matched the literal string), and a bare `|` is never what doctrine is searched for.
+    terms = [t.strip().lower() for t in re.split(r"\\?\|", grep_arg) if t.strip()] or [grep_arg.lower()]
+
+    def found(text):
+        text = text.lower()
+        return any(t in text for t in terms)
+
+    ids = sorted(
+        r["anchor_id"] for r in anchors
+        if found(f"{r['anchor_id']}\n{r['doc']}\n{r['section']}\n{','.join(r['domains'])}\n{r['text']}")
+    )
+    # Search wide, render narrow: every anchored doc is searched in full, and a match outside
+    # the anchored sections renders as its own row or section. Narrowing anchors must never
+    # narrow what a query can find (70 logged greps matched only inside a whole-ladder anchor).
+    shown = [by_id[a]["text"] for a in ids]
+    located = []
+    seen = set()
+    for doc in sorted({r["doc"] for r in anchors}):
+        lines = normalize_text((repo / doc).read_bytes()).splitlines()
+        for i, line in enumerate(lines):
+            if not found(line):
+                continue
+            unit = enclosing_unit(lines, i)
+            if unit in seen or any(unit in text for text in shown):
+                continue
+            seen.add(unit)
+            located.append((doc, i + 1, unit))
+    append_reach(f"--grep {grep_arg}", ids, "hit" if ids else ("located" if located else "none"))
+    emit_grep(ids, located, by_id)
     sys.exit(0)
 
 print("ANCHOR-QUERY-VERDICT: FAIL(harness-error)")
@@ -425,6 +489,36 @@ run_selftest() {
     echo "FAIL query_domain_until_lifecycle"; echo "  got: $out"; failures=$((failures+1))
   else
     echo "PASS query_domain_until_lifecycle"
+  fi
+  out="$(DOMAIN_ARG=field-policy-time-decisions run_query_python domain || true)"
+  if ! grep -q "^--- field-policy-time-decisions ---$" <<<"$out"; then
+    echo "FAIL query_domain_accepts_anchor_id"; failures=$((failures+1))
+  else
+    echo "PASS query_domain_accepts_anchor_id"
+  fi
+  GREP_ARG="zzznomatchterm999|Candidate F"
+  out="$(run_query_python grep || true)"
+  if ! grep -q "exact-numeric-candidate-f" <<<"$out"; then
+    echo "FAIL query_grep_alternation_is_or"; failures=$((failures+1))
+  else
+    echo "PASS query_grep_alternation_is_or"
+  fi
+  # A rung id that lives only in an unanchored ladder row: found, and rendered as that row.
+  GREP_ARG="GRANT-DISBURSEMENT-LANE-0"
+  out="$(run_query_python grep || true)"
+  if ! grep -q "^--- unanchored: docs/design_0_0_8_7_rf_arena_modernization.md:" <<<"$out" \
+      || ! grep -q '^| 11.2f | `GRANT-DISBURSEMENT-LANE-0` |' <<<"$out" \
+      || [[ "$(wc -c <<<"$out")" -gt 20000 ]]; then
+    echo "FAIL query_grep_locates_unanchored_row"; echo "  got: ${out:0:400}"; failures=$((failures+1))
+  else
+    echo "PASS query_grep_locates_unanchored_row"
+  fi
+  GREP_ARG="EML"
+  out="$(run_query_python grep || true)"
+  if ! grep -q "more unanchored matches past the" <<<"$out" || [[ "$(wc -c <<<"$out")" -gt 150000 ]]; then
+    echo "FAIL query_grep_budget_bounds_output"; echo "  got: $(wc -c <<<"$out") bytes"; failures=$((failures+1))
+  else
+    echo "PASS query_grep_budget_bounds_output"
   fi
   printf 'bad-anchor	docs/simthing_core_design.md	heading:## 1. The SimThing Principle — one closed recursive stem-cell kernel	bad-domain	0000000000000000000000000000000000000000000000000000000000000000	expired:NOPE-0
 ' >>"$tmp/doctrine_anchors.tsv"
@@ -517,7 +611,7 @@ sys.exit(0 if (b"\r" not in raw and raw.startswith(b"date\trole\tquery\tanchors_
   rm -rf "$tmp"
   FIXTURE_DIR=""
   if [[ "$failures" -eq 0 ]]; then
-    echo "ANCHOR-QUERY-SELFTEST: PASS (12 fixtures)"
+    echo "ANCHOR-QUERY-SELFTEST: PASS (16 fixtures)"
     return 0
   fi
   echo "ANCHOR-QUERY-SELFTEST: FAIL (${failures} fixtures)"
