@@ -46,8 +46,8 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | c8af5e3de55f93ee23dce220a71f9c71435e56fdd131d55ab1ca7a6e07da9a58 |
 | 0_0_8_8_Integrated_SimThing_Rehearsal.md | 28a17576bcef3534733019ed0cb89235a39e8b9f69d029981529dd8c06e5ccb7 |
-| relay_lint.sh | ae19bdca12e90f6bc988e064f081ff62903034d69bf34b08ffd5c27e352181ba |
-| doctrine_anchors.tsv | 12a6c6b7517e2930d22c791b15aee579626106690ab6182575c2887d0c907ab0 |
+| relay_lint.sh | 8f807c43878b808634effa4c2709be70c88489d9f6553896381e12b5c32eaa6b |
+| doctrine_anchors.tsv | e5c63a637517bc12f1ae8dbdf095a9257ad5919047f94cc5c036b4652bb7d3cf |
 | execution_status_taxonomy.tsv | fd2d405cc6c0816de3a0f094e4dacf2d0e5670e3efce2dd8bef3485d35f00a23 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
@@ -117,8 +117,6 @@ Pointers only — resolve verbatim doctrine via `anchor_query.sh`; do not raw-gr
 | `CLEARANCE-VERDICT: DA-RESERVE(module-marker-shape-mismatch)` | corpus-module-marker-sweep shape fails inventory deletion rules |
 | `CLEARANCE-VERDICT: DA-RESERVE(harness-error)` | malformed data, ambiguous class, empty/unresolved requested target, or script error |
 | `CLEARANCE-VERDICT: DA-RESERVE(gate-wiring)` | PR touches router/lint/harness gate surfaces (self-application refusal) |
-
-**`scripts/ci/` holds two different kinds of thing and a handoff must not fence them alike.** GATE CODE is `scripts/ci/**/*.sh`, `scripts/ci/**/*.py`, and `.github/workflows/**` -- self-application refusal applies, nobody edits it mid-rung. DATA LEDGERS are the `.tsv` surfaces the workflow is DESIGNED to write: `test_inventory.tsv` (a coder ledgers the tests it authors), `triage_log.tsv` and `inspect_justifications.tsv` (orchestrator), `authorized_renames.tsv` / `authorized_deletions.tsv` (DA), and the append-only `anchor_reach_log.tsv`. A blanket `scripts/ci/**` fence bans the ledgers the required checks demand and makes the rung unfinishable -- adding a row for a test you wrote is the ledger working, not a workaround. Fence gate code by extension; never by directory.
 | `CLEARANCE-VERDICT: DA-RESERVE(binding-conditions)` | open binding condition blocks clearance for matched class |
 | `CLEARANCE-VERDICT: DA-RESERVE(class-suspended)` | precedented class row status=suspended |
 | `CLEARANCE-VERDICT: DA-RESERVE(triage-missing)` | INSPECT delta without landed /triage row (check 7 live) |
@@ -177,7 +175,7 @@ Proof identity fields required in relay body:
 - `tested_code_sha: <8+ hex>`
 - `coverage_basis: PASS` (or explicit coverage basis)
 
-relay_lint.sh schema stamp: `ae19bdca12e9`
+relay_lint.sh schema stamp: `8f807c43878b`
 
 ## tested_code_sha + coverage_basis Rule
 
@@ -221,7 +219,7 @@ Schema:
 
 Role meanings:
 - `coding` — clearance contract, inner-loop commands, precedented classes
-- `orchestrator` — full orientation digest; ORCHESTRATOR-GRADUATED status-stamp residual only
+- `orchestrator` — clearance duty, verdict routing, escalation posture, relay blocks, handoff and GHA interface; ORCHESTRATOR-GRADUATED status-stamp residual only
 - `da` — rung table, binding conditions, escalation posture; run da_treeverify on load-bearing escalations; after pass, exit-proof stamp + merge (agent_onboarding)
 
 Receipt freshness: relay-lint compares claimed `orientation_rule_stamp` to the live rule stamp; mismatch -> `FAIL(stale-orient-receipt)`.

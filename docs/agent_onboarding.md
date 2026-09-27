@@ -38,8 +38,8 @@ that same session carry the existing receipt unless governance moved.
 
 Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, routes clearance, runs triage.
 
-- **Cold start:** read `docs/orchestrator_orientation.md` at head (generated, freshness-gated — it cannot be
-  stale) and carry its embedded receipt. GHA-side, it can also `/orient role=orchestrator` on any open PR.
+- **Cold start:** `/orient role=orchestrator` on the open PR in hand: that one reply is the role-filtered orientation plus the `ORIENT-RECEIPT`.
+  Do not also read `docs/orchestrator_orientation.md` (same content twice); with no PR open, read it at head instead. Live state = the SimThing Board issue **body**, never its thread.
 - **Track selection:** local operators use `bash scripts/ci/gen_orientation.sh --open <track.md>` to open/create
   or realign the active orchestration track; `/orient` and `orient.sh` emit orientation only.
 - **You hand it:** the DA's authorization/handoff for a track or rung.
@@ -111,7 +111,7 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 | Tier | Cold-start / default loop | Returns | Merges |
 |---|---|---|---|
 | Coding role | `orient.sh --role=coding` → check → `agent_scan` → focused test | PROBATION / proof-present | nothing |
-| Orchestration role | read `docs/orchestrator_orientation.md` (+ `/orient`) | routed rungs + triage rows | conforming precedented-class only |
+| Orchestration role | `/orient role=orchestrator` (one read) + Board body | routed rungs + triage rows | conforming precedented-class only |
 | DA role | `orient.sh --role=da` (+ weighted treeverify) | graduation + exit-proof stamp merge | gate-wiring / DA-reserve / stamps |
 
 ## HD Board — dispatch prompting & handoff lifecycle (operator protocol)

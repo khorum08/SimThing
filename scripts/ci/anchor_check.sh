@@ -91,14 +91,8 @@ bash_bin = os.environ.get("ANCHOR_BASH", "bash")
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
 from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
+from anchor_text import MAX_ANCHOR_BYTES, extract, normalize_text  # noqa: E402
 CANONIZATION_RUNG = "CORE-CANONIZATION-0"
-
-
-def normalize_text(raw: bytes) -> str:
-    if raw.startswith(b"\xef\xbb\xbf"):
-        raw = raw[3:]
-    text = raw.decode("utf-8")
-    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def read_normalized(path: pathlib.Path) -> str:
@@ -111,6 +105,8 @@ def fail(msg):
         remedy = " remedy=bash scripts/ci/anchor_check.sh --resync"
     elif msg in ("missing-anchor", "orphaned-anchor"):
         remedy = " remedy=repair doctrine_anchors.tsv section target or run bash scripts/ci/anchor_check.sh --resync"
+    elif msg == "anchor-over-budget":
+        remedy = f" remedy=narrow the section to a subsection heading or row:<RUNG-ID> (cap {MAX_ANCHOR_BYTES} bytes)"
     print(f"ANCHOR-CHECK-VERDICT: FAIL({msg}){remedy}")
     sys.exit(1 if mode in ("check", "resync", "pending") else 0)
 
@@ -121,33 +117,6 @@ def pass_ok(detail=""):
     else:
         print("ANCHOR-CHECK-VERDICT: PASS")
     sys.exit(0)
-
-
-def lines_slice(path: pathlib.Path, spec: str) -> str:
-    m = re.match(r"lines:(\d+)-(\d+)$", spec)
-    if not m:
-        raise ValueError(f"bad lines spec: {spec}")
-    start, end = int(m.group(1)), int(m.group(2))
-    lines = read_normalized(path).splitlines()
-    return "\n".join(lines[start - 1 : end]) + "\n"
-
-
-def heading_section(path: pathlib.Path, heading: str) -> str:
-    h = heading.removeprefix("heading:")
-    lines = read_normalized(path).splitlines()
-    start = None
-    for i, line in enumerate(lines):
-        if line.strip() == h or line.strip().startswith(h):
-            start = i
-            break
-    if start is None:
-        raise KeyError(f"missing heading {h!r} in {path}")
-    out = [lines[start]]
-    for line in lines[start + 1 :]:
-        if line.startswith("## ") and not line.startswith("###"):
-            break
-        out.append(line)
-    return "\n".join(out).rstrip() + "\n"
 
 
 def resolve_doc(doc_rel: str) -> pathlib.Path:
@@ -162,11 +131,7 @@ def extract_text(doc_rel: str, section: str) -> str:
     path = resolve_doc(doc_rel)
     if not path.is_file():
         raise FileNotFoundError(doc_rel)
-    if section.startswith("heading:"):
-        return heading_section(path, section)
-    if section.startswith("lines:"):
-        return lines_slice(path, section)
-    raise ValueError(f"unsupported section spec: {section}")
+    return extract(path, section)
 
 
 def load_rows():
@@ -208,6 +173,10 @@ def live_hashes(rows):
             text = extract_text(row["doc"], row["section"])
         except (FileNotFoundError, KeyError, ValueError):
             fail("missing-anchor")
+        size = len(text.encode("utf-8"))
+        if size > MAX_ANCHOR_BYTES:
+            print(f"ANCHOR-OVER-BUDGET: anchor_id={row['anchor_id']} bytes={size} max={MAX_ANCHOR_BYTES}")
+            fail("anchor-over-budget")
         live = hashlib.sha256(text.encode("utf-8")).hexdigest()
         out[row["anchor_id"]] = {
             "live_hash": live,
@@ -562,6 +531,79 @@ EOF
   rm -rf "$tmp"
 }
 
+run_extract_selftests() {
+  local out tmp
+  out="$(ANCHOR_CI_DIR="$SCRIPT_DIR" "$PYTHON_BIN" - <<'PY'
+import os
+import sys
+
+sys.path.insert(0, os.environ["ANCHOR_CI_DIR"])
+from anchor_text import heading_section, row_section
+
+doc = """# Title
+Preamble.
+## A
+a body
+### A.1
+a1 body
+#### A.1.1
+deep
+### A.2
+a2 body
+## B
+| # | Rung | Exit |
+|---|---|---|
+| 1 | `R-ONE-0` | done |
+| 2 | `R-TWO-0` | open |
+""".splitlines()
+checks = {
+    "extract_title_spans_preamble": heading_section(doc, "# Title") == "# Title\nPreamble.\n",
+    "extract_section_keeps_its_subsections": heading_section(doc, "## A").endswith("### A.2\na2 body\n"),
+    "extract_subsection_stops_at_sibling": heading_section(doc, "### A.1") == "### A.1\na1 body\n#### A.1.1\ndeep\n",
+    "extract_row_is_one_table_row": row_section(doc, "R-TWO-0") == "| 2 | `R-TWO-0` | open |\n",
+}
+try:
+    row_section(doc, "R-ABSENT-0")
+    checks["extract_absent_row_refuses"] = False
+except KeyError:
+    checks["extract_absent_row_refuses"] = True
+for name, ok in checks.items():
+    print(("PASS " if ok else "FAIL ") + name)
+PY
+)"
+  printf '%s\n' "$out"
+  # Count passes, not failures: a crash before any output must not read as green.
+  SELFTEST_FAILURES=$((SELFTEST_FAILURES + 5 - $(printf '%s\n' "$out" | grep -c '^PASS' || true)))
+
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-budget-XXXXXX")"
+  mkdir -p "$tmp/docs"
+  ANCHOR_CI_DIR="$SCRIPT_DIR" "$PYTHON_BIN" - "$tmp/docs/big.md" <<'PY'
+import os
+import sys
+
+sys.path.insert(0, os.environ["ANCHOR_CI_DIR"])
+from anchor_text import MAX_ANCHOR_BYTES
+
+with open(sys.argv[1], "w", encoding="utf-8", newline="\n") as fh:
+    fh.write("## Big\n" + "x" * MAX_ANCHOR_BYTES + "\n")
+PY
+  printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\tlifecycle\n' >"$tmp/doctrine_anchors.tsv"
+  printf 'big-anchor\tdocs/big.md\theading:## Big\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\tcanonical\n' >>"$tmp/doctrine_anchors.tsv"
+  FIXTURE_DIR="$tmp"
+  export FIXTURE_DIR
+  out="$(run_python check 2>&1 || true)"
+  FIXTURE_DIR=""
+  unset FIXTURE_DIR
+  rm -rf "$tmp"
+  if printf '%s\n' "$out" | grep -q 'ANCHOR-OVER-BUDGET: anchor_id=big-anchor' \
+      && printf '%s\n' "$out" | grep -q 'ANCHOR-CHECK-VERDICT: FAIL(anchor-over-budget)'; then
+    echo "PASS extract_over_budget_refused"
+  else
+    echo "FAIL extract_over_budget_refused"; echo "  got: $out"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+}
+
 run_pending_selftests() {
   local tmp hash out rc
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-pending-XXXXXX")"
@@ -696,7 +738,8 @@ run_selftest() {
   done
   run_resync_selftests
   run_pending_selftests
-  local total=$((${#fixtures[@]} + 7))
+  run_extract_selftests
+  local total=$((${#fixtures[@]} + 13))
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
     echo "ANCHOR-CHECK-SELFTEST: PASS (${total} fixtures)"
     return 0

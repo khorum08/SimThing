@@ -45,6 +45,7 @@ docs/agent_onboarding.md
 AGENTS.md
 scripts/ci/gate_wiring_paths.txt
 scripts/ci/anchor_lifecycle.py
+scripts/ci/anchor_text.py
 scripts/ci/test_inventory_check.sh
 scripts/ci/test_inventory_drift_check.sh
 scripts/ci/handoff_dispatch.sh

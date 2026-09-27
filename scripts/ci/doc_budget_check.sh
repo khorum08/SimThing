@@ -39,19 +39,38 @@ count_lines() {
   wc -l <"$path" | tr -d ' \r'
 }
 
+# Lines alone let a doc grow unmetered through ever-longer rows; what an agent pays for is
+# bytes. A row's optional max_bytes caps that (an empty cell means lines only).
+count_bytes() {
+  local path="$1"
+  if [[ ! -f "$path" ]]; then
+    printf '0'
+    return 0
+  fi
+  wc -c <"$path" | tr -d ' \r'
+}
+
 run_check() {
   local baseline="$1"
   local root="$2"
-  local path max current
+  local path max max_bytes current bytes
   local failures=0
-  while IFS=$'\t' read -r path max; do
+  while IFS=$'\t' read -r path max max_bytes; do
     path="${path//$'\r'/}"
     max="${max//$'\r'/}"
+    max_bytes="${max_bytes//$'\r'/}"
     [[ -z "${path:-}" || "$path" == "path" ]] && continue
     current="$(count_lines "${root}/${path}")"
     if [[ "$current" -gt "$max" ]]; then
       echo "DOC-BUDGET: ${path} lines=${current} max=${max}" >&2
       failures=$((failures + 1))
+    fi
+    if [[ -n "$max_bytes" ]]; then
+      bytes="$(count_bytes "${root}/${path}")"
+      if [[ "$bytes" -gt "$max_bytes" ]]; then
+        echo "DOC-BUDGET: ${path} bytes=${bytes} max_bytes=${max_bytes}" >&2
+        failures=$((failures + 1))
+      fi
     fi
   done <"$baseline"
   if [[ "$failures" -gt 0 ]]; then
@@ -65,12 +84,13 @@ run_check() {
 run_headroom() {
   local baseline="$1"
   local root="$2"
-  local path max current room
+  local path max max_bytes current room bytes byte_room
   local failures=0
   local count=0
-  while IFS=$'\t' read -r path max; do
+  while IFS=$'\t' read -r path max max_bytes; do
     path="${path//$'\r'/}"
     max="${max//$'\r'/}"
+    max_bytes="${max_bytes//$'\r'/}"
     [[ -z "${path:-}" || "$path" == "path" ]] && continue
     current="$(count_lines "${root}/${path}")"
     room=$((max - current))
@@ -78,7 +98,14 @@ run_headroom() {
       failures=$((failures + 1))
     fi
     count=$((count + 1))
-    echo "DOC-BUDGET-HEADROOM-ITEM: path=${path} lines=${current}/${max} headroom=${room}"
+    if [[ -n "$max_bytes" ]]; then
+      bytes="$(count_bytes "${root}/${path}")"
+      byte_room=$((max_bytes - bytes))
+      [[ "$byte_room" -lt 0 ]] && failures=$((failures + 1))
+      echo "DOC-BUDGET-HEADROOM-ITEM: path=${path} lines=${current}/${max} headroom=${room} bytes=${bytes}/${max_bytes} byte_headroom=${byte_room}"
+    else
+      echo "DOC-BUDGET-HEADROOM-ITEM: path=${path} lines=${current}/${max} headroom=${room}"
+    fi
   done <"$baseline"
   if [[ "$failures" -gt 0 ]]; then
     echo "DOC-BUDGET-HEADROOM-VERDICT: FAIL over=${failures} rows=${count}"
@@ -132,6 +159,22 @@ run_selftest() {
       SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
     fi
   done
+  # Byte cap: the same doc passes its line cap and fails a byte cap it outgrew.
+  local sandbox
+  sandbox="$(mktemp -d "${TMPDIR:-/tmp}/doc-budget-bytes-XXXXXX")"
+  mkdir -p "${sandbox}/docs"
+  printf 'one long row\n' >"${sandbox}/docs/guide.md"
+  printf 'path\tmax_lines\tmax_bytes\ndocs/guide.md\t10\t8\n' >"${sandbox}/baseline.tsv"
+  local got
+  got="$(run_check "${sandbox}/baseline.tsv" "${sandbox}" 2>&1 || true)"
+  if grep -qF 'DOC-BUDGET: docs/guide.md bytes=13 max_bytes=8' <<<"$got" \
+      && ! grep -qF 'lines=' <<<"$got"; then
+    echo "PASS doc_budget_selftest_fail_byte_growth"
+  else
+    echo "FAIL doc_budget_selftest_fail_byte_growth"
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
+  rm -rf "$sandbox"
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
     emit_verdict pass
     echo "DOC-BUDGET-SELFTEST: PASS (${#fixtures[@]} fixtures)"
