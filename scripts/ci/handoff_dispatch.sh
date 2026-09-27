@@ -127,6 +127,21 @@ def read_norm(path: Path) -> str:
     return normalize_bytes(path.read_bytes())
 
 
+def read_text_lenient(path: Path) -> str:
+    # The terminal-newline contract belongs to HANDOFF files, which lint owns. Every
+    # other document the board mirrors (design doc, orientation, active_track.txt) is
+    # read leniently: one missing final newline once blanked the ladder, track and
+    # handoff fields for 17 days (2026-09-09 .. 2026-09-26).
+    raw = path.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HDError("invalid-utf8") from exc
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def read_json_file(path: Path):
     raw = path.read_bytes()
     if raw.startswith(b"\xef\xbb\xbf"):
@@ -390,7 +405,7 @@ def active_pointer():
     override = os.environ.get("HD_ORIENTATION_PATH", "").strip()
     orientation = Path(override) if override else ROOT / "docs/orchestrator_orientation.md"
     if orientation.exists():
-        text = normalize_bytes(orientation.read_bytes())
+        text = read_text_lenient(orientation)
         m = re.search(r"Active pointer:\s*`([^`]+)`", text)
         if m:
             return m.group(1)
@@ -507,25 +522,32 @@ def active_workplan_doc():
     # closed HD track after the 0.0.8.6 redirect).
     at = ROOT / "scripts/ci/active_track.txt"
     if at.exists():
-        for line in normalize_bytes(at.read_bytes()).splitlines():
+        for line in read_text_lenient(at).splitlines():
             s = line.strip()
             if s and not s.startswith("#"):
                 return s
     return ""
 
 
+def track_id_from_doc_name(doc: str) -> str:
+    # Both track-doc naming shapes carry the version as leading digit tokens:
+    # design_0_0_8_7_rf_arena_modernization.md and 0_0_8_8_Integrated_SimThing_Rehearsal.md.
+    base = os.path.basename(doc)
+    if not base.endswith(".md"):
+        return ""
+    stem = base[: -len(".md")]
+    if stem.startswith("design_"):
+        stem = stem[len("design_"):]
+    nums = []
+    for tok in stem.split("_"):
+        if not tok.isdigit():
+            break
+        nums.append(tok)
+    return ".".join(nums) if len(nums) >= 2 else ""
+
+
 def active_track_id():
-    base = os.path.basename(active_workplan_doc())
-    if base.startswith("design_") and base.endswith(".md"):
-        nums = []
-        for tok in base[len("design_"):-len(".md")].split("_"):
-            if tok.isdigit():
-                nums.append(tok)
-            else:
-                break
-        if nums:
-            return ".".join(nums)
-    return ""
+    return track_id_from_doc_name(active_workplan_doc())
 
 
 def ladder_states():
@@ -533,7 +555,10 @@ def ladder_states():
     design = ROOT / doc if doc else None
     if not design or not design.exists():
         return []
-    text = normalize_bytes(design.read_bytes())
+    return ladder_rows_from_text(read_text_lenient(design))
+
+
+def ladder_rows_from_text(text: str):
     out = []
     for line in text.splitlines():
         if not line.startswith("|"):
@@ -980,17 +1005,35 @@ def command_board_issue_target(path):
             else:
                 flattened.append(item)
         data = flattened
+    if not isinstance(data, list):
+        return fail("board-issues-json-shape")
+    if not data:
+        # An empty open-issues read is never evidence that the board is missing:
+        # creating on one is how duplicate boards #2023/#2024 were born (2026-09-09).
+        return fail("board-issues-empty-read")
     matches = [
         item for item in data
-        if item.get("title") == "SimThing Board" and not item.get("pull_request")
+        if isinstance(item, dict)
+        and item.get("title") == "SimThing Board"
+        and not item.get("pull_request")
     ]
-    if len(matches) == 0:
+    if not matches:
         print("create")
         return 0
-    if len(matches) == 1:
-        print(f"update {matches[0].get('number')}")
-        return 0
-    return fail("duplicate-board-issues")
+    # Duplicates are a nuisance, never a reason to stop mirroring. The oldest board is
+    # canonical (every later one was created by a bad read); name the strays on stderr
+    # so the caller can surface them in the board it still writes.
+    canonical = min(matches, key=lambda item: int(item.get("number") or 0))
+    strays = sorted(int(item.get("number") or 0) for item in matches if item is not canonical)
+    if strays:
+        print(
+            "HD-LINT-NOTE: duplicate-board-issues "
+            + ",".join(f"#{n}" for n in strays)
+            + f" (writing canonical #{canonical.get('number')}; close the others)",
+            file=sys.stderr,
+        )
+    print(f"update {canonical.get('number')}")
+    return 0
 
 
 def write(path: Path, text: str):
@@ -1389,9 +1432,46 @@ stop_conditions: ["scope-widening"]
         target = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
         check("board-issue-single-update", target.returncode == 0 and target.stdout.strip() == "update 7")
 
-        write(issues, '[{"number":7,"title":"SimThing Board"},{"number":8,"title":"SimThing Board"}]\n')
+        write(issues, '[{"number":8,"title":"SimThing Board"},{"number":7,"title":"SimThing Board"}]\n')
         dup = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
-        check("board-issue-duplicate-fails", "HD-LINT-VERDICT: FAIL(duplicate-board-issues)" in dup.stdout)
+        check(
+            "board-issue-duplicate-writes-oldest",
+            dup.returncode == 0
+            and dup.stdout.strip() == "update 7"
+            and "duplicate-board-issues #8" in dup.stderr,
+        )
+
+        for label, raw in (("empty-read", "[]"), ("empty-pages", "[[],[]]")):
+            write(issues, raw + "\n")
+            empty = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+            check(
+                f"board-issue-{label}-never-creates",
+                empty.returncode != 0 and "create" not in empty.stdout.split(),
+            )
+
+        write(issues, '[{"number":3,"title":"Unrelated issue"}]\n')
+        fresh = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+        check("board-issue-absent-creates", fresh.returncode == 0 and fresh.stdout.strip() == "create")
+
+        loose = Path(tmp) / "loose-design.md"
+        loose.write_bytes(b"| 2.2 | `R-0` | merged #1 @ abc |")
+        check(
+            "ladder-read-survives-missing-terminal-newline",
+            ladder_rows_from_text(read_text_lenient(loose))
+            == [{"rung": "R-0", "exit_proof": "merged #1 @ abc"}],
+        )
+        try:
+            normalize_bytes(loose.read_bytes())
+            strict = False
+        except HDError:
+            strict = True
+        check("handoff-contract-stays-strict", strict)
+        check(
+            "track-id-both-doc-name-shapes",
+            track_id_from_doc_name("docs/design_0_0_8_7_rf_arena_modernization.md") == "0.0.8.7"
+            and track_id_from_doc_name("docs/0_0_8_8_Integrated_SimThing_Rehearsal.md") == "0.0.8.8"
+            and track_id_from_doc_name("docs/notes.md") == "",
+        )
 
         write(issues, '[[{"number":7,"title":"SimThing Board"}],[]]\n')
         paged = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
