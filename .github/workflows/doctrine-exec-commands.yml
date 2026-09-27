@@ -678,20 +678,13 @@ jobs:
           gh pr list --state open --json number,title,headRefName,url,isDraft,body > open-prs.raw.json
           bash scripts/ci/handoff_dispatch.sh --normalize-open-prs open-prs.raw.json > open-prs.json
           export HD_OPEN_PRS_JSON="$(cat open-prs.json)"
-          bash scripts/ci/handoff_dispatch.sh --board-json "${handoff_path}" > simthing-board.json
-          bash scripts/ci/handoff_dispatch.sh --render-board simthing-board.json > simthing-board.md
-          python3 - <<'PY' > board_payload.json
-          import json
-          body = open("simthing-board.md", encoding="utf-8").read()
-          print(json.dumps({"title": "SimThing Board", "body": body}))
-          PY
-          gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" --paginate --slurp > board-issues.json
-          board_target="$(bash scripts/ci/handoff_dispatch.sh --board-issue-target board-issues.json)"
-          if [ "$board_target" = "create" ]; then
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues" --input board_payload.json >/dev/null
+          # One board writer for every caller (see board_sync.sh); it never fails this step.
+          # This job checks out the PR head, which may predate board_sync.sh; the next
+          # clearance run (merge ref) syncs the board in that case.
+          if [ -f scripts/ci/board_sync.sh ]; then
+            bash scripts/ci/board_sync.sh "${handoff_path}"
           else
-            issue_num="${board_target#update }"
-            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/${issue_num}" --input board_payload.json >/dev/null
+            echo "::warning::board_sync.sh absent on this branch; the next clearance run syncs the board"
           fi
 
           if [[ -n "${{ needs.parse-command.outputs.pr_number }}" ]]; then
