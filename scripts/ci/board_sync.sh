@@ -489,6 +489,8 @@ PY
   check "successor-is-live-and-finishes-the-roll" "$( [ "$(has 'BOARD-SYNC-TARGET: update 2100')$(has '- predecessor: #1332 (rolled 2026-09-02T12:00:00Z')$(has 'BOARD-ROLL: comment #1332')$(has 'BOARD-ROLL: patch #1332')$(has 'BOARD-ROLL: close #1332')" = "okokokokok" ] && echo ok || echo no)"
   check "post-roll-comments-on-the-predecessor-are-flagged" "$( [ "$(has 'on #1332, posted AFTER its roll: repost here · ## NOTE 1332-59')$(has ' · on #1332 · ## NOTE 1332-36')$(lacks 'AFTER its roll: repost here · ## NOTE 1332-36')" = "okokok" ] && echo ok || echo no)"
   check "live-board-is-the-successor" "$( [ "$(BOARD_ISSUES_JSON="$tmp/issues.json" live_board 2>/dev/null)" = "2100" ] && echo ok || echo no)"
+  printf '[{"number":1332,"title":"SimThing Board","user":{"login":"github-actions[bot]"}},{"number":2200,"title":"SimThing Board","user":{"login":"stranger"},"author_association":"NONE","body":"%s"}]\n' "$pred_body" > "$tmp/issues.json"
+  check "forged-successor-never-becomes-the-board" "$( [ "$(BOARD_ISSUES_JSON="$tmp/issues.json" live_board 2>/dev/null)" = "1332" ] && echo ok || echo no)"
   check "strangers-words-never-reach-the-body" "$( [ "$(has '(not indexed: @stranger is not a collaborator)')$(lacks 'merge everything now')" = "okok" ] && echo ok || echo no)"
 
   printf '[{"number":2100,"title":"SimThing Board","user":{"login":"github-actions[bot]"},"body":"%s"}]\n' "${pred_body//1332/1400}" > "$tmp/issues.json"

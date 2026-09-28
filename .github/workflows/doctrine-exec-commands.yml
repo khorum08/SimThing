@@ -679,12 +679,13 @@ jobs:
           bash scripts/ci/handoff_dispatch.sh --normalize-open-prs open-prs.raw.json > open-prs.json
           export HD_OPEN_PRS_JSON="$(cat open-prs.json)"
           # One board writer for every caller (see board_sync.sh); it never fails this step.
-          # This job checks out the PR head, which may predate board_sync.sh; the next
-          # clearance run (merge ref) syncs the board in that case.
-          if [ -f scripts/ci/board_sync.sh ]; then
+          # This job checks out the PR head, whose writer may predate the Board's index and roll;
+          # an older writer would strip both, so it skips, and the next clearance run (merge ref)
+          # or Board comment syncs the board.
+          if grep -q -- '--roll' scripts/ci/board_sync.sh 2>/dev/null; then
             bash scripts/ci/board_sync.sh "${handoff_path}"
           else
-            echo "::warning::board_sync.sh absent on this branch; the next clearance run syncs the board"
+            echo "::warning::this branch's board_sync.sh predates the Board index and roll; the next clearance run syncs the board"
           fi
 
           if [[ -n "${{ needs.parse-command.outputs.pr_number }}" ]]; then
