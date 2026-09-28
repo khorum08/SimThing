@@ -30,7 +30,7 @@ Future-facing consumerless API carries `HORIZON-ENTRY(<YYYY-MM-DD>): <intended c
 After ladder edits: `bash scripts/ci/gen_orientation.sh`. After anchor edits: `bash scripts/ci/anchor_check.sh --resync`. Catalog: `bash scripts/ci/librarian.sh --catalog --role <coding|orchestrator|da>`. Staleness: `bash scripts/ci/librarian.sh --staleness` (culls need `--confirm`).
 
 ## Progression Modes
-Manual: Owner checks the SimThing Board, prompts one agent at a time. Automated: DA/orchestrator stack dispatches, routes, remands, and advances with less Owner prompting.
+Manual: Owner checks the SimThing Board (the one open issue titled `SimThing Board`; its body lists the newest comments, and it rolls to a fresh issue at 1,500 comments), prompts one agent at a time. Automated: DA/orchestrator stack dispatches, routes, remands, and advances with less Owner prompting.
 
 ## Browser Stack Protocol
 Forward by pointer, not pasted payload: "Check the SimThing Board issue and execute if the latest handoff is yours." Orchestrator writes coder block with rung, receipt, branch, PR title; verify the board still names the same pointer/receipt before sending.

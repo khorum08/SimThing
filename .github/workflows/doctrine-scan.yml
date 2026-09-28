@@ -170,6 +170,12 @@ jobs:
           set -o pipefail
           bash scripts/ci/relay_lint.sh --selftest 2>&1 | tee doctrine-relay-selftest-report.txt
 
+      - name: Board writer selftest
+        if: steps.gate.outputs.run_selftests == 'true'
+        run: |
+          set -o pipefail
+          bash scripts/ci/board_sync.sh --selftest 2>&1 | tee doctrine-board-sync-selftest-report.txt
+
       - name: Overlay germ archaeology census check
         run: |
           set -o pipefail
