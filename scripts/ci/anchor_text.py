@@ -18,6 +18,7 @@ channel, and a GitHub comment holds 65,536 characters including the report heade
 renders at most the same amount, so any single anchor always fits one query. Nine anchors once
 cited a whole closed-track ladder, so one query served 365 KB (~92k tokens).
 """
+import hashlib
 import pathlib
 import re
 
@@ -103,6 +104,16 @@ def lines_slice(lines, span: str) -> str:
         raise ValueError(f"bad lines spec: {span}")
     start, end = int(match.group(1)), int(match.group(2))
     return "\n".join(lines[start - 1 : end]) + "\n"
+
+
+def foundation_stamp(hashes) -> str:
+    """The one ACK that covers the whole 0.0.8.7 foundation: `ANCHOR-ACK: foundation@<stamp>`.
+
+    `hashes` maps every foundation anchor id to its content hash, so the stamp goes stale on
+    any foundation edit exactly as each individual ACK would.
+    """
+    joined = "|".join(f"{aid}:{hashes[aid]}" for aid in sorted(hashes))
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()[:12]
 
 
 def extract(path: pathlib.Path, section: str) -> str:
