@@ -13,14 +13,15 @@ use simthing_core::{
 use simthing_driver::{observe_hosted_property_cell, AnchorTableSnapshot, SimSession};
 use simthing_feeder::BoundaryRequest;
 use simthing_mapeditor::clause_scenario_ingest::{
-    clause_source_content_identity, ingest_clause_scenario_path, ClauseScenarioIngestOptions,
-    ClauseScenarioIngestResult,
+    clause_source_content_identity, ingest_clause_scenario_path,
+    load_clause_studio_session_from_path, ClauseScenarioIngestOptions, ClauseScenarioIngestResult,
 };
+use simthing_mapeditor::load_studio_session_from_scenario_path;
 use simthing_mapeditor::studio_live_session_bridge::{
     authored_live_profile_from_pack, driver_scenario_field_bearing_from_profile,
     field_bearing_game_mode, StudioAuthoredLiveProfile,
 };
-use simthing_sim::BoundaryDeltaEntry;
+use simthing_sim::{BoundaryDeltaEntry, OrdinaryGrowthRefusalReason, RecordedGrowthResidencyFact};
 use simthing_spec::PropertyKey;
 
 fn source() -> PathBuf {
@@ -721,6 +722,428 @@ fn rehearsal_economy_fleet_generator_stock_preserves_frozen_economy() {
         },
         "native hydration must preserve the authored stock bound"
     );
+    bounded_stock_lifecycle();
+}
+
+/// Local mine production is outside conserved RF. The sole mineral Balance is
+/// still the refinery's real input. The two authored modifiers reset its local
+/// rate then supply the frozen 3/gen; the governed tail integrates it once.
+/// Capacity curtails local production, never an allocation disbursed by RF.
+fn local_stock_source(clamp: &str) -> String {
+    let mut text = generator_stock_source(false);
+    for declaration in [
+        "      sub_field = { role = flow accumulator = IntrinsicFlow }\n",
+        "      sub_field = { role = Amount accumulator = AllocatedFlow { arena = meridian_minerals } }\n",
+        "      sub_field = { role = weight default = 1 accumulator = AllocatorWeight { arena = meridian_minerals } }\n",
+    ] {
+        assert!(text.contains(declaration));
+        text = text.replacen(declaration, "", 1);
+    }
+    text = text
+        .lines()
+        .filter(|line| {
+            !line.contains("resource_parent = { property = \"meridian::minerals\"")
+                && !line.contains(
+                    "property_value = { property = \"meridian::minerals\" flow = 0 weight = 1 }",
+                )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    if !clamp.is_empty() {
+        text = text.replacen(
+            "sub_field = { role = balance governed_by = balance_rate accumulator = Balance }",
+            &format!("sub_field = {{ role = balance governed_by = balance_rate accumulator = Balance {clamp} }}"),
+            1,
+        );
+    }
+    for (owner, initial) in [("terran", 20), ("pirate", 14)] {
+        let before = format!("property_value = {{ property = \"meridian::minerals\" flow = @mine_rate weight = 1 balance = {initial} }}");
+        assert_eq!(text.matches(&before).count(), 1);
+        text = text.replace(&before, &format!(r#"property_value = {{ property = "meridian::minerals" balance_rate = @mine_rate balance = {initial} }}
+        overlays = {{
+          modifier = {{ id = {owner}_mining_reset targets_property = "meridian::minerals" sub_field = balance_rate amount_mult = 0 }}
+          modifier = {{ id = {owner}_mining_supply targets_property = "meridian::minerals" sub_field = balance_rate amount_add = @mine_rate }}
+        }}"#));
+    }
+    text
+}
+
+fn local_stock_snapshot(session: &SimSession, profile: &StudioAuthoredLiveProfile) -> Vec<f32> {
+    let mut values = vec![
+        energy_cell(session, profile, "terran", "balance"),
+        energy_cell(session, profile, "pirate", "balance"),
+    ];
+    for (owner, site) in [("terran", "A1"), ("pirate", "E1")] {
+        let mine = profile.install_targets[&format!("{owner}_mine")][0];
+        let slot = session.proto.allocator.slot_of(mine).unwrap();
+        let mineral = session
+            .proto
+            .registry
+            .id_of("meridian", "minerals")
+            .unwrap();
+        let col = session
+            .proto
+            .registry
+            .column_range(mineral)
+            .col_for_role(
+                &SubFieldRole::Named("balance".into()),
+                &session.proto.registry.property(mineral).layout,
+            )
+            .unwrap();
+        let alloy = session
+            .proto
+            .registry
+            .id_of("meridian_material", &format!("{site}_alloys_quantity"))
+            .unwrap();
+        let alloy_col = session
+            .proto
+            .registry
+            .column_range(alloy)
+            .col_for_role(
+                &SubFieldRole::Amount,
+                &session.proto.registry.property(alloy).layout,
+            )
+            .unwrap();
+        let alloy_slot = session
+            .proto
+            .allocator
+            .slot_of(profile.install_targets[site][0])
+            .unwrap();
+        let recipes = &session
+            .spec_state
+            .resource_economy_registry
+            .as_ref()
+            .unwrap()
+            .registrations
+            .recipes;
+        let consumers: Vec<_> = recipes
+            .iter()
+            .filter(|recipe| {
+                recipe
+                    .inputs
+                    .iter()
+                    .any(|input| input.slot == slot && input.col == col)
+            })
+            .collect();
+        assert_eq!(
+            consumers.len(),
+            1,
+            "the observed cell is the one actual refinery stock"
+        );
+        let recipe = consumers[0];
+        assert_eq!(recipe.target_slot, alloy_slot);
+        assert_eq!(recipe.target_col, alloy_col);
+        assert_eq!(
+            recipe
+                .inputs
+                .iter()
+                .find(|input| input.slot == slot && input.col == col)
+                .unwrap()
+                .unit_cost,
+            2.0
+        );
+        // Published GPU values are observations only. No RF anchor is invented
+        // for local storage, and these values never drive a boundary request.
+        values.push(session.state.read_values_row(slot.raw())[col.raw()]);
+        values.push(session.state.read_values_row(alloy_slot.raw())[alloy_col.raw()]);
+    }
+    values
+}
+
+fn bounded_stock_lifecycle() {
+    let bound = ClampBehavior::Bounded {
+        min: 0.0,
+        max: 24.0,
+    };
+    let mut histories = Vec::new();
+    for (label, clamp, ceiling, from_cache) in [
+        ("local-omitted", "", None, false),
+        ("local-unbounded", "clamp = Unbounded", None, false),
+        (
+            "local-bounded",
+            "clamp = Bounded { min = 0 max = 24 }",
+            Some(24.0_f32),
+            false,
+        ),
+        (
+            "local-bounded-cache",
+            "clamp = Bounded { min = 0 max = 24 }",
+            Some(24.0_f32),
+            true,
+        ),
+    ] {
+        let text = local_stock_source(clamp);
+        println!(
+            "LOCAL_STORAGE_SOURCE case={label} identity={}\n{text}\nLOCAL_STORAGE_SOURCE_END",
+            clause_source_content_identity(text.as_bytes())
+        );
+        let directory = variant(&text);
+        let cache = directory.path().join("storage.simthing-scenario.json");
+        let (_, native) = load_clause_studio_session_from_path(
+            &directory.path().join("stellaristhing_base.clause"),
+            &ClauseScenarioIngestOptions::default(),
+            &cache,
+            None,
+        )
+        .expect("ordinary source, hydrate, profile and canonical cache");
+        let loaded = if from_cache {
+            load_studio_session_from_scenario_path(&cache, None).expect("ordinary cache rebind")
+        } else {
+            native
+        };
+        let profile = loaded.authored_live_profile.unwrap();
+        pin_profile(&profile, label);
+        let expected_clamp = if ceiling.is_some() {
+            bound.clone()
+        } else {
+            ClampBehavior::Unbounded
+        };
+        let property = profile
+            .game_mode
+            .properties
+            .iter()
+            .find(|p| p.namespace == "meridian" && p.name == "minerals")
+            .unwrap();
+        assert_eq!(
+            property.sub_fields.len(),
+            2,
+            "one rate and one spendable stock"
+        );
+        assert_eq!(
+            property
+                .sub_fields
+                .iter()
+                .find(|s| s.role == SubFieldRole::Named("balance".into()))
+                .unwrap()
+                .clamp,
+            expected_clamp,
+            "native/cache spec retains the authored bound"
+        );
+        let economy = profile.game_mode.resource_economy.as_ref().unwrap();
+        assert!(economy.emissions.is_empty() && economy.transfers.is_empty());
+        assert_eq!(
+            economy.recipes.len(),
+            2,
+            "only the two original capped refineries"
+        );
+        for recipe in &economy.recipes {
+            assert_eq!(recipe.inputs.len(), 2);
+            assert_eq!(recipe.max_units_per_generation.unwrap().get(), 1);
+        }
+        let mut session = SimSession::open_from_spec(
+            driver_scenario_field_bearing_from_profile(&profile).unwrap(),
+            &field_bearing_game_mode(&profile.game_mode),
+        )
+        .expect("ordinary local storage session");
+        let mineral = session
+            .proto
+            .registry
+            .id_of("meridian", "minerals")
+            .unwrap();
+        let energy = session.proto.registry.id_of("meridian", "energy").unwrap();
+        assert_eq!(
+            session
+                .proto
+                .registry
+                .property(mineral)
+                .layout
+                .sub_fields
+                .iter()
+                .find(|s| s.role == SubFieldRole::Named("balance".into()))
+                .unwrap()
+                .clamp,
+            expected_clamp,
+            "live registry retains the authored bound"
+        );
+        assert!(
+            session
+                .spec_state
+                .arena_registry
+                .arenas
+                .iter()
+                .all(|a| a.flow_property_id != mineral && a.balance_property_id != Some(mineral)),
+            "bounded stock cannot receive a conserved RF allocation"
+        );
+        assert!(
+            session
+                .spec_state
+                .arena_registry
+                .arenas
+                .iter()
+                .any(|a| a.flow_property_id == energy),
+            "the same energy economy still executes RF"
+        );
+        let supplies: Vec<_> = ["terran", "pirate"]
+            .iter()
+            .map(|owner| {
+                let host = profile.install_targets[&format!("{owner}_mine")][0];
+                let specs: Vec<_> = profile
+                    .game_mode
+                    .overlays
+                    .iter()
+                    .filter(|o| {
+                        o.id == format!("{owner}_mining_reset")
+                            || o.id == format!("{owner}_mining_supply")
+                    })
+                    .collect();
+                assert_eq!(specs.len(), 2);
+                assert_eq!(
+                    specs[0].sub_field_deltas,
+                    vec![(
+                        SubFieldRole::Named("balance_rate".into()),
+                        TransformOp::multiply(0.0)
+                    )]
+                );
+                assert_eq!(
+                    specs[1].sub_field_deltas,
+                    vec![(
+                        SubFieldRole::Named("balance_rate".into()),
+                        TransformOp::add(3.0)
+                    )]
+                );
+                // Ordinary installation keeps source order on this two-overlay host.
+                // This observes identity only; no stock readback drives the schedule.
+                let installed = session.proto.root.snapshot_node(host).unwrap().overlay_ids;
+                assert_eq!(installed.len(), 2);
+                (host, installed[1])
+            })
+            .collect();
+        let mut expected_stock = [20.0_f32, 14.0];
+        let mut batches = [0.0_f32; 2];
+        let mut produced = [0.0_f32; 2];
+        let mut curtailed = [0.0_f32; 2];
+        let mut history = Vec::new();
+        let initial = local_stock_snapshot(&session, &profile);
+        assert_eq!([initial[2], initial[4]], expected_stock);
+        assert_eq!([initial[3], initial[5]], [4.0, 3.0]);
+        for generation in 1..=50 {
+            // The hot cycle precedes its boundary. Submit for the G11/G25
+            // boundaries so the supply is off for hot cycles G12 through G25.
+            // This fixed schedule never depends on economic readback.
+            if generation == 11 || generation == 25 {
+                for &(target, overlay_id) in &supplies {
+                    session
+                        .tx
+                        .submit_boundary(if generation == 11 {
+                            BoundaryRequest::SuspendOverlay { target, overlay_id }
+                        } else {
+                            BoundaryRequest::ActivateOverlay { target, overlay_id }
+                        })
+                        .unwrap();
+                }
+            }
+            session.step_once().expect("ordinary storage generation");
+            let observed = local_stock_snapshot(&session, &profile);
+            let active = !(12..26).contains(&generation);
+            for &(host, id) in &supplies {
+                assert_eq!(
+                    session.proto.root.overlay_is_active(host, id),
+                    Some(!(11..25).contains(&generation))
+                );
+            }
+            let offered: f32 = if active { 3.0 } else { 0.0 };
+            for (index, owner, initial_stock, initial_alloy, initial_energy) in [
+                (0, "terran", 20.0, 4.0, 10.0),
+                (1, "pirate", 14.0, 3.0, 8.0),
+            ] {
+                // Independent accounting oracle only; never writes the session.
+                let spend = if expected_stock[index] >= 2.0 {
+                    2.0
+                } else {
+                    0.0
+                };
+                let after_spend = expected_stock[index] - spend;
+                let incoming = ceiling.map_or(offered, |max| offered.min(max - after_spend));
+                expected_stock[index] = after_spend + incoming;
+                batches[index] += spend / 2.0;
+                produced[index] += incoming;
+                curtailed[index] += offered - incoming;
+                let actual_stock = observed[2 + index * 2];
+                assert_eq!(
+                    actual_stock, expected_stock[index],
+                    "{label} {owner} G{generation}: exact stock accounting"
+                );
+                assert_eq!(
+                    observed[3 + index * 2],
+                    initial_alloy + batches[index],
+                    "exact capped lawful spending"
+                );
+                assert_eq!(
+                    actual_stock + 2.0 * batches[index],
+                    initial_stock + produced[index],
+                    "no second credit or lost produced stock"
+                );
+                assert_eq!(
+                    energy_cell(&session, &profile, &format!("{owner}_refinery"), "balance"),
+                    initial_energy + 2.0 * generation as f32 - batches[index],
+                    "energy RF reconciles with the same recipe"
+                );
+                assert!(actual_stock >= 0.0);
+                if let Some(max) = ceiling {
+                    assert!(actual_stock <= max);
+                }
+                println!("LOCAL_STORAGE case={label} owner={owner} generation={generation} spend={spend} offered={offered} produced={incoming} curtailed={} stock={actual_stock} cumulative_produced={} cumulative_curtailed={} batches={}",
+                    offered - incoming, produced[index], curtailed[index], batches[index]);
+            }
+            history.push([observed[2], observed[4]]);
+        }
+        if ceiling.is_some() {
+            assert_eq!(
+                history[10],
+                [24.0, 24.0],
+                "both stocks saturate before interruption"
+            );
+            assert_eq!(
+                history[11],
+                [22.0, 22.0],
+                "ordinary recipe spending creates visible headroom"
+            );
+            assert_eq!(
+                history[22],
+                [0.0, 0.0],
+                "lawful spend reaches the floor without minting"
+            );
+            assert_eq!(
+                history[24],
+                [0.0, 0.0],
+                "unfunded recipes cannot spend through the floor"
+            );
+            assert_eq!(
+                history[25],
+                [3.0, 3.0],
+                "restoration adds exactly one generation of supply"
+            );
+            assert_eq!(
+                history[26],
+                [4.0, 4.0],
+                "ordinary recipe resumes, no banked throughput"
+            );
+            assert_eq!(
+                history[46],
+                [24.0, 24.0],
+                "refill reaches the ceiling again"
+            );
+            assert_eq!(history[49], [24.0, 24.0], "stock stays saturated");
+            assert!(curtailed.iter().all(|x| *x > 0.0));
+        } else {
+            assert_eq!(curtailed, [0.0; 2]);
+            assert_eq!(
+                history[10],
+                [31.0, 25.0],
+                "control actually rises past the bound"
+            );
+            assert!(history[49].iter().all(|x| *x > 24.0));
+        }
+        histories.push(history);
+    }
+    assert_eq!(
+        histories[0], histories[1],
+        "omission is exactly explicit Unbounded"
+    );
+    assert_eq!(
+        histories[2], histories[3],
+        "canonical cache rebind preserves the full storage lifecycle"
+    );
 }
 
 /// Continue from the GREEN rate gate using only native content. The shipyard
@@ -962,6 +1385,386 @@ fn rehearsal_economy_fleet_native_funded_output_must_birth_fleets() {
     assert_eq!(session.proto.allocator.live_count(), initial_live + 12);
     assert_eq!(session.state.n_slots, initial_capacity);
     println!("NATIVE_BIRTH_PASS first_funding={first_funding:?} funded_total={produced:?} n0_ids={initial_ids:?} fresh_ids={new_ids:?} capacity={initial_capacity}");
+    fleet_input_recovery();
+    fleet_refusal_disposition();
+}
+
+/// Isolate the two fleet inputs without changing either faction's total N0
+/// endowment. An authored zero claim temporarily withholds RF from the named
+/// producer. A fixed ordinary overlay restores that claim at the G5 boundary.
+fn fleet_input_recovery() {
+    for alloy_missing in [true, false] {
+        let label = if alloy_missing {
+            "fleet-alloy-recovery"
+        } else {
+            "fleet-energy-work-recovery"
+        };
+        let mut text = funded_output_source();
+        for (owner, initial_energy) in [("terran", 10), ("pirate", 8)] {
+            if alloy_missing {
+                // All bootstrap energy is in the yard, so energy-work is
+                // independently sufficient while refinery output is withheld.
+                let refinery = format!("property_value = {{ property = \"meridian::energy\" flow = @facility_upkeep weight = 1 balance = {initial_energy} }}");
+                assert_eq!(text.matches(&refinery).count(), 1);
+                text = text.replace(&refinery, "property_value = { property = \"meridian::energy\" flow = @facility_upkeep weight = 0 balance = 0 }");
+                let yard = format!("child = {owner}_shipyard {{ kind = Cohort name = \"Shipyard energy WIP\"\n        owner_ref = {owner}\n        property_value = {{ property = \"meridian::energy\" flow = 0 weight = 1 balance = 0 }}");
+                assert_eq!(text.matches(&yard).count(), 1);
+                text = text.replace(
+                    &yard,
+                    &yard.replace("balance = 0", &format!("balance = {initial_energy}")),
+                );
+            } else {
+                let yard = format!("child = {owner}_shipyard {{ kind = Cohort name = \"Shipyard energy WIP\"\n        owner_ref = {owner}\n        property_value = {{ property = \"meridian::energy\" flow = 0 weight = 1 balance = 0 }}");
+                assert_eq!(text.matches(&yard).count(), 1);
+                text = text.replace(&yard, &yard.replace("weight = 1", "weight = 0"));
+            }
+        }
+        println!(
+            "FLEET_RECOVERY_SOURCE case={label} identity={}\n{text}\nFLEET_RECOVERY_SOURCE_END",
+            clause_source_content_identity(text.as_bytes())
+        );
+        let directory = variant(&text);
+        let result = ingest(&directory.path().join("stellaristhing_base.clause"));
+        let profile = authored_live_profile_from_pack(&result.pack).unwrap();
+        pin_profile(&profile, label);
+        let mut session = SimSession::open_from_spec(
+            driver_scenario_field_bearing_from_profile(&profile).unwrap(),
+            &field_bearing_game_mode(&profile.game_mode),
+        )
+        .unwrap();
+        let mut expected_alloy = [4.0_f32, 3.0];
+        let mut expected_mineral = [20.0_f32, 14.0];
+        let mut expected_refinery = if alloy_missing { [0.0; 2] } else { [10.0, 8.0] };
+        let mut expected_work = if alloy_missing { [10.0, 8.0] } else { [0.0; 2] };
+        let mut funded = [Vec::new(), Vec::new()];
+        let mut births = [Vec::new(), Vec::new()];
+        let mut cursor = 0;
+        for generation in 1..=22 {
+            if generation == 5 {
+                for owner in ["terran", "pirate"] {
+                    let producer = if alloy_missing {
+                        "refinery"
+                    } else {
+                        "shipyard"
+                    };
+                    let target = profile.install_targets[&format!("{owner}_{producer}")][0];
+                    session
+                        .tx
+                        .submit_boundary(BoundaryRequest::AttachOverlay {
+                            target,
+                            source_generation: GenerationStamp::new(
+                                session.coord.day_index().try_into().unwrap(),
+                            ),
+                            overlay: Overlay {
+                                id: OverlayId::new(),
+                                kind: OverlayKind::Policy,
+                                source: OverlaySource::System,
+                                origin: target,
+                                affects: vec![target],
+                                lifecycle: OverlayLifecycle::UntilDissolved,
+                                transform: PropertyTransformDelta {
+                                    property_id: session
+                                        .proto
+                                        .registry
+                                        .id_of("meridian", "energy")
+                                        .unwrap(),
+                                    sub_field_deltas: vec![(
+                                        SubFieldRole::Named("weight".into()),
+                                        TransformOp::set(1.0),
+                                    )],
+                                },
+                            },
+                        })
+                        .unwrap();
+                }
+            }
+            session.step_once().unwrap();
+            for entry in &session.proto.delta_log()[cursor..] {
+                match entry {
+                    BoundaryDeltaEntry::SimThingAdded { parent, node, .. } => {
+                        let index = if *parent == profile.install_targets["A1"][0] {
+                            0
+                        } else {
+                            assert_eq!(*parent, profile.install_targets["E1"][0]);
+                            1
+                        };
+                        births[index].push((generation, node.id()));
+                    }
+                    BoundaryDeltaEntry::GrowthResidencyRefused { .. } => {
+                        panic!("unexpected recovery refusal: {entry:?}")
+                    }
+                    _ => {}
+                }
+            }
+            cursor = session.proto.delta_log().len();
+            let stocks = stock_snapshot(&session, &profile, label);
+            for (index, owner, site) in [(0, "terran", "A1"), (1, "pirate", "E1")] {
+                let made = if expected_alloy[index] >= 6.0 && expected_work[index] >= 4.0 {
+                    1.0
+                } else {
+                    0.0
+                };
+                let refined = if expected_mineral[index] >= 2.0 && expected_refinery[index] >= 1.0 {
+                    1.0
+                } else {
+                    0.0
+                };
+                if generation <= 5 {
+                    assert_eq!(made, 0.0, "missing input forbids funding");
+                    assert!(births[index].is_empty());
+                    if alloy_missing {
+                        assert!(expected_work[index] >= 4.0 && expected_alloy[index] < 6.0);
+                    } else if generation >= 4 {
+                        assert!(
+                            expected_alloy[index] >= 6.0 && expected_work[index] == 0.0,
+                            "alloy is sufficient; missing energy-work alone stops funding"
+                        );
+                    }
+                }
+                let refinery_rate = if generation <= 5 {
+                    if alloy_missing {
+                        0.0
+                    } else {
+                        2.0
+                    }
+                } else {
+                    1.0
+                };
+                let yard_rate = 2.0 - refinery_rate;
+                expected_mineral[index] += 3.0 - 2.0 * refined;
+                expected_alloy[index] += refined - 6.0 * made;
+                expected_refinery[index] += refinery_rate - refined;
+                expected_work[index] += yard_rate - 4.0 * made;
+                if made > 0.0 {
+                    funded[index].push(generation);
+                }
+                assert_eq!(stocks[2 + index * 2], expected_mineral[index]);
+                assert_eq!(stocks[3 + index * 2], expected_alloy[index]);
+                assert_eq!(stocks[index], 0.0, "no second owner stock");
+                assert_eq!(
+                    energy_cell(&session, &profile, &format!("{owner}_refinery"), "balance"),
+                    expected_refinery[index]
+                );
+                assert_eq!(
+                    energy_cell(&session, &profile, &format!("{owner}_shipyard"), "balance"),
+                    expected_work[index]
+                );
+                let actual_funded = observe_hosted_property_cell(
+                    &session.proto.registry,
+                    &session.proto.allocator,
+                    &AnchorTableSnapshot::from_session(&session),
+                    profile.install_targets[site][0],
+                    &PropertyKey::new("meridian_material", format!("{site}_corvette_quantity")),
+                    &SubFieldRole::Amount,
+                )
+                .unwrap();
+                assert_eq!(actual_funded, funded[index].len() as f32);
+                assert_eq!(
+                    births[index].len(),
+                    funded[index]
+                        .iter()
+                        .filter(|g| **g < generation)
+                        .count()
+                        .min(2),
+                    "exact N+0.5 funded birth, no duplicate or same-generation completion"
+                );
+                println!("FLEET_RECOVERY case={label} owner={owner} generation={generation} refined={refined} funded_delta={made} funded_total={actual_funded} births={} minerals={} alloys={} refinery_energy={} yard_energy={}",
+                    births[index].len(), expected_mineral[index], expected_alloy[index], expected_refinery[index], expected_work[index]);
+            }
+        }
+        for index in 0..2 {
+            assert_eq!(
+                births[index].len(),
+                2,
+                "both authored births recover by the finite horizon"
+            );
+            assert!(funded[index][0] > 5);
+            assert_ne!(births[index][0].1, births[index][1].1);
+            for (birth, funding) in births[index].iter().zip(&funded[index]) {
+                assert_eq!(birth.0, funding + 1);
+            }
+        }
+    }
+}
+
+/// Consume the already-admitted 2.1 refusal disposition: materials consumed by
+/// a recipe stay consumed if placement refuses; the scalar output is a receipt,
+/// not a reservation or completed fleet. The refused instance never retries.
+/// No enrolled subtree is removed to manufacture capacity or a restart.
+fn fleet_refusal_disposition() {
+    let text = funded_output_source().replace("    count = 2\n", "    count = 50\n");
+    assert_eq!(text.matches("    count = 50\n").count(), 2);
+    println!(
+        "FLEET_REFUSAL_SOURCE identity={}\n{text}\nFLEET_REFUSAL_SOURCE_END",
+        clause_source_content_identity(text.as_bytes())
+    );
+    let directory = variant(&text);
+    let result = ingest(&directory.path().join("stellaristhing_base.clause"));
+    let profile = authored_live_profile_from_pack(&result.pack).unwrap();
+    pin_profile(&profile, "fleet-refusal");
+    let mut session = SimSession::open_from_spec(
+        driver_scenario_field_bearing_from_profile(&profile).unwrap(),
+        &field_bearing_game_mode(&profile.game_mode),
+    )
+    .unwrap();
+    let root = session.proto.root.id();
+    let initial_live = session.proto.allocator.live_count();
+    let initial_capacity = session.proto.allocator.growth_capacity_available(root);
+    let mut alloy = [4.0_f32, 3.0];
+    let mut work = [0.0_f32; 2];
+    let mut funded = [0usize; 2];
+    let mut born = [Vec::new(), Vec::new()];
+    let mut refused = [BTreeSet::new(), BTreeSet::new()];
+    let mut cursor = 0;
+    for generation in 1..=80 {
+        let capacity_before = session.proto.allocator.growth_capacity_available(root);
+        let placements_before: Vec<_> = born
+            .iter()
+            .flatten()
+            .map(|&id| {
+                (
+                    id,
+                    session
+                        .proto
+                        .allocator
+                        .committed_residency_placement(root, id)
+                        .unwrap(),
+                )
+            })
+            .collect();
+        session.step_once().unwrap();
+        for (id, placement) in placements_before {
+            assert_eq!(
+                session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(root, id),
+                Some(placement),
+                "the complete prior placement survives every later refusal"
+            );
+        }
+        for entry in &session.proto.delta_log()[cursor..] {
+            let parent = match entry {
+                BoundaryDeltaEntry::SimThingAdded { parent, .. } => *parent,
+                BoundaryDeltaEntry::GrowthResidencyRefused {
+                    fact: RecordedGrowthResidencyFact::Refused(fact),
+                } => fact.candidate().structural_parent(),
+                _ => continue,
+            };
+            let index = if parent == profile.install_targets["A1"][0] {
+                0
+            } else {
+                assert_eq!(parent, profile.install_targets["E1"][0]);
+                1
+            };
+            match entry {
+                BoundaryDeltaEntry::SimThingAdded {
+                    node, residency, ..
+                } => {
+                    assert_eq!(residency.placement().quantity(), 3);
+                    assert!(!refused[index].contains(&node.id()));
+                    born[index].push(node.id());
+                }
+                BoundaryDeltaEntry::GrowthResidencyRefused {
+                    fact: RecordedGrowthResidencyFact::Refused(fact),
+                } => {
+                    assert!(capacity_before < 3);
+                    assert_eq!(
+                        fact.reason(),
+                        &OrdinaryGrowthRefusalReason::MarketUnresolved {
+                            granted: capacity_before
+                        }
+                    );
+                    assert_eq!(fact.candidate().quantity(), 3);
+                    assert!(
+                        refused[index].insert(fact.candidate().grantee()),
+                        "a refused instance never retries"
+                    );
+                    assert!(!session.proto.root.contains_id(fact.candidate().grantee()));
+                    assert!(session
+                        .proto
+                        .allocator
+                        .slot_of(fact.candidate().grantee())
+                        .is_none());
+                    assert!(session
+                        .proto
+                        .allocator
+                        .committed_residency_placement(root, fact.candidate().grantee())
+                        .is_none());
+                    println!("FLEET_REFUSAL generation={generation} faction={index} fact={fact:?}");
+                }
+                _ => unreachable!(),
+            }
+        }
+        cursor = session.proto.delta_log().len();
+        let stocks = stock_snapshot(&session, &profile, "fleet-refusal");
+        for (index, owner, site, mineral0, energy0) in [
+            (0, "terran", "A1", 20.0, 10.0),
+            (1, "pirate", "E1", 14.0, 8.0),
+        ] {
+            assert_eq!(
+                born[index].len() + refused[index].len(),
+                funded[index],
+                "each prior funded unit has exactly one explicit birth/refusal disposition"
+            );
+            let made = if alloy[index] >= 6.0 && work[index] >= 4.0 {
+                1.0
+            } else {
+                0.0
+            };
+            alloy[index] += 1.0 - 6.0 * made;
+            work[index] += 1.0 - 4.0 * made;
+            funded[index] += made as usize;
+            assert_eq!(stocks[2 + index * 2], mineral0 + generation as f32);
+            assert_eq!(
+                stocks[3 + index * 2],
+                alloy[index],
+                "exact debit persists on refusal; no fabricated refund"
+            );
+            assert_eq!(
+                energy_cell(&session, &profile, &format!("{owner}_refinery"), "balance"),
+                energy0
+            );
+            assert_eq!(
+                energy_cell(&session, &profile, &format!("{owner}_shipyard"), "balance"),
+                work[index]
+            );
+            let receipt = observe_hosted_property_cell(
+                &session.proto.registry,
+                &session.proto.allocator,
+                &AnchorTableSnapshot::from_session(&session),
+                profile.install_targets[site][0],
+                &PropertyKey::new("meridian_material", format!("{site}_corvette_quantity")),
+                &SubFieldRole::Amount,
+            )
+            .unwrap();
+            assert_eq!(receipt, funded[index] as f32);
+            for &id in &refused[index] {
+                assert!(!session.proto.root.contains_id(id));
+                assert!(session
+                    .proto
+                    .allocator
+                    .committed_residency_placement(root, id)
+                    .is_none());
+            }
+            println!("FLEET_DISPOSITION generation={generation} owner={owner} funded_receipt={receipt} born={} refused={} pending={made} alloys={} energy_work={}",
+                born[index].len(), refused[index].len(), alloy[index], work[index]);
+        }
+        let total_born = born.iter().map(Vec::len).sum::<usize>();
+        assert_eq!(
+            session.proto.allocator.live_count(),
+            initial_live + 3 * total_born
+        );
+        assert_eq!(
+            session.proto.allocator.growth_capacity_available(root),
+            initial_capacity - 3 * total_born as u32
+        );
+    }
+    assert!(born.iter().all(|v| !v.is_empty()));
+    assert!(
+        refused.iter().all(|v| !v.is_empty()),
+        "both factions encounter explicit funded refusals"
+    );
 }
 
 /// The first post-birth economy floor: a genuinely born fleet carrying the
@@ -1141,4 +1944,69 @@ fn rehearsal_economy_fleet_born_energy_upkeep_participates_in_resource_flow() {
         failures.is_empty(),
         "2.2 STOP: native born properties do not enter ongoing RF upkeep: {failures:#?}"
     );
+    fleet_alloy_stock_ingress();
+}
+
+/// Admission checkpoint for the full alloy-upkeep composition, not a claim to
+/// have executed upkeep. Keep one authored alloy Balance as both the refinery
+/// target and shipyard input. Canonical input loci already admit this shape;
+/// the native output door must reach the same existing stock without a second
+/// generated quantity, a spec patch, or a test-side transfer/credit authority.
+fn fleet_alloy_stock_ingress() {
+    let mut text = funded_output_source();
+    let declaration = "      id = corvette_hull";
+    assert_eq!(text.matches(declaration).count(), 1);
+    text = text.replace(
+        declaration,
+        r#"      id = meridian_alloys
+      namespace = meridian
+      name = alloys
+      sub_field = { role = balance_rate }
+      sub_field = { role = balance governed_by = balance_rate accumulator = Balance }
+    } property = {
+      id = corvette_hull"#,
+    );
+    for (site, initial) in [("A1", 4), ("E1", 3)] {
+        let old_stock = format!("property_value = {{ property = \"meridian_material::{site}_alloys_quantity\" Amount = {initial} }}");
+        assert_eq!(text.matches(&old_stock).count(), 1);
+        text = text.replace(&old_stock, &format!("property_value = {{ property = \"meridian::alloys\" balance_rate = 0 balance = {initial} }}"));
+        text = text.replacen("input = { resource = alloys amount = 6 }",
+            &format!("input = {{ entity = {site} property = \"meridian::alloys\" role = balance amount = 6 }}"), 1);
+        text = text.replacen("output = { resource = alloys coefficient = @refinery_output }",
+            &format!("output = {{ entity = {site} property = \"meridian::alloys\" role = balance coefficient = @refinery_output }}"), 1);
+    }
+    assert_eq!(
+        text.matches("role = balance coefficient = @refinery_output")
+            .count(),
+        2
+    );
+    println!(
+        "ALLOY_STOCK_INGRESS_SOURCE identity={}\n{text}\nALLOY_STOCK_INGRESS_SOURCE_END",
+        clause_source_content_identity(text.as_bytes())
+    );
+    let directory = variant(&text);
+    let result = ingest_clause_scenario_path(&directory.path().join("stellaristhing_base.clause"),
+        &ClauseScenarioIngestOptions::default()).unwrap_or_else(|error| panic!(
+            "2.2 STOP: canonical refinery output cannot target the existing sole alloy Balance through native authoring; full 0.2-alloy upkeep remains unexecuted: {error:?}"));
+    let economy = result.pack.game_mode.resource_economy.as_ref().unwrap();
+    for (owner, site) in [("terran", "A1"), ("pirate", "E1")] {
+        let recipe = economy
+            .recipes
+            .iter()
+            .find(|r| r.id.ends_with(&format!("{owner}_refining")))
+            .unwrap();
+        assert_eq!(recipe.target, PropertyKey::new("meridian", "alloys"));
+        assert_eq!(recipe.target_role, SubFieldRole::Named("balance".into()));
+        assert_eq!(recipe.target_host_entity.as_deref(), Some(site));
+        assert_eq!(recipe.output_coefficient, 1.0);
+        let funding = economy
+            .recipes
+            .iter()
+            .find(|r| r.id.ends_with(&format!("{owner}_corvette_funding")))
+            .unwrap();
+        assert!(funding.inputs.iter().any(|i| i.property == recipe.target
+            && i.role == recipe.target_role
+            && i.host_entity == recipe.target_host_entity
+            && i.unit_cost == 6.0));
+    }
 }
