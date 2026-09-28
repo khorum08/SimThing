@@ -150,7 +150,7 @@ if str(reach_log).endswith("anchor_reach_log.tsv") and not reach_log.parent.exis
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
 from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
-from anchor_text import MAX_ANCHOR_BYTES, enclosing_unit, extract, foundation_stamp, normalize_text  # noqa: E402
+from anchor_text import GREP_BUDGET_BYTES, enclosing_unit, extract, foundation_stamp, normalize_text  # noqa: E402
 
 LOCATION_LIMIT = 50
 
@@ -292,7 +292,7 @@ def emit_grep(ids, located, rows_by_id):
     # One `/anchor` reply's worth of text per query: anchors first (they carry the hashes an
     # ACK needs), then unanchored units. Whatever does not fit is listed by location, never
     # silently dropped, and an anchor never exceeds the budget, so `--domain <id>` shows it.
-    budget = MAX_ANCHOR_BYTES
+    budget = GREP_BUDGET_BYTES
     print(f"ANCHOR-QUERY-VERDICT: PASS ids={len(ids)} located={len(located)}")
     print(f"anchors: {','.join(ids) if ids else 'none'}")
     if any("foundation" in rows_by_id[aid]["domains"] for aid in ids):
@@ -313,7 +313,7 @@ def emit_grep(ids, located, rows_by_id):
             print(meta["text"].rstrip())
             budget -= size
         else:
-            print(f"(text past this query's {MAX_ANCHOR_BYTES}-byte budget: `--domain {aid}` shows it)")
+            print(f"(text past this query's {GREP_BUDGET_BYTES}-byte budget: `--domain {aid}` shows it)")
         print("")
     overflow = []
     for doc, line_no, unit in located:
@@ -326,7 +326,7 @@ def emit_grep(ids, located, rows_by_id):
         else:
             overflow.append(f"{doc}:{line_no}  {unit.splitlines()[0][:100]}")
     if overflow:
-        print(f"--- {len(overflow)} more unanchored matches past the {MAX_ANCHOR_BYTES}-byte budget ---")
+        print(f"--- {len(overflow)} more unanchored matches past the {GREP_BUDGET_BYTES}-byte budget ---")
         for where in overflow[:LOCATION_LIMIT]:
             print(where)
         if len(overflow) > LOCATION_LIMIT:

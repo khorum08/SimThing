@@ -91,7 +91,7 @@ bash_bin = os.environ.get("ANCHOR_BASH", "bash")
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
 from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
-from anchor_text import MAX_ANCHOR_BYTES, extract, normalize_text  # noqa: E402
+from anchor_text import ANCHOR_REPLY_BYTES, extract, normalize_text  # noqa: E402
 CANONIZATION_RUNG = "CORE-CANONIZATION-0"
 
 
@@ -105,8 +105,6 @@ def fail(msg):
         remedy = " remedy=bash scripts/ci/anchor_check.sh --resync"
     elif msg in ("missing-anchor", "orphaned-anchor"):
         remedy = " remedy=repair doctrine_anchors.tsv section target or run bash scripts/ci/anchor_check.sh --resync"
-    elif msg == "anchor-over-budget":
-        remedy = f" remedy=narrow the section to a subsection heading or row:<RUNG-ID> (cap {MAX_ANCHOR_BYTES} bytes)"
     elif msg == "foundation-drift":
         remedy = (" remedy=the 0.0.8.7 foundation is Owner-pinned in scripts/ci/foundation_anchors.tsv; "
                   "restore the pinned rows, or change the pin only on an Owner ruling")
@@ -176,10 +174,6 @@ def live_hashes(rows):
             text = extract_text(row["doc"], row["section"])
         except (FileNotFoundError, KeyError, ValueError):
             fail("missing-anchor")
-        size = len(text.encode("utf-8"))
-        if size > MAX_ANCHOR_BYTES:
-            print(f"ANCHOR-OVER-BUDGET: anchor_id={row['anchor_id']} bytes={size} max={MAX_ANCHOR_BYTES}")
-            fail("anchor-over-budget")
         live = hashlib.sha256(text.encode("utf-8")).hexdigest()
         out[row["anchor_id"]] = {
             "live_hash": live,
@@ -459,6 +453,15 @@ if mode == "check":
         print(f"ANCHOR-FOUNDATION-DRIFT: {problem}")
     if drift:
         fail("foundation-drift")
+    # SIZE is advisory, never admission (Owner, 2026-09-28): an anchor over one /anchor reply is
+    # paged, never narrowed, but it is reported on every check so a whole-ladder landmine can
+    # never return unannounced, and foundation growth is always in view.
+    for aid, meta in sorted(state.items()):
+        size = len(meta["text"].encode("utf-8"))
+        if size > ANCHOR_REPLY_BYTES:
+            print(f"ANCHOR-SIZE: INSPECT anchor_id={aid} bytes={size} (over one /anchor reply of {ANCHOR_REPLY_BYTES}; paged, never narrowed)")
+    foundation = [meta for meta in state.values() if "foundation" in meta["domains"]]
+    print(f"ANCHOR-FOUNDATION-SIZE: anchors={len(foundation)} bytes={sum(len(m['text'].encode('utf-8')) for m in foundation)}")
     # COVERAGE, not integrity. Everything above verifies that rows which EXIST
     # still point at live headings with unchanged hashes. Nothing asked whether
     # doctrine exists that NO row points at -- and the anchor library was a
@@ -598,7 +601,7 @@ import os
 import sys
 
 sys.path.insert(0, os.environ["ANCHOR_CI_DIR"])
-from anchor_text import MAX_ANCHOR_BYTES, enclosing_unit, heading_section, intro_section, row_section
+from anchor_text import GREP_BUDGET_BYTES, enclosing_unit, heading_section, intro_section, row_section
 
 doc = """# Title
 Preamble.
@@ -625,7 +628,7 @@ checks = {
     "unit_of_a_row_match_is_the_row": enclosing_unit(doc, 14) == "| 2 | `R-TWO-0` | open |\n",
     "unit_of_a_prose_match_is_its_smallest_section": enclosing_unit(doc, 5) == "### A.1\na1 body\n#### A.1.1\ndeep\n",
 }
-big = ["## Big", "x" * MAX_ANCHOR_BYTES, "", "first", "needle here", "", "tail"]
+big = ["## Big", "x" * GREP_BUDGET_BYTES, "", "first", "needle here", "", "tail"]
 checks["unit_in_an_oversized_section_is_its_paragraph"] = enclosing_unit(big, 4) == "first\nneedle here\n"
 try:
     row_section(doc, "R-ABSENT-0")
@@ -640,31 +643,37 @@ PY
   # Count passes, not failures: a crash before any output must not read as green.
   SELFTEST_FAILURES=$((SELFTEST_FAILURES + 9 - $(printf '%s\n' "$out" | grep -c '^PASS' || true)))
 
+  # Size is advisory: an anchor over one /anchor reply is admitted and reported, never refused.
+  local big_hash
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-budget-XXXXXX")"
   mkdir -p "$tmp/docs"
-  ANCHOR_CI_DIR="$SCRIPT_DIR" "$PYTHON_BIN" - "$tmp/docs/big.md" <<'PY'
+  big_hash="$(ANCHOR_CI_DIR="$SCRIPT_DIR" "$PYTHON_BIN" - "$tmp/docs/big.md" <<'PY'
+import hashlib
 import os
+import pathlib
 import sys
 
 sys.path.insert(0, os.environ["ANCHOR_CI_DIR"])
-from anchor_text import MAX_ANCHOR_BYTES
+from anchor_text import ANCHOR_REPLY_BYTES, extract
 
 with open(sys.argv[1], "w", encoding="utf-8", newline="\n") as fh:
-    fh.write("## Big\n" + "x" * MAX_ANCHOR_BYTES + "\n")
+    fh.write("## Big\n" + "x" * ANCHOR_REPLY_BYTES + "\n")
+print(hashlib.sha256(extract(pathlib.Path(sys.argv[1]), "heading:## Big").encode("utf-8")).hexdigest())
 PY
+)"
   printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\tlifecycle\n' >"$tmp/doctrine_anchors.tsv"
-  printf 'big-anchor\tdocs/big.md\theading:## Big\ttest-domain\t0000000000000000000000000000000000000000000000000000000000000000\tcanonical\n' >>"$tmp/doctrine_anchors.tsv"
+  printf 'big-anchor\tdocs/big.md\theading:## Big\ttest-domain\t%s\tcanonical\n' "$big_hash" >>"$tmp/doctrine_anchors.tsv"
   FIXTURE_DIR="$tmp"
   export FIXTURE_DIR
   out="$(run_python check 2>&1 || true)"
   FIXTURE_DIR=""
   unset FIXTURE_DIR
   rm -rf "$tmp"
-  if printf '%s\n' "$out" | grep -q 'ANCHOR-OVER-BUDGET: anchor_id=big-anchor' \
-      && printf '%s\n' "$out" | grep -q 'ANCHOR-CHECK-VERDICT: FAIL(anchor-over-budget)'; then
-    echo "PASS extract_over_budget_refused"
+  if printf '%s\n' "$out" | grep -q 'ANCHOR-SIZE: INSPECT anchor_id=big-anchor' \
+      && printf '%s\n' "$out" | grep -q 'ANCHOR-CHECK-VERDICT: PASS'; then
+    echo "PASS extract_over_reply_is_advisory"
   else
-    echo "FAIL extract_over_budget_refused"; echo "  got: $out"
+    echo "FAIL extract_over_reply_is_advisory"; echo "  got: $out"
     SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
   fi
 }
