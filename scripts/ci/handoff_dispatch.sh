@@ -14,7 +14,7 @@ usage() {
   cat <<'EOF'
 usage:
   bash scripts/ci/handoff_dispatch.sh --lint <handoff-file>
-  bash scripts/ci/handoff_dispatch.sh --render coding|orchestrator|da <handoff-file>
+  bash scripts/ci/handoff_dispatch.sh --render coding|orchestrator|da <handoff-file> [--page N [--page-size BYTES]]
   bash scripts/ci/handoff_dispatch.sh --render-ingress <pr-number> <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --receipt <handoff-file>
   bash scripts/ci/handoff_dispatch.sh --board-json [<handoff-file>]
@@ -755,12 +755,26 @@ def command_receipt(path):
     return 0
 
 
-def command_render(role, path):
+def command_render(role, path, page=None, page_size=None):
     try:
         obj = parse_handoff(Path(path))
-        sys.stdout.write(render_projection(role, obj))
+        text = render_projection(role, obj)
     except HDError as exc:
         return fail(exc.detail)
+    if page is None:
+        sys.stdout.write(text)
+        return 0
+    # A coding projection can outgrow one tool call (Codex keeps 10,000 bytes): read it in
+    # verbatim pages through the one page protocol (pager.py).
+    sys.path.insert(0, str(ROOT / "scripts" / "ci"))
+    import pager
+
+    try:
+        out, _, _ = pager.render_page(text, page, page_size or pager.PAGE_BYTES,
+                                      f"handoff_dispatch --render {role} {Path(path).name}")
+    except pager.PageError as exc:
+        return fail(f"page: {exc}")
+    sys.stdout.write(out)
     return 0
 
 
@@ -1206,6 +1220,27 @@ def command_selftest():
     check("projections-byte-stable", stable)
     check("projection-receipt-equality", len(set(receipts)) == 1 and receipts[0])
 
+    # Paged projections (the one page protocol, pager.py): small pages frame every page and
+    # joining their bodies gives back the projection byte for byte.
+    whole = run_cmd([bash_cmd, script_arg, "--render", "coding", valid_arg]).stdout.replace("\r\n", "\n")
+    bodies, total, page_ok = [], None, True
+    for k in range(1, 50):
+        paged = run_cmd([bash_cmd, script_arg, "--render", "coding", valid_arg, "--page", str(k), "--page-size", "1200"])
+        lines = paged.stdout.replace("\r\n", "\n").split("\n")
+        match = re.match(r"PAGE (\d+)/(\d+) \. ", lines[0]) if paged.returncode == 0 else None
+        if not match:
+            page_ok = False
+            break
+        total = int(match.group(2))
+        end = next(i for i, line in enumerate(lines) if line.startswith(f"PAGE-END {k}/{total} sha="))
+        cut = lines[end].endswith("the last line continues on the next page")
+        bodies.append("\n".join(lines[1:end]) + ("" if cut else "\n"))
+        page_ok = page_ok and len(paged.stdout.encode("utf-8")) <= 1200
+        if k == total:
+            break
+    check("projection-pages-lossless-and-framed",
+          page_ok and total is not None and total > 1 and "".join(bodies) == whole)
+
     # Directive render is proven against a FIXTURE table via HD_OWNER_DIRECTIVES,
     # not the live owner_directives.tsv: live directives legitimately move in and
     # out (HD-9 park/redirect relocates track-scoped rows), so asserting live text
@@ -1567,9 +1602,13 @@ if MODE == "--current-handoff":
         sys.exit(2)
     sys.exit(command_current_handoff())
 if MODE == "--render":
-    if len(ARGS) != 2:
+    flags = dict(zip(ARGS[2::2], ARGS[3::2]))
+    if len(ARGS) < 2 or len(ARGS) % 2 or set(flags) - {"--page", "--page-size"} \
+            or not all(v.isdigit() for v in flags.values()):
         sys.exit(2)
-    sys.exit(command_render(ARGS[0], ARGS[1]))
+    sys.exit(command_render(ARGS[0], ARGS[1],
+                            int(flags["--page"]) if "--page" in flags else None,
+                            int(flags["--page-size"]) if "--page-size" in flags else None))
 if MODE == "--render-ingress":
     if len(ARGS) != 2:
         sys.exit(2)

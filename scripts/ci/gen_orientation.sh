@@ -2867,7 +2867,7 @@ def render_orientation(active_info: dict) -> tuple:
     "",
     "**Binding on every agent in every role, before any simulation work (Owner, 2026-09-28).** Everything in simulation authority is a SimThing: one recursive germ from the SessionThing root to every leaf, whose participate / act / originate / receive anatomy, StemThing lanes, EML organ and RF/STEAD/PALMA/Gu-Yang Field Triad are intrinsic. All conflict enters one cycle and clears through resource flow; there is no combat engine, economy engine, AI planner, allocator service, or second clearing path beside it.",
     "",
-    "Read the whole foundation first: `bash scripts/ci/anchor_query.sh --domain foundation` (webchat: every section pinned in `scripts/ci/foundation_anchors.tsv`). It is required reading on every path, and work that departs from it is drift and a STOP.",
+    "Read the whole foundation first, page by page: `bash scripts/ci/anchor_query.sh --domain foundation --page 0` maps it, then `--page 1` onward to `END` (webchat: every section pinned in `scripts/ci/foundation_anchors.tsv`). It is required reading on every path, and work that departs from it is drift and a STOP.",
     "",
     f"Every relay ACKs it in one line: `ANCHOR-ACK: foundation@{foundation_ack}`. The stamp binds every foundation hash, so it goes stale on any foundation edit.",
     "",
