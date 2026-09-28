@@ -109,8 +109,9 @@ Pointers only — resolve verbatim doctrine via `anchor_query.sh`; do not raw-gr
 - Founding ontology §0.3 (all conflict is resource flow) → `founding-ontology-invariants`
 - Invariants registry → `docs/invariants.md` (via `founding-ontology-invariants`)
 - Drift detectors §9 → `drift-detectors-six-line` (`bash scripts/ci/anchor_query.sh --domain drift-detectors`)
-- Doctrine lookup entrypoint: `bash scripts/ci/anchor_query.sh --domain <d|anchor_id> --paths <files...> --grep <term[|term]>` (grep searches every anchored doc in full; a match outside anchors renders as its row or section)
+- Doctrine lookup entrypoint: `bash scripts/ci/anchor_query.sh --domain <d|anchor_id> --paths <files...> --grep <term[|term]>` (grep searches every anchored doc; renders the matching row or section)
 - Cold-start receipt: `bash scripts/ci/orient.sh --role=coding|orchestrator|da` → carry `ORIENT-RECEIPT`
+- Live state: the SimThing Board **body** (the one open issue so titled): state plus newest comments by ID; never read a whole thread
 
 ## Clearance Router Verdict Meanings
 

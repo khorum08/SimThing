@@ -23,9 +23,9 @@
    operating mechanics (§2), parked inventory (§3), and closed questions (§4) by reference.
 4. The live status ledger
    ([`design_0_0_8_0_consumer_pulled_production_track.md`](design_0_0_8_0_consumer_pulled_production_track.md))
-   + the one test report for your slice. **Active track:**
-   [`design_0_0_8_6_studio_live_ops.md`](design_0_0_8_6_studio_live_ops.md)
-   (`STUDIO-SIM-CLOCK-UI-0`). No live `docs/todo.md` (archived workshop todos are not authority).
+   + the one test report for your slice. **Active track and rung:** the ones `orient.sh` names and
+   the SimThing Board body shows (the one open issue titled `SimThing Board`); this file never
+   hard-codes them. No live `docs/todo.md` (archived workshop todos are not authority).
 5. **If your task is in the ClauseScript / MapThing / MapGenerator vertical** (now CLOSED):
    start at [`clausething/ClauseThingDoc.md`](clausething/ClauseThingDoc.md) (clearinghouse:
    concepts/practices/APIs) and [`adr/ClauseThingADR.md`](adr/ClauseThingADR.md) (decisions).
@@ -135,10 +135,10 @@ Every PR and push runs the free GitHub **Doctrine Scan** (~1 min: self-test → 
   production/kernel/gate-wiring; relax for policy/stamps. Full ritual: [`agent_onboarding.md`](agent_onboarding.md).
 - **Inner loop:** `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh`. Whole-tree
   `doctrine_scan.sh` = CI/maintainer only.
-- **Cold start:** `bash scripts/ci/orient.sh --role=coding` once; carry `ORIENT-RECEIPT`.
+- **Cold start:** `bash scripts/ci/orient.sh --role=coding --page 1`, page by page to END; carry `ORIENT-RECEIPT` (its 0.0.8.7 Foundation binds all work).
 - **Handoffs (HD):** work arrives as a repo object rendered per role —
-  `bash scripts/ci/handoff_dispatch.sh --render <coding|orchestrator|da> handoffs/<RUNG>.hd.md`; obey
-  BUILD/FENCES/EXIT-PROOF, quote `HD-RECEIPT`. Schema: `handoff_template.md`; protocol/board: `agent_onboarding.md`.
+  `bash scripts/ci/handoff_dispatch.sh --render <coding|orchestrator|da> handoffs/<RUNG>.hd.md --page 1`; obey
+  BUILD/FENCES/EXIT-PROOF, quote `HD-RECEIPT`. Schema: `handoff_template.md`; protocol/board: `agent_onboarding.md`. Live state: the SimThing Board body (the one open issue titled `SimThing Board`), never a whole thread.
 - **Doctrine lookup:** `bash scripts/ci/anchor_query.sh` (not raw greps); anchored edits →
   `anchor_check.sh --resync`.
 - **Clearance intake:** auto-posted **Clearance Report** sticky; `/clearance` exceptional.

@@ -944,3 +944,33 @@ jobs:
         run: |
           bash scripts/ci/doctrine_exec_anchor_comment.sh \
             "${{ needs.parse-command.outputs.pr_number }}" anchor-report.txt
+
+  # The Board keeps itself live and bounded: every comment on it (or on a rolled Board)
+  # refreshes the body's newest-comment index, and past the roll point the Board rolls to a
+  # fresh issue before GitHub's 2,500-comment cap (board_sync.sh --roll). One run at a time,
+  # so a Board can never roll twice; the comment text is never executed.
+  board:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request == null &&
+      startsWith(github.event.issue.title, 'SimThing Board')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    concurrency:
+      group: simthing-board
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync the Board and roll it when due
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          handoff="$(bash scripts/ci/handoff_dispatch.sh --current-handoff 2>/dev/null || true)"
+          bash scripts/ci/board_sync.sh --roll "$handoff"

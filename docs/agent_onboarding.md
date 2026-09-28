@@ -39,7 +39,7 @@ that same session carry the existing receipt unless governance moved.
 Decomposes DA handoffs into rungs, verifies coding-agent work against the tree, routes clearance, runs triage.
 
 - **Cold start:** `/orient role=orchestrator` on the open PR in hand: that one reply is the role-filtered orientation plus the `ORIENT-RECEIPT`.
-  Do not also read `docs/orchestrator_orientation.md` (same content twice); with no PR open, read it at head instead. Live state = the SimThing Board issue **body**, never its thread.
+  Do not also read `docs/orchestrator_orientation.md` (same content twice); with no PR open, read it at head instead. Live state = the Board's **body**: state plus the newest comments by ID (open those, never a whole thread); the live Board is the one open issue titled `SimThing Board`.
 - **Track selection:** local operators use `bash scripts/ci/gen_orientation.sh --open <track.md>` to open/create
   or realign the active orchestration track; `/orient` and `orient.sh` emit orientation only.
 - **You hand it:** the DA's authorization/handoff for a track or rung.
@@ -117,8 +117,8 @@ The executive design authority. Reviews escalations, graduates or remands, autho
 ## HD Board — dispatch prompting & handoff lifecycle (operator protocol)
 
 Owner workplan authoring/revision, the open/park/close lifecycle (`--park`/`--unpark`, HD-6 pointer gate), and the manual-vs-automated progression modes are in [`owner_authoring_guide.md`](owner_authoring_guide.md). Handoffs are repo objects (`handoffs/<RUNG-ID>.hd.md`), never chat paste. The live view is the
-**SimThing Board issue** (auto-synced every clearance run: pointer, current handoff + receipt, open
-PRs with routes, every rung's exit-proof state). Check the board, not a local file.
+**SimThing Board issue** (synced on every clearance run and Board comment: pointer, current handoff + receipt, open
+PRs with routes, every rung's exit-proof state, the newest comments by ID). Check the board, not a local file. It rolls to a fresh issue at 1,500 comments (GitHub caps an issue at 2,500): post to the one open issue titled `SimThing Board`; every comment ID stays valid.
 
 - **Prompt protocol (per handoff) — pointers, not payloads:** each tier's ingress line lives in its
   section above; the orchestrator (scribe) authors/merges the `.hd` with `owner_approved` on your word, then each agent renders its own projection.

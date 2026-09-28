@@ -51,3 +51,4 @@ scripts/ci/pager.py
 scripts/ci/test_inventory_check.sh
 scripts/ci/test_inventory_drift_check.sh
 scripts/ci/handoff_dispatch.sh
+scripts/ci/board_sync.sh

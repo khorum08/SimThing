@@ -1025,20 +1025,47 @@ def command_board_issue_target(path):
         # An empty open-issues read is never evidence that the board is missing:
         # creating on one is how duplicate boards #2023/#2024 were born (2026-09-09).
         return fail("board-issues-empty-read")
-    matches = [
+    def number(item):
+        return int(item.get("number") or 0)
+
+    def trusted(item):
+        # This repository is public: anyone can open an issue with any title and body. A Board
+        # is one the Board's writer (the Actions bot) or a collaborator opened.
+        return ((item.get("user") or {}).get("login") == "github-actions[bot]"
+                or item.get("author_association") in ("OWNER", "MEMBER", "COLLABORATOR"))
+
+    titled = [
         item for item in data
         if isinstance(item, dict)
         and item.get("title") == "SimThing Board"
         and not item.get("pull_request")
     ]
+    ignored = sorted(number(item) for item in titled if not trusted(item))
+    if ignored:
+        print(
+            "HD-LINT-NOTE: untrusted-board-issues "
+            + ",".join(f"#{n}" for n in ignored)
+            + " (ignored: not opened by the Actions bot or a collaborator)",
+            file=sys.stderr,
+        )
+    matches = [item for item in titled if trusted(item)]
     if not matches:
         print("create")
         return 0
-    # Duplicates are a nuisance, never a reason to stop mirroring. The oldest board is
-    # canonical (every later one was created by a bad read); name the strays on stderr
-    # so the caller can surface them in the board it still writes.
-    canonical = min(matches, key=lambda item: int(item.get("number") or 0))
-    strays = sorted(int(item.get("number") or 0) for item in matches if item is not canonical)
+
+    def predecessor(item):
+        found = re.search(r"(?m)^- predecessor: #(\d+) \(rolled ", item.get("body") or "")
+        return int(found.group(1)) if found else None
+
+    # A Board that rolled is named by its successor (`- predecessor: #N`, board_sync.sh), and
+    # successors outrank every other board: the newest one is live. With none open, the oldest
+    # board is canonical (every later one was created by a bad read). Duplicates are a nuisance,
+    # never a reason to stop mirroring: name the strays on stderr so the caller can surface them
+    # in the board it still writes. A named predecessor finishing its roll is not a stray.
+    successors = [item for item in matches if predecessor(item) is not None]
+    canonical = max(successors, key=number) if successors else min(matches, key=number)
+    rolling = {predecessor(item) for item in successors}
+    strays = sorted(number(item) for item in matches if item is not canonical and number(item) not in rolling)
     if strays:
         print(
             "HD-LINT-NOTE: duplicate-board-issues "
@@ -1463,11 +1490,11 @@ stop_conditions: ["scope-widening"]
         check("resolve-no-rung-plain-pr-no-ingress", plain_pr.returncode == 0 and plain_pr.stdout.strip() == "")
 
         issues = Path(tmp) / "issues.json"
-        write(issues, '[{"number":7,"title":"SimThing Board"}]\n')
+        write(issues, '[{"number":7,"title":"SimThing Board","user":{"login":"github-actions[bot]"}}]\n')
         target = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
         check("board-issue-single-update", target.returncode == 0 and target.stdout.strip() == "update 7")
 
-        write(issues, '[{"number":8,"title":"SimThing Board"},{"number":7,"title":"SimThing Board"}]\n')
+        write(issues, '[{"number":8,"title":"SimThing Board","user":{"login":"github-actions[bot]"}},{"number":7,"title":"SimThing Board","user":{"login":"github-actions[bot]"}}]\n')
         dup = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
         check(
             "board-issue-duplicate-writes-oldest",
@@ -1487,6 +1514,36 @@ stop_conditions: ["scope-widening"]
         write(issues, '[{"number":3,"title":"Unrelated issue"}]\n')
         fresh = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
         check("board-issue-absent-creates", fresh.returncode == 0 and fresh.stdout.strip() == "create")
+
+        def board(number, predecessor=None, login="github-actions[bot]", association="CONTRIBUTOR"):
+            body = "## SimThing Board\n"
+            if predecessor:
+                body += f"\n- predecessor: #{predecessor} (rolled 2026-09-28T20:00:00Z at 1671 comments)\n"
+            return {"number": number, "title": "SimThing Board", "body": body,
+                    "user": {"login": login}, "author_association": association}
+
+        write(issues, json.dumps([board(1332), board(2023), board(2100, 1332)]) + "\n")
+        rolled = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+        check(
+            "board-issue-successor-is-live-and-strays-never-win",
+            rolled.returncode == 0
+            and rolled.stdout.strip() == "update 2100"
+            and "duplicate-board-issues #2023 (writing canonical #2100" in rolled.stderr,
+        )
+        write(issues, json.dumps([board(2100, 1332), board(2150, 2100, "khorum08", "OWNER")]) + "\n")
+        chained = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+        check(
+            "board-issue-newest-successor-wins-quietly",
+            chained.returncode == 0 and chained.stdout.strip() == "update 2150" and "duplicate" not in chained.stderr,
+        )
+        write(issues, json.dumps([board(1332), board(2200, 1332, "stranger", "CONTRIBUTOR")]) + "\n")
+        forged = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
+        check(
+            "board-issue-forged-successor-is-ignored",
+            forged.returncode == 0
+            and forged.stdout.strip() == "update 1332"
+            and "untrusted-board-issues #2200" in forged.stderr,
+        )
 
         loose = Path(tmp) / "loose-design.md"
         loose.write_bytes(b"| 2.2 | `R-0` | merged #1 @ abc |")
@@ -1508,7 +1565,7 @@ stop_conditions: ["scope-widening"]
             and track_id_from_doc_name("docs/notes.md") == "",
         )
 
-        write(issues, '[[{"number":7,"title":"SimThing Board"}],[]]\n')
+        write(issues, '[[{"number":7,"title":"SimThing Board","user":{"login":"github-actions[bot]"}}],[]]\n')
         paged = run_cmd([bash_cmd, script_arg, "--board-issue-target", str(issues)])
         check("board-issue-paginated-update", paged.returncode == 0 and paged.stdout.strip() == "update 7")
 
