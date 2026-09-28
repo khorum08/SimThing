@@ -107,6 +107,9 @@ def fail(msg):
         remedy = " remedy=repair doctrine_anchors.tsv section target or run bash scripts/ci/anchor_check.sh --resync"
     elif msg == "anchor-over-budget":
         remedy = f" remedy=narrow the section to a subsection heading or row:<RUNG-ID> (cap {MAX_ANCHOR_BYTES} bytes)"
+    elif msg == "foundation-drift":
+        remedy = (" remedy=the 0.0.8.7 foundation is Owner-pinned in scripts/ci/foundation_anchors.tsv; "
+                  "restore the pinned rows, or change the pin only on an Owner ruling")
     print(f"ANCHOR-CHECK-VERDICT: FAIL({msg}){remedy}")
     sys.exit(1 if mode in ("check", "resync", "pending") else 0)
 
@@ -347,6 +350,58 @@ def cmd_resync(rows):
     sys.exit(0)
 
 
+def covers_whole_sections(doc_rel, section):
+    start, end = (int(x) for x in section[len("lines:"):].split("-"))
+    lines = read_normalized(resolve_doc(doc_rel)).splitlines()
+    heading = re.compile(r"#{1,6} ")
+    if start < 1 or end > len(lines) or not heading.match(lines[start - 1]):
+        return False
+    rest = [line for line in lines[end:] if line.strip()]
+    return not rest or bool(heading.match(rest[0]))
+
+
+def foundation_problems(rows):
+    """The 0.0.8.7 foundation is the mold every SimThing implementation conforms to (Owner,
+    2026-09-28). It is data, not code: rows tagged `foundation`, made required on every path by
+    the always-on `**` trigger, and pinned by the Owner in foundation_anchors.tsv. This gate is
+    the pin: no foundation anchor may be dropped, retargeted, narrowed or untagged, and nothing
+    joins the class without the Owner."""
+    ci = pathlib.Path(fixture_dir) if fixture_dir else repo / "scripts" / "ci"
+    pin_path, trigger_path = ci / "foundation_anchors.tsv", ci / "anchor_triggers.tsv"
+    if fixture_dir and not pin_path.is_file():
+        return []  # fixtures without a pin exercise other laws
+    if not trigger_path.is_file():
+        trigger_path = repo / "scripts" / "ci" / "anchor_triggers.tsv"
+    if not pin_path.is_file():
+        return ["foundation_anchors.tsv is missing"]
+    tagged = lambda row: "foundation" in {d.strip() for d in row["trigger_domains"].split(",")}
+    table = {row["anchor_id"]: row for row in rows}
+    with pin_path.open(encoding="utf-8", newline="") as fh:
+        pins = {r["anchor_id"]: r for r in csv.DictReader(fh, delimiter="\t") if r.get("anchor_id")}
+    problems = []
+    for aid, pin in pins.items():
+        row = table.get(aid)
+        if row is None:
+            problems.append(f"{aid} is pinned but missing from doctrine_anchors.tsv")
+        elif (row["doc"], row["section"]) != (pin["doc"], pin["section"]):
+            problems.append(f"{aid} moved from pinned {pin['doc']} {pin['section']}")
+        elif not tagged(row):
+            problems.append(f"{aid} lost the foundation domain")
+        elif pin["section"].startswith("lines:") and not covers_whole_sections(pin["doc"], pin["section"]):
+            # A line range survives a resync after its doc shifts; whole sections do not.
+            problems.append(f"{aid} no longer covers whole sections at {pin['section']} (its doc shifted)")
+    problems += [f"{aid} is tagged foundation without an Owner pin" for aid, row in table.items()
+                 if tagged(row) and aid not in pins]
+    with trigger_path.open(encoding="utf-8", newline="") as fh:
+        always_on = any(
+            (r.get("glob") or "").strip() == "**" and "foundation" in (r.get("trigger_domains") or "").split(",")
+            for r in csv.DictReader(fh, delimiter="\t")
+        )
+    if not always_on:
+        problems.append("anchor_triggers.tsv lost the always-on `**` -> foundation row")
+    return problems
+
+
 def anchor_stamp(state):
     joined = "|".join(
         f"{k}:{state[k]['live_hash']}:{state[k]['lifecycle']}" for k in sorted(state)
@@ -399,6 +454,11 @@ if mode == "check":
         fail("stale-pending")
     if orphaned:
         fail("orphaned-pending")
+    drift = foundation_problems(rows)
+    for problem in drift:
+        print(f"ANCHOR-FOUNDATION-DRIFT: {problem}")
+    if drift:
+        fail("foundation-drift")
     # COVERAGE, not integrity. Everything above verifies that rows which EXIST
     # still point at live headings with unchanged hashes. Nothing asked whether
     # doctrine exists that NO row points at -- and the anchor library was a
@@ -609,6 +669,40 @@ PY
   fi
 }
 
+run_foundation_selftests() {
+  local tmp hash out name domains table_section section trigger want
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-foundation-XXXXXX")"
+  mkdir -p "$tmp/docs"
+  printf '# T\n\n## Found\nThe law.\n\n## Other\nx\n' >"$tmp/docs/sample.md"
+  FIXTURE_DIR="$tmp"
+  export FIXTURE_DIR
+  # case | table domains | table section | pinned section | trigger row (glob:domains) | expected
+  while IFS='|' read -r name domains table_section section trigger want; do
+    hash="$(ANCHOR_CI_DIR="$SCRIPT_DIR" "$PYTHON_BIN" -c 'import hashlib, os, pathlib, sys; sys.path.insert(0, os.environ["ANCHOR_CI_DIR"]); from anchor_text import extract; print(hashlib.sha256(extract(pathlib.Path(sys.argv[1]), sys.argv[2]).encode("utf-8")).hexdigest())' "$tmp/docs/sample.md" "$table_section")"
+    printf 'anchor_id\tdoc\tsection\ttrigger_domains\tcontent_hash\tlifecycle\n' >"$tmp/doctrine_anchors.tsv"
+    printf 'found-anchor\tdocs/sample.md\t%s\t%s\t%s\tcanonical\n' "$table_section" "$domains" "$hash" >>"$tmp/doctrine_anchors.tsv"
+    printf 'anchor_id\tdoc\tsection\towner_authority\nfound-anchor\tdocs/sample.md\t%s\tOwner fixture\n' "$section" >"$tmp/foundation_anchors.tsv"
+    printf 'glob\ttrigger_domains\n%s\n' "${trigger/:/$'\t'}" >"$tmp/anchor_triggers.tsv"
+    out="$(run_python check 2>&1 || true)"
+    if grep -qF "ANCHOR-CHECK-VERDICT: ${want}" <<<"$out"; then
+      echo "PASS ${name}"
+    else
+      echo "FAIL ${name}"; echo "  got: $out"
+      SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+    fi
+  done <<'CASES'
+foundation_pinned_and_always_on|foundation,x|heading:## Found|heading:## Found|**:foundation|PASS
+foundation_retarget_refused|foundation,x|heading:## Found|heading:## Other|**:foundation|FAIL(foundation-drift)
+foundation_untag_refused|x|heading:## Found|heading:## Found|**:foundation|FAIL(foundation-drift)
+foundation_trigger_loss_refused|foundation,x|heading:## Found|heading:## Found|crates/**:x|FAIL(foundation-drift)
+foundation_line_range_whole_sections|foundation,x|lines:3-4|lines:3-4|**:foundation|PASS
+foundation_line_range_shift_refused|foundation,x|lines:4-5|lines:4-5|**:foundation|FAIL(foundation-drift)
+CASES
+  FIXTURE_DIR=""
+  unset FIXTURE_DIR
+  rm -rf "$tmp"
+}
+
 run_pending_selftests() {
   local tmp hash out rc
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/anchor-pending-XXXXXX")"
@@ -744,7 +838,8 @@ run_selftest() {
   run_resync_selftests
   run_pending_selftests
   run_extract_selftests
-  local total=$((${#fixtures[@]} + 17))
+  run_foundation_selftests
+  local total=$((${#fixtures[@]} + 23))
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
     echo "ANCHOR-CHECK-SELFTEST: PASS (${total} fixtures)"
     return 0
