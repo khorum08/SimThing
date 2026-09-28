@@ -12,17 +12,20 @@ Section specs (the `section` column of doctrine_anchors.tsv):
   row:<ID>           the one markdown table row that has a cell reading `ID` (a ladder rung).
   lines:<a>-<b>      a fixed line range. It is fragile under edits; prefer the ones above.
 
-An anchor is a bounded citation, not a document. MAX_ANCHOR_BYTES comes from the one physical
-limit in the chain: every anchor must fit a single `/anchor` reply, the orchestrator's only
-channel, and a GitHub comment holds 65,536 characters including the report header. A `--grep`
-renders at most the same amount, so any single anchor always fits one query. Nine anchors once
-cited a whole closed-track ladder, so one query served 365 KB (~92k tokens).
+Anchor size is never an admission rule: no anchor is ever narrowed to fit a number (Owner,
+2026-09-28, sufficiency over size). Two limits remain, and each bounds a render, not a law:
+ANCHOR_REPLY_BYTES is one `/anchor` reply (a GitHub comment holds 65,536 characters including
+the report header), so a larger anchor is paged across several comments and flagged as an
+advisory; GREP_BUDGET_BYTES bounds what one broad `--grep` renders beyond the foundation.
+The advisory keeps the old landmine visible: nine anchors once cited a whole closed-track ladder,
+so one query served 365 KB (~92k tokens).
 """
 import hashlib
 import pathlib
 import re
 
-MAX_ANCHOR_BYTES = 60_000
+ANCHOR_REPLY_BYTES = 60_000
+GREP_BUDGET_BYTES = 60_000
 _HEADING = re.compile(r"(#{1,6}) ")
 
 
@@ -87,7 +90,7 @@ def enclosing_unit(lines, i: int) -> str:
     for j in range(i, -1, -1):
         if _level(lines[j]):
             section = heading_section(lines[j:], lines[j].strip())
-            if len(section.encode("utf-8")) <= MAX_ANCHOR_BYTES:
+            if len(section.encode("utf-8")) <= GREP_BUDGET_BYTES:
                 return section
             break
     start, end = i, i + 1
