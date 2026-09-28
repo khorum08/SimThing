@@ -379,7 +379,8 @@ run_cold_start_spine_role_selftest() {
     fi
     # The foundation is the first thing every role reads, and it says how to read the rest.
     if [[ "$(grep -m1 '^## ' <<<"$out")" != "## Foundation"* ]] \
-        || ! grep -F "anchor_query.sh --domain foundation" >/dev/null <<<"$out"; then
+        || ! grep -F "anchor_query.sh --domain foundation" >/dev/null <<<"$out" \
+        || ! grep -E 'ANCHOR-ACK: foundation@[0-9a-f]{12}' >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_foundation_not_first"
       failures=$((failures + 1))
     fi

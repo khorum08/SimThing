@@ -150,7 +150,7 @@ if str(reach_log).endswith("anchor_reach_log.tsv") and not reach_log.parent.exis
 ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash", "lifecycle"]
 sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
 from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
-from anchor_text import MAX_ANCHOR_BYTES, enclosing_unit, extract, normalize_text  # noqa: E402
+from anchor_text import MAX_ANCHOR_BYTES, enclosing_unit, extract, foundation_stamp, normalize_text  # noqa: E402
 
 LOCATION_LIMIT = 50
 
@@ -275,6 +275,8 @@ def append_reach(query: str, ids, hit: str):
 def emit_hits(ids, rows_by_id):
     print(f"ANCHOR-QUERY-VERDICT: PASS ids={len(ids)}")
     print(f"anchors: {','.join(ids) if ids else 'none'}")
+    if any("foundation" in rows_by_id[aid]["domains"] for aid in ids):
+        print(f"foundation-ack: ANCHOR-ACK: foundation@{FOUNDATION_ACK}")
     for aid in ids:
         meta = rows_by_id[aid]
         print(f"--- {aid} ---")
@@ -293,6 +295,8 @@ def emit_grep(ids, located, rows_by_id):
     budget = MAX_ANCHOR_BYTES
     print(f"ANCHOR-QUERY-VERDICT: PASS ids={len(ids)} located={len(located)}")
     print(f"anchors: {','.join(ids) if ids else 'none'}")
+    if any("foundation" in rows_by_id[aid]["domains"] for aid in ids):
+        print(f"foundation-ack: ANCHOR-ACK: foundation@{FOUNDATION_ACK}")
     for aid in ids:
         meta = rows_by_id[aid]
         print(f"--- {aid} ---")
@@ -334,6 +338,8 @@ by_id = {r["anchor_id"]: r for r in anchors}
 
 
 position = {r["anchor_id"]: i for i, r in enumerate(anchors)}
+# One relay line acknowledges the whole foundation (relay_lint checks the same stamp).
+FOUNDATION_ACK = foundation_stamp({r["anchor_id"]: r["hash"] for r in anchors if "foundation" in r["domains"]})
 
 
 def foundation_first(ids):
@@ -538,6 +544,11 @@ run_selftest() {
   else
     echo "PASS query_grep_budget_bounds_output"
   fi
+  if grep -qE '^foundation-ack: ANCHOR-ACK: foundation@[0-9a-f]{12}$' <<<"$foundation"; then
+    echo "PASS query_foundation_ack_line"
+  else
+    echo "FAIL query_foundation_ack_line"; failures=$((failures+1))
+  fi
   if awk -v ids=" ${foundation_ids} " '/^--- [a-z0-9-]+ ---$/ {id=$2} /^\(text past this query/ && index(ids, " " id " ") {bad=1} END {exit bad}' <<<"$out"; then
     echo "PASS query_grep_never_withholds_foundation"
   else
@@ -644,7 +655,7 @@ sys.exit(0 if (b"\r" not in raw and raw.startswith(b"date\trole\tquery\tanchors_
   rm -rf "$tmp"
   FIXTURE_DIR=""
   if [[ "$failures" -eq 0 ]]; then
-    echo "ANCHOR-QUERY-SELFTEST: PASS (18 fixtures)"
+    echo "ANCHOR-QUERY-SELFTEST: PASS (19 fixtures)"
     return 0
   fi
   echo "ANCHOR-QUERY-SELFTEST: FAIL (${failures} fixtures)"

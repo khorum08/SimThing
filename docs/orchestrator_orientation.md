@@ -9,7 +9,9 @@
 
 **Binding on every agent in every role, before any simulation work (Owner, 2026-09-28).** Everything in simulation authority is a SimThing: one recursive germ from the SessionThing root to every leaf, whose participate / act / originate / receive anatomy, StemThing lanes, EML organ and RF/STEAD/PALMA/Gu-Yang Field Triad are intrinsic. All conflict enters one cycle and clears through resource flow; there is no combat engine, economy engine, AI planner, allocator service, or second clearing path beside it.
 
-Read the whole foundation first: `bash scripts/ci/anchor_query.sh --domain foundation` (webchat: every section pinned in `scripts/ci/foundation_anchors.tsv`). It is required reading on every path, every relay ACKs it, and work that departs from it is drift and a STOP.
+Read the whole foundation first: `bash scripts/ci/anchor_query.sh --domain foundation` (webchat: every section pinned in `scripts/ci/foundation_anchors.tsv`). It is required reading on every path, and work that departs from it is drift and a STOP.
+
+Every relay ACKs it in one line: `ANCHOR-ACK: foundation@53e96f787541`. The stamp binds every foundation hash, so it goes stale on any foundation edit.
 
 ## MANDATORY (ORCHESTRATOR burden): run `/clearance`, then respond to the state it emits
 
@@ -52,7 +54,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | clearance_ledger.tsv | 4f9d772d5a548ce7b6ed162ae1e98b571f40ffe029d91300c1690b517cbcc634 |
 | active_track.txt | c8af5e3de55f93ee23dce220a71f9c71435e56fdd131d55ab1ca7a6e07da9a58 |
 | 0_0_8_8_Integrated_SimThing_Rehearsal.md | 28a17576bcef3534733019ed0cb89235a39e8b9f69d029981529dd8c06e5ccb7 |
-| relay_lint.sh | 8f807c43878b808634effa4c2709be70c88489d9f6553896381e12b5c32eaa6b |
+| relay_lint.sh | 43cce963dfc91114c0c59a9dc386695794f2ff2aa85014c50c680d43feae05c3 |
 | doctrine_anchors.tsv | aae4d60210448bdcb7140456b92e714477e45c95fe351ab9882d46b9865a1ef0 |
 | execution_status_taxonomy.tsv | fd2d405cc6c0816de3a0f094e4dacf2d0e5670e3efce2dd8bef3485d35f00a23 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
@@ -181,7 +183,7 @@ Proof identity fields required in relay body:
 - `tested_code_sha: <8+ hex>`
 - `coverage_basis: PASS` (or explicit coverage basis)
 
-relay_lint.sh schema stamp: `8f807c43878b`
+relay_lint.sh schema stamp: `43cce963dfc9`
 
 ## tested_code_sha + coverage_basis Rule
 

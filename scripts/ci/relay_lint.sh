@@ -336,7 +336,7 @@ if fixture_dir:
         required_role = req_path.read_text(encoding="utf-8").strip().lower()
 
 sys.path.insert(0, str(repo_root / "scripts" / "ci"))
-from anchor_text import extract as extract_anchor_section  # noqa: E402
+from anchor_text import extract as extract_anchor_section, foundation_stamp  # noqa: E402
 
 def load_anchor_state():
     import csv
@@ -521,6 +521,13 @@ def validate_anchor_ack():
     acks = {}
     for m in re.finditer(r"ANCHOR-ACK:\s*([a-z0-9-]+)@([0-9a-f]{12})", text, re.IGNORECASE):
         acks[m.group(1).lower()] = m.group(2).lower()
+    # One line may acknowledge the whole 0.0.8.7 foundation; its stamp binds every foundation
+    # hash, so it is exactly as strict as the individual ACKs it stands for.
+    foundation = {aid: meta["live_hash"] for aid, meta in state.items() if "foundation" in meta["domains"]}
+    if "foundation" in acks:
+        if not foundation or acks.pop("foundation") != foundation_stamp(foundation):
+            return "stale-anchor-ack: remedy=bash scripts/ci/anchor_query.sh --domain foundation then re-ack"
+        acks.update({aid: state[aid]["short"] for aid in foundation})
     for ack_id, short in acks.items():
         if ack_id not in state:
             return "unknown-anchor: remedy=bash scripts/ci/anchor_query.sh --domain <domain> or --grep <term>"
@@ -1003,6 +1010,33 @@ run_fixture() {
   return 1
 }
 
+# One-line foundation ACK, built at runtime so the fixture never pins a hash: the current stamp
+# (as anchor_query prints it) must PASS a docs-only relay, and a stale stamp must FAIL.
+run_foundation_ack_selftests() {
+  local tmp base stamp query case
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/relay-foundation-ack-XXXXXX")"
+  base="${FIXTURES_ROOT}/relay_lint_selftest_path_docs_only_no_anchors"
+  query="$(ANCHOR_REACH_LOG_PATH="$tmp/reach.tsv" bash "${SCRIPT_DIR}/anchor_query.sh" --domain foundation)"
+  stamp="$(grep -m1 '^foundation-ack: ' <<<"$query" | sed 's/^foundation-ack: //')"
+  for case in current stale; do
+    mkdir -p "$tmp/$case"
+    cp "$base/changed_files.txt" "$tmp/$case/"
+    { cat "$base/relay.md"; printf '\n%s\n' "$stamp"; } >"$tmp/$case/relay.md"
+  done
+  sed -i 's/ANCHOR-ACK: foundation@[0-9a-f]\{12\}/ANCHOR-ACK: foundation@000000000000/' "$tmp/stale/relay.md"
+  printf 'RELAY-LINT-VERDICT: PASS\n' >"$tmp/current/expected_verdict.txt"
+  printf 'RELAY-LINT-VERDICT: FAIL(stale-anchor-ack: remedy=bash scripts/ci/anchor_query.sh --domain foundation then re-ack)\n' \
+    >"$tmp/stale/expected_verdict.txt"
+  for case in current stale; do
+    FIXTURE_DIR=""
+    if ! run_fixture "$tmp" "$case"; then
+      SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+    fi
+  done
+  FIXTURE_DIR=""
+  rm -rf "$tmp"
+}
+
 run_selftest() {
   local relay_fixtures=(
     relay_lint_selftest_pass_1154_shape
@@ -1052,7 +1086,8 @@ run_selftest() {
     anchor_integrity_selftest_fail_unknown_anchor
   )
   local name total
-  total=$((${#relay_fixtures[@]} + ${#cold_fixtures[@]} + ${#anchor_fixtures[@]}))
+  total=$((${#relay_fixtures[@]} + ${#cold_fixtures[@]} + ${#anchor_fixtures[@]} + 2))
+  run_foundation_ack_selftests
   for name in "${relay_fixtures[@]}"; do
     FIXTURE_DIR=""
     if ! run_fixture "$FIXTURES_ROOT" "$name"; then

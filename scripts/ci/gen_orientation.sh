@@ -1907,6 +1907,7 @@ main() {
   export ORIENTATION_TRACKS_TSV="${ORIENTATION_TRACKS_TSV:-${SCRIPT_DIR}/test_lifecycle_tracks.tsv}"
   export ORIENTATION_RELAY_LINT="${ORIENTATION_RELAY_LINT:-${SCRIPT_DIR}/relay_lint.sh}"
   export ORIENTATION_ANCHORS_TSV="${ORIENTATION_ANCHORS_TSV:-${SCRIPT_DIR}/doctrine_anchors.tsv}"
+  export ORIENTATION_CI_DIR="${SCRIPT_DIR}"
   export ORIENTATION_EXECUTION_STATUS_TSV="${ORIENTATION_EXECUTION_STATUS_TSV:-${SCRIPT_DIR}/execution_status_taxonomy.tsv}"
   export ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV="${ORIENTATION_SPECIALIZATION_CITIZEN_COUNTS_TSV:-${SCRIPT_DIR}/specialization_citizen_counts.tsv}"
   export ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV="${ORIENTATION_PROPERTY_ADMISSION_INVENTORY_TSV:-${SCRIPT_DIR}/property_admission_inventory.tsv}"
@@ -2788,6 +2789,15 @@ def render_orientation(active_info: dict) -> tuple:
     binding = read_tsv(BINDING_TSV)
     ledger_rows = read_tsv(LEDGER_TSV)
     anchors_tsv = pathlib.Path(os.environ["ORIENTATION_ANCHORS_TSV"])
+    sys.path.insert(0, os.environ["ORIENTATION_CI_DIR"])
+    from anchor_text import foundation_stamp
+    foundation_hashes = {}
+    if anchors_tsv.is_file():
+        with anchors_tsv.open(encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh, delimiter="\t"):
+                if row.get("anchor_id") and "foundation" in (row.get("trigger_domains") or "").split(","):
+                    foundation_hashes[row["anchor_id"]] = (row.get("content_hash") or "").strip().lower()
+    foundation_ack = foundation_stamp(foundation_hashes)
 
     design_doc = active_info.get("design_doc")
     design_text = ""
@@ -2857,7 +2867,9 @@ def render_orientation(active_info: dict) -> tuple:
     "",
     "**Binding on every agent in every role, before any simulation work (Owner, 2026-09-28).** Everything in simulation authority is a SimThing: one recursive germ from the SessionThing root to every leaf, whose participate / act / originate / receive anatomy, StemThing lanes, EML organ and RF/STEAD/PALMA/Gu-Yang Field Triad are intrinsic. All conflict enters one cycle and clears through resource flow; there is no combat engine, economy engine, AI planner, allocator service, or second clearing path beside it.",
     "",
-    "Read the whole foundation first: `bash scripts/ci/anchor_query.sh --domain foundation` (webchat: every section pinned in `scripts/ci/foundation_anchors.tsv`). It is required reading on every path, every relay ACKs it, and work that departs from it is drift and a STOP.",
+    "Read the whole foundation first: `bash scripts/ci/anchor_query.sh --domain foundation` (webchat: every section pinned in `scripts/ci/foundation_anchors.tsv`). It is required reading on every path, and work that departs from it is drift and a STOP.",
+    "",
+    f"Every relay ACKs it in one line: `ANCHOR-ACK: foundation@{foundation_ack}`. The stamp binds every foundation hash, so it goes stale on any foundation edit.",
     "",
     "## MANDATORY (ORCHESTRATOR burden): run `/clearance`, then respond to the state it emits",
     "",
