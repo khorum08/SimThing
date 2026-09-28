@@ -13,6 +13,8 @@ fi
 
 ROLE=""
 SINCE_RECEIPT=""
+PAGE=""
+PAGE_SIZE=""
 FIXTURE_MODE=""
 FIXTURE_DIR=""
 SELFTEST_FAILURES=0
@@ -25,6 +27,7 @@ usage:
   bash scripts/ci/orient.sh --role=orchestrator
   bash scripts/ci/orient.sh --role=da
   bash scripts/ci/orient.sh --role=coding --since=<receipt>
+  bash scripts/ci/orient.sh --role=coding --page N [--page-size BYTES]   (0 = map; pages end PAGE-END)
   bash scripts/ci/orient.sh --selftest
 EOF
   exit 2
@@ -50,6 +53,14 @@ parse_args() {
         SINCE_RECEIPT="${2:-}"
         [[ -n "$SINCE_RECEIPT" ]] || usage
         shift 2
+        ;;
+      --page=*|--page)
+        if [[ "$1" == --page=* ]]; then PAGE="${1#--page=}"; shift; else PAGE="${2:-}"; shift 2; fi
+        [[ "$PAGE" =~ ^[0-9]+$ ]] || usage
+        ;;
+      --page-size=*|--page-size)
+        if [[ "$1" == --page-size=* ]]; then PAGE_SIZE="${1#--page-size=}"; shift; else PAGE_SIZE="${2:-}"; shift 2; fi
+        [[ "$PAGE_SIZE" =~ ^[0-9]+$ ]] || usage
         ;;
       --selftest)
         FIXTURE_MODE="selftest"
@@ -332,12 +343,45 @@ run_selftest() {
   if ! run_cold_start_spine_role_selftest; then
     SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
   fi
+  if ! run_paging_selftest; then
+    SELFTEST_FAILURES=$((SELFTEST_FAILURES + 1))
+  fi
   if [[ "$SELFTEST_FAILURES" -eq 0 ]]; then
-    echo "ORIENT-SELFTEST: PASS ($((${#fixtures[@]} + 3)) fixtures)"
+    echo "ORIENT-SELFTEST: PASS ($((${#fixtures[@]} + 4)) fixtures)"
     return 0
   fi
   echo "ORIENT-SELFTEST: FAIL (${SELFTEST_FAILURES} fixtures)"
   return 1
+}
+
+# The page protocol (pager.py) must hold on the real orientation: pages fit Codex's window, page 1
+# carries the Foundation, and joining the page bodies gives back the orientation byte for byte.
+run_paging_selftest() {
+  local tmp full n k page joined
+  tmp="$(mktemp -d "${TMPDIR:-/tmp}/orient-paging-XXXXXX")"
+  if ! "$PYTHON_BIN" "${SCRIPT_DIR}/pager.py" --selftest | grep -q '^PAGER-SELFTEST: PASS$'; then
+    echo "FAIL orient_paging_pager_selftest"
+    rm -rf "$tmp"
+    return 1
+  fi
+  full="$(emit_orientation coding | tr -d '\r')"
+  n="$(ANCHOR_REACH_LOG_PATH="$tmp/reach.tsv" bash "${SCRIPT_DIR}/orient.sh" --role=coding --page 0 | sed -n 's#^PAGE 0/\([0-9]*\) .*#\1#p')"
+  : >"$tmp/joined"
+  for ((k = 1; k <= ${n:-0}; k++)); do
+    page="$(ANCHOR_REACH_LOG_PATH="$tmp/reach.tsv" bash "${SCRIPT_DIR}/orient.sh" --role=coding --page "$k")"
+    [[ "$k" -eq 1 ]] && ! grep -q '^## Foundation' <<<"$page" && { echo "FAIL orient_paging_foundation_on_page_1"; rm -rf "$tmp"; return 1; }
+    [[ "$(printf '%s\n' "$page" | wc -c)" -le 8000 ]] || { echo "FAIL orient_paging_page_${k}_over_window"; rm -rf "$tmp"; return 1; }
+    printf '%s\n' "$page" | awk 'NR > 1 && /^PAGE-END / {exit} NR > 1 {print}' >>"$tmp/joined"
+  done
+  joined="$(tr -d '\r' <"$tmp/joined")"
+  if [[ -z "$n" || "$n" -lt 2 || "$joined" != "$full" ]] \
+      || [[ "$(grep -c "orient --role=coding --page" "$tmp/reach.tsv")" -ne "$((n + 1))" ]]; then
+    echo "FAIL orient_paging_lossless_and_logged (pages=${n:-none})"
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$tmp"
+  echo "PASS orient_paging_lossless_and_logged (${n} pages)"
 }
 
 run_cold_start_spine_role_selftest() {
@@ -521,7 +565,22 @@ main() {
     emit_since "$ROLE" "$SINCE_RECEIPT"
     exit $?
   fi
-  emit_orientation "$ROLE"
+  local out note
+  out="$(emit_orientation "$ROLE")"
+  # One tool call shows only part of a long output (Codex keeps 10,000 bytes), so the
+  # orientation can be read in verbatim pages; page reads land in the reach log.
+  if [[ -n "$PAGE" ]]; then
+    printf '%s\n' "$out" | "$PYTHON_BIN" "${SCRIPT_DIR}/pager.py" --page "$PAGE" --page-size "${PAGE_SIZE:-8000}" \
+      --label "orient --role=${ROLE}" --reach-role "$ROLE" --reach-query "orient --role=${ROLE}"
+    return
+  fi
+  note="$(printf '%s\n' "$out" | "$PYTHON_BIN" "${SCRIPT_DIR}/pager.py" --note ORIENT --page-size "${PAGE_SIZE:-8000}" \
+    --command "bash scripts/ci/orient.sh --role=${ROLE}")"
+  if [[ -z "$note" ]]; then
+    printf '%s\n' "$out"
+    return
+  fi
+  printf '%s\n%s\n%s\n%s\n' "$(head -n 1 <<<"$out")" "$note" "$(tail -n +2 <<<"$out")" "$note"
 }
 
 main "$@"

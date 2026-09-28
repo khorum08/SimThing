@@ -17,10 +17,10 @@ that same session carry the existing receipt unless governance moved.
 ---
 
 ## Coding role — in-repo shell
-**Handoffs arrive as HD projections — render yours:** `handoff_dispatch.sh --render coding handoffs/<RUNG>.hd.md` on "Implement handoff `<RUNG>`"; obey its BUILD/FENCES/EXIT-PROOF + `owner_notes`, quote its `HD-RECEIPT` (the "approved, implement" protocol).
+**Handoffs arrive as HD projections — render yours:** `handoff_dispatch.sh --render coding handoffs/<RUNG>.hd.md --page 1` (page by page to END) on "Implement handoff `<RUNG>`"; obey its BUILD/FENCES/EXIT-PROOF + `owner_notes`, quote its `HD-RECEIPT` (the "approved, implement" protocol).
 
 - **Cold start:** when the user / Owner / DA opens a fresh coding-agent session, the agent runs
-  `bash scripts/ci/orient.sh --role=coding` once and carries the emitted `ORIENT-RECEIPT`.
+  `bash scripts/ci/orient.sh --role=coding --page 1` once, reads on page by page to END, and carries the emitted `ORIENT-RECEIPT`.
 - **Inner loop (unconditional, ≤4 steps — HU-DELTA-SCAN-0):** after orient-once,
   `cargo check -p <touched-crate>` → `bash scripts/ci/agent_scan.sh` → focused `cargo test` when required.
   Doctrine: `anchor_query.sh` (not raw greps); after anchored-doc edits, `anchor_check.sh --resync`.

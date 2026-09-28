@@ -20,12 +20,14 @@ GREP_ARG=""
 PRUNE_DAYS=""
 PATH_ARGS=()
 ROLE_ARG="${ANCHOR_QUERY_ROLE:-coding}"
+PAGE_ARG=""
+PAGE_SIZE_ARG=""
 SELFTEST=0
 FIXTURE_DIR=""
 
 usage() {
   cat <<'EOF'
-usage:
+usage (any query takes --page N [--page-size BYTES]: page 0 is the map, pages 1..n end PAGE-END):
   bash scripts/ci/anchor_query.sh --domain <domain|anchor_id>
   bash scripts/ci/anchor_query.sh --paths <files...>
   bash scripts/ci/anchor_query.sh --grep <term>[|<term>...]
@@ -83,6 +85,16 @@ parse_args() {
         [[ -n "$ROLE_ARG" ]] || usage
         shift 2
         ;;
+      --page)
+        PAGE_ARG="${2:-}"
+        [[ "$PAGE_ARG" =~ ^[0-9]+$ ]] || usage
+        shift 2
+        ;;
+      --page-size)
+        PAGE_SIZE_ARG="${2:-}"
+        [[ "$PAGE_SIZE_ARG" =~ ^[0-9]+$ ]] || usage
+        shift 2
+        ;;
       --selftest) SELFTEST=1; shift ;;
       --fixture)
         FIXTURE_DIR="${FIXTURES_ROOT}/${2:-}"
@@ -108,12 +120,16 @@ run_query_python() {
   ANCHOR_QUERY_PRUNE="${PRUNE_DAYS:-}" \
   ANCHOR_QUERY_DRY_RUN="${ANCHOR_QUERY_DRY_RUN:-0}" \
   ANCHOR_QUERY_ROLE="$ROLE_ARG" \
+  ANCHOR_QUERY_PAGE="${PAGE_ARG:-}" \
+  ANCHOR_QUERY_PAGE_SIZE="${PAGE_SIZE_ARG:-}" \
   ANCHOR_QUERY_PATHS="$(printf '%s\n' "${PATH_ARGS[@]:-}")" \
     "$PYTHON_BIN" - <<'PY'
+import contextlib
 import csv
 import datetime as dt
 import fnmatch
 import hashlib
+import io
 import os
 import pathlib
 import re
@@ -151,6 +167,10 @@ ANCHOR_HEADER = ["anchor_id", "doc", "section", "trigger_domains", "content_hash
 sys.path.insert(0, str(pathlib.Path(os.environ["ANCHOR_REPO_ROOT"]) / "scripts/ci"))
 from anchor_lifecycle import PENDING_RE, UNTIL_RE, lifecycle_is_valid  # noqa: E402
 from anchor_text import GREP_BUDGET_BYTES, enclosing_unit, extract, foundation_stamp, normalize_text  # noqa: E402
+import pager  # noqa: E402
+
+PAGE = os.environ.get("ANCHOR_QUERY_PAGE", "").strip()
+PAGE_SIZE = int(os.environ.get("ANCHOR_QUERY_PAGE_SIZE", "").strip() or pager.PAGE_BYTES)
 
 LOCATION_LIMIT = 50
 
@@ -401,21 +421,50 @@ if mode == "prune":
     print(f"ANCHOR-QUERY-PRUNE: {verdict} removed={len(removed)} kept={len(kept)-1} days={days}")
     sys.exit(0)
 
+def deliver(query, ids, hit, emit):
+    # Every render can be read in verbatim pages that fit the smallest agent window (pager.py).
+    # A page read is logged with its page number and the anchors on it, so the reach log shows
+    # whether a session read every page; an unpaged render longer than a page says so at both
+    # ends, so a head- or tail-truncating harness still shows the agent how to page it.
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        emit()
+    text = buf.getvalue()
+    if PAGE:
+        try:
+            out, n, names = pager.render_page(text, int(PAGE), PAGE_SIZE, f"anchor_query {query}")
+        except pager.PageError as exc:
+            print(f"ANCHOR-QUERY-VERDICT: FAIL(page: {exc})")
+            sys.exit(1)
+        served = [name.split(" ", 2)[1] for name in names if name.startswith("anchor ")]
+        append_reach(f"{query} --page {PAGE}/{n}", served, hit)
+        sys.stdout.write(out)
+        return
+    append_reach(query, ids, hit)
+    note = pager.size_note(text, PAGE_SIZE, "ANCHOR-QUERY", f"bash scripts/ci/anchor_query.sh {query}")
+    if note:
+        first, _, rest = text.partition("\n")
+        text = f"{first}\n{note}\n{rest}{note}\n"
+    sys.stdout.write(text)
+
+
 if mode == "domain":
     # An anchor id is accepted too: agents reach for ids first (33 logged misses were ids).
     ids = sorted(r["anchor_id"] for r in anchors if domain_arg in r["domains"] or r["anchor_id"] == domain_arg)
-    append_reach(f"--domain {domain_arg}", ids, "hit" if ids else "none")
-    emit_hits(foundation_first(ids), by_id)
+    deliver(f"--domain {domain_arg}", ids, "hit" if ids else "none",
+            lambda: emit_hits(foundation_first(ids), by_id))
     sys.exit(0)
 
 if mode == "paths":
     files = [ln.strip().replace("\\", "/") for ln in paths_blob.splitlines() if ln.strip()]
     domains = domains_from_paths(files)
     ids = sorted(r["anchor_id"] for r in anchors if domains.intersection(r["domains"]))
-    q = "--paths " + " ".join(files)
-    append_reach(q, ids, "hit" if ids else "none")
-    print(f"domains: {','.join(sorted(domains)) if domains else 'none'}")
-    emit_hits(foundation_first(ids), by_id)
+
+    def emit_paths():
+        print(f"domains: {','.join(sorted(domains)) if domains else 'none'}")
+        emit_hits(foundation_first(ids), by_id)
+
+    deliver("--paths " + " ".join(files), ids, "hit" if ids else "none", emit_paths)
     sys.exit(0)
 
 if mode == "grep":
@@ -447,8 +496,8 @@ if mode == "grep":
                 continue
             seen.add(unit)
             located.append((doc, i + 1, unit))
-    append_reach(f"--grep {grep_arg}", ids, "hit" if ids else ("located" if located else "none"))
-    emit_grep(ids, located, by_id)
+    deliver(f"--grep {grep_arg}", ids, "hit" if ids else ("located" if located else "none"),
+            lambda: emit_grep(ids, located, by_id))
     sys.exit(0)
 
 print("ANCHOR-QUERY-VERDICT: FAIL(harness-error)")
@@ -564,6 +613,28 @@ run_selftest() {
   else
     echo "PASS query_foundation_required_first_on_every_path"
   fi
+  # The page protocol (pager.py): a map, framed pages, END plus the foundation ACK on the last
+  # page, every page read in the reach log, and a size note on both ends of a long unpaged render.
+  local n_pages last
+  PAGE_ARG="0"
+  out="$(DOMAIN_ARG=foundation run_query_python domain || true)"
+  n_pages="$(sed -n 's#^PAGE 0/\([0-9]*\) \. MAP .*#\1#p' <<<"$out")"
+  PAGE_ARG="${n_pages:-1}"
+  last="$(DOMAIN_ARG=foundation run_query_python domain || true)"
+  PAGE_ARG=""
+  if [[ -n "$n_pages" ]] && grep -q "^END ${n_pages}/${n_pages}: " <<<"$last" \
+      && grep -qE '^foundation-ack: ANCHOR-ACK: foundation@[0-9a-f]{12}$' <<<"$(tail -n 1 <<<"$last")" \
+      && grep -q -- "--domain foundation --page 0/${n_pages}" "$tmp/anchor_reach_log.tsv" \
+      && grep -q -- "--domain foundation --page ${n_pages}/${n_pages}" "$tmp/anchor_reach_log.tsv"; then
+    echo "PASS query_paged_foundation_framed_and_logged"
+  else
+    echo "FAIL query_paged_foundation_framed_and_logged"; echo "  pages=${n_pages:-none}"; failures=$((failures+1))
+  fi
+  if [[ "$(sed -n '2p' <<<"$foundation")" == ANCHOR-QUERY-SIZE:* && "$(tail -n 1 <<<"$foundation")" == ANCHOR-QUERY-SIZE:* ]]; then
+    echo "PASS query_long_render_notes_its_size_at_both_ends"
+  else
+    echo "FAIL query_long_render_notes_its_size_at_both_ends"; failures=$((failures+1))
+  fi
   printf 'bad-anchor	docs/simthing_core_design.md	heading:## 1. The SimThing Principle — one closed recursive stem-cell kernel	bad-domain	0000000000000000000000000000000000000000000000000000000000000000	expired:NOPE-0
 ' >>"$tmp/doctrine_anchors.tsv"
   out="$(DOMAIN_ARG=gate-wiring run_query_python domain 2>&1 || true)"
@@ -655,7 +726,7 @@ sys.exit(0 if (b"\r" not in raw and raw.startswith(b"date\trole\tquery\tanchors_
   rm -rf "$tmp"
   FIXTURE_DIR=""
   if [[ "$failures" -eq 0 ]]; then
-    echo "ANCHOR-QUERY-SELFTEST: PASS (19 fixtures)"
+    echo "ANCHOR-QUERY-SELFTEST: PASS (21 fixtures)"
     return 0
   fi
   echo "ANCHOR-QUERY-SELFTEST: FAIL (${failures} fixtures)"
