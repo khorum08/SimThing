@@ -116,7 +116,9 @@ def index(live_number, live, pred_number, pred, rolled, room):
     head = [INDEX, "_Newest first. Open a comment by its ID; never read a thread in bulk._"]
     if live_number and live is None:
         return head + ["- unavailable this run (see board sync notes): open the thread's newest comments directly"]
-    items = [(node, live_number) for node in nodes(live)] + [(node, pred_number) for node in nodes(pred)]
+    # The predecessor's own "rolled" comment says nothing new to readers of the live Board.
+    items = [(node, live_number) for node in nodes(live)] + [
+        (node, pred_number) for node in nodes(pred) if not (MOVED in (node.get("body") or "") and trusted(node))]
     items.sort(key=lambda item: item[0]["createdAt"], reverse=True)
     used = sum(len(line.encode("utf-8")) + 1 for line in head) + 120  # the footer
     lines, shown = [], {}
@@ -496,6 +498,7 @@ PY
   printf '[{"number":2100,"title":"SimThing Board","user":{"login":"github-actions[bot]"},"body":"%s"}]\n' "${pred_body//1332/1400}" > "$tmp/issues.json"
   run 1
   check "finished-roll-is-quiet" "$( [ "$(has 'BOARD-SYNC-TARGET: update 2100')$(lacks 'BOARD-ROLL:')" = "okok" ] && echo ok || echo no)"
+  check "rolled-notice-stays-out-of-the-index" "$( [ "$(has ' · on #1400 · ## NOTE 1400-3')$(lacks '## BOARD ROLLED')" = "okok" ] && echo ok || echo no)"
   printf '[{"number":2100,"title":"SimThing Board","user":{"login":"github-actions[bot]"},"body":"%s"}]\n' "${pred_body//1332/1500}" > "$tmp/issues.json"
   run 1
   check "forged-rolled-marker-does-not-count" "$( [ "$(has 'BOARD-ROLL: comment #1500')$(lacks 'BOARD-ROLL: patch')$(lacks 'BOARD-ROLL: close')" = "okokok" ] && echo ok || echo no)"
