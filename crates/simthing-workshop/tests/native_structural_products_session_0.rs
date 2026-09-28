@@ -2,7 +2,7 @@
 //! 5737649159). The shipped two-faction scenario is re-authored in a temp copy
 //! with a shipyard recipe whose funded output births a source-authored,
 //! detached fleet subtree through the existing 2.1 ActionBand -> AddChild door.
-use simthing_core::{ObjectResidencyRelation, SimThingId};
+use simthing_core::{ObjectResidencyRelation, SimThingId, SubFieldRole};
 use simthing_driver::SimSession;
 use simthing_mapeditor::clause_scenario_ingest::{
     load_clause_studio_session_from_path, ClauseScenarioIngestOptions,
@@ -12,7 +12,7 @@ use simthing_mapeditor::studio_live_session_bridge::{
     driver_scenario_field_bearing_from_profile, field_bearing_game_mode,
     StudioAuthoredLiveProfile,
 };
-use simthing_sim::BoundaryDeltaEntry;
+use simthing_sim::{BoundaryDeltaEntry, OrdinaryGrowthRefusalReason, RecordedGrowthResidencyFact};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -529,4 +529,151 @@ fn malformed_product_declarations_refuse_before_activation() {
         println!("refused ({expected}): {error}");
         assert!(error.contains(expected), "{expected}: {error}");
     }
+}
+
+/// catches: ordinary sequential exhaustion losing an earlier birth/placement,
+/// minting a partial subtree on refusal, or confusing an unfunded candidate
+/// with the exact zero-grant refusal of a newly crossed funding threshold.
+#[test]
+fn sequential_capacity_exhaustion_preserves_prior_births() {
+    let mut live = open(&source(&[product("terran", "A1", 50, 2)], 2)).unwrap();
+    let root = live.sim.proto.root.id();
+    let a1 = live.targets["A1"][0];
+    let registry = &live.sim.proto.registry;
+    let funding = registry
+        .id_of("meridian_material", "A1_corvettes_quantity")
+        .unwrap();
+    let column = registry
+        .column_range(funding)
+        .col_for_role(&SubFieldRole::Amount, &registry.property(funding).layout)
+        .unwrap();
+    let funding_at_boundary = |live: &Live| {
+        let view = live.sim.shadow_view();
+        (view.generation().get(), view.value(a1, column).unwrap())
+    };
+    let placement = |live: &Live, id| {
+        live.sim
+            .proto
+            .allocator
+            .committed_residency_placement(root, id)
+            .unwrap()
+    };
+    let live0 = live.sim.proto.allocator.live_count();
+    let capacity0 = live.sim.proto.allocator.growth_capacity_available(root);
+    assert!(capacity0 >= 3, "at least one whole subtree must fit");
+    let mut expected_ids = all_ids(&live);
+    let mut roots = Vec::new();
+    let mut cursor = live.sim.proto.delta_log().len();
+    let mut previous_funding = funding_at_boundary(&live);
+    let mut first_refusal = None;
+    let mut later_refusals = 0;
+    for generation in 1..=40 {
+        let funding_before = funding_at_boundary(&live);
+        let live_before = live.sim.proto.allocator.live_count();
+        let capacity_before = live.sim.proto.allocator.growth_capacity_available(root);
+        // Capture the actual kernel product immediately before this boundary.
+        let placements_before: Vec<_> =
+            roots.iter().map(|&id| (id, placement(&live, id))).collect();
+        live.sim.step_once().expect("ordinary generation");
+        let log = live.sim.proto.delta_log();
+        let fresh = &log[cursor..];
+        cursor = log.len();
+        let births: Vec<_> = fresh
+            .iter()
+            .filter_map(|entry| match entry {
+                BoundaryDeltaEntry::SimThingAdded { parent, node, .. } => {
+                    Some((*parent, node.id()))
+                }
+                _ => None,
+            })
+            .collect();
+        let refusals: Vec<_> = fresh
+            .iter()
+            .filter_map(|entry| match entry {
+                BoundaryDeltaEntry::GrowthResidencyRefused {
+                    fact: RecordedGrowthResidencyFact::Refused(refusal),
+                } => Some(refusal),
+                _ => None,
+            })
+            .collect();
+        let placements_after: Vec<_> = roots.iter().map(|&id| (id, placement(&live, id))).collect();
+        assert_eq!(placements_after, placements_before,
+            "G{generation}: full prior placements (identity, extent, quantity, committed_generation)");
+        if generation == 1 || first_refusal.is_some() {
+            assert!(births.is_empty(), "no early or post-exhaustion birth");
+        }
+        assert_eq!(
+            live.sim.proto.allocator.live_count(),
+            live_before + 3 * births.len()
+        );
+        assert_eq!(
+            live.sim.proto.allocator.growth_capacity_available(root),
+            capacity_before - 3 * births.len() as u32
+        );
+        for &(parent, id) in &births {
+            assert_eq!(parent, a1);
+            assert_eq!(shape(&live, id), (3, 1, "terran".to_string(), 3));
+            assert_eq!(
+                live.sim.proto.allocator.relation_of(id),
+                Some(ObjectResidencyRelation::ChildOf(a1))
+            );
+            let mut pending = vec![id];
+            while let Some(child) = pending.pop() {
+                assert!(
+                    expected_ids.insert(child),
+                    "G{generation}: every born identity is fresh"
+                );
+                pending.extend(live.sim.proto.root.snapshot_node(child).unwrap().children);
+            }
+            roots.push(id);
+        }
+        assert_eq!(
+            all_ids(&live),
+            expected_ids,
+            "G{generation}: no lost or fabricated identity"
+        );
+        for refusal in &refusals {
+            assert_eq!(
+                refusal.reason(),
+                &OrdinaryGrowthRefusalReason::MarketUnresolved { granted: 0 }
+            );
+            assert_eq!(refusal.candidate().structural_parent(), a1);
+            assert_eq!(refusal.candidate().quantity(), 3);
+            assert!(capacity_before < 3, "the next whole subtree cannot fit");
+            assert!(births.is_empty(), "a refusal must not partially birth");
+        }
+        if !refusals.is_empty() {
+            if first_refusal.is_none() {
+                assert_eq!(refusals.len(), 1, "one newly funded product candidate");
+                assert!(!roots.is_empty() && roots.len() < 50);
+                // Lowering assigns product N threshold N+0.5. Funding at the
+                // preceding generation's settlement dispatches at this boundary.
+                let threshold = roots.len() as f32 + 0.5;
+                assert!(previous_funding.1 < threshold && funding_before.1 >= threshold,
+                    "G{generation}: threshold {threshold}, shadows {previous_funding:?} -> {funding_before:?}");
+                assert_eq!(previous_funding.0 + 1, funding_before.0);
+                assert_eq!(funding_before.0, generation);
+                assert_eq!(refusals[0].attempted_generation().get(), generation);
+                println!("CAPACITY_FIRST_REFUSAL G{generation}: births={} funding={previous_funding:?}->{funding_before:?} threshold={threshold} capacity={capacity_before} reason={:?} placements={placements_before:?}",
+                    roots.len(), refusals[0].reason());
+                first_refusal = Some(generation);
+            } else {
+                later_refusals += refusals.len();
+            }
+        }
+        previous_funding = funding_before;
+    }
+    assert!(
+        first_refusal.is_some() && later_refusals > 0,
+        "bounded exhaustion and continuing funded refusals"
+    );
+    assert_eq!(
+        live.sim.proto.allocator.live_count(),
+        live0 + roots.len() * 3
+    );
+    assert_eq!(
+        live.sim.proto.allocator.growth_capacity_available(root),
+        capacity0 - roots.len() as u32 * 3
+    );
+    println!("CAPACITY_END births={} first_refusal={first_refusal:?} later_refusals={later_refusals} live0={live0} capacity0={capacity0}", roots.len());
 }
