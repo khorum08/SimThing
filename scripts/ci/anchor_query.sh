@@ -301,7 +301,11 @@ def emit_grep(ids, located, rows_by_id):
         print(f"content_hash: {meta['hash']}")
         print(f"lifecycle: {meta['lifecycle']}")
         size = len(meta["text"].encode("utf-8"))
-        if size <= budget:
+        if "foundation" in meta["domains"]:
+            # The 0.0.8.7 foundation renders in full and spends none of the budget: an
+            # alphabetical budget once withheld it from the only wide query an agent ran.
+            print(meta["text"].rstrip())
+        elif size <= budget:
             print(meta["text"].rstrip())
             budget -= size
         else:
@@ -327,6 +331,15 @@ def emit_grep(ids, located, rows_by_id):
 
 anchors = load_anchors()
 by_id = {r["anchor_id"]: r for r in anchors}
+
+
+position = {r["anchor_id"]: i for i, r in enumerate(anchors)}
+
+
+def foundation_first(ids):
+    # The 0.0.8.7 foundation is read before anything that elaborates it, in table order, so
+    # the SimThing Principle that heads the table is always the first thing an agent reads.
+    return sorted(ids, key=lambda aid: (0, position[aid], "") if "foundation" in by_id[aid]["domains"] else (1, 0, aid))
 
 if mode == "dead-listeners":
     rows = dead_listener_rows()
@@ -386,7 +399,7 @@ if mode == "domain":
     # An anchor id is accepted too: agents reach for ids first (33 logged misses were ids).
     ids = sorted(r["anchor_id"] for r in anchors if domain_arg in r["domains"] or r["anchor_id"] == domain_arg)
     append_reach(f"--domain {domain_arg}", ids, "hit" if ids else "none")
-    emit_hits(ids, by_id)
+    emit_hits(foundation_first(ids), by_id)
     sys.exit(0)
 
 if mode == "paths":
@@ -396,7 +409,7 @@ if mode == "paths":
     q = "--paths " + " ".join(files)
     append_reach(q, ids, "hit" if ids else "none")
     print(f"domains: {','.join(sorted(domains)) if domains else 'none'}")
-    emit_hits(ids, by_id)
+    emit_hits(foundation_first(ids), by_id)
     sys.exit(0)
 
 if mode == "grep":
@@ -408,7 +421,7 @@ if mode == "grep":
         text = text.lower()
         return any(t in text for t in terms)
 
-    ids = sorted(
+    ids = foundation_first(
         r["anchor_id"] for r in anchors
         if found(f"{r['anchor_id']}\n{r['doc']}\n{r['section']}\n{','.join(r['domains'])}\n{r['text']}")
     )
@@ -513,12 +526,32 @@ run_selftest() {
   else
     echo "PASS query_grep_locates_unanchored_row"
   fi
+  # The budget bounds everything except the foundation, which always renders in full.
+  local foundation foundation_ids
+  foundation="$(DOMAIN_ARG=foundation run_query_python domain || true)"
+  foundation_ids="$(tail -n +2 "${SCRIPT_DIR}/foundation_anchors.tsv" | cut -f1 | tr -d '\r' | paste -sd' ')"
   GREP_ARG="EML"
   out="$(run_query_python grep || true)"
-  if ! grep -q "more unanchored matches past the" <<<"$out" || [[ "$(wc -c <<<"$out")" -gt 150000 ]]; then
+  if ! grep -q "more unanchored matches past the" <<<"$out" \
+      || [[ "$(wc -c <<<"$out")" -gt $(( $(wc -c <<<"$foundation") + 150000 )) ]]; then
     echo "FAIL query_grep_budget_bounds_output"; echo "  got: $(wc -c <<<"$out") bytes"; failures=$((failures+1))
   else
     echo "PASS query_grep_budget_bounds_output"
+  fi
+  if awk -v ids=" ${foundation_ids} " '/^--- [a-z0-9-]+ ---$/ {id=$2} /^\(text past this query/ && index(ids, " " id " ") {bad=1} END {exit bad}' <<<"$out"; then
+    echo "PASS query_grep_never_withholds_foundation"
+  else
+    echo "FAIL query_grep_never_withholds_foundation"; failures=$((failures+1))
+  fi
+  PATH_ARGS=("crates/simthing-workshop/tests/any_rehearsal.rs")
+  out="$(run_query_python paths || true)"
+  local first
+  first="$(grep -m1 -oE '^--- [a-z0-9-]+ ---$' <<<"$out" | cut -d' ' -f2)"
+  if [[ "$first" != "simthing-principle" ]] || [[ " ${foundation_ids} " != *" ${first} "* ]] \
+      || [[ "$(grep -cE '^--- [a-z0-9-]+ ---$' <<<"$out")" -lt "$(wc -w <<<"$foundation_ids")" ]]; then
+    echo "FAIL query_foundation_required_first_on_every_path"; echo "  first: ${first:-none}"; failures=$((failures+1))
+  else
+    echo "PASS query_foundation_required_first_on_every_path"
   fi
   printf 'bad-anchor	docs/simthing_core_design.md	heading:## 1. The SimThing Principle — one closed recursive stem-cell kernel	bad-domain	0000000000000000000000000000000000000000000000000000000000000000	expired:NOPE-0
 ' >>"$tmp/doctrine_anchors.tsv"
@@ -611,7 +644,7 @@ sys.exit(0 if (b"\r" not in raw and raw.startswith(b"date\trole\tquery\tanchors_
   rm -rf "$tmp"
   FIXTURE_DIR=""
   if [[ "$failures" -eq 0 ]]; then
-    echo "ANCHOR-QUERY-SELFTEST: PASS (16 fixtures)"
+    echo "ANCHOR-QUERY-SELFTEST: PASS (18 fixtures)"
     return 0
   fi
   echo "ANCHOR-QUERY-SELFTEST: FAIL (${failures} fixtures)"

@@ -10,7 +10,7 @@ Example surfaces: coding = Grok CLI / Cursor cloud; orchestration = Codex/webcha
 ---
 
 ## The one-line rule for every tier
-**A fresh agent session orients once, then carries the receipt.** Orientation is generated from live harness
+**A fresh agent session orients once, reads the 0.0.8.7 Foundation it leads with, then carries the receipt.** Orientation is generated from live harness
 state; a receipt proves the session oriented against *this* state, not a stale memory. Subsequent handoffs in
 that same session carry the existing receipt unless governance moved.
 

@@ -1,4 +1,5 @@
 glob	trigger_domains
+**	foundation
 crates/simthing-kernel/**	kernel,seal,unsafe-adjacent,kernel-columns,kernel-eml,kernel-magnitude,scenario-candidate-home,field-sweep-preservation,actionband,overlay-closure,rehearsal-0088
 crates/simthing-gpu/**	gpu,wgsl,seal,structural-execution,scenario-candidate-home,field-sweep-preservation,actionband,rehearsal-0088
 crates/simthing-sim/**	sim,field-policy,scenario-candidate-home,field-sweep-preservation,actionband,overlay-closure,rehearsal-0088

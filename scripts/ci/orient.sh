@@ -186,7 +186,8 @@ SECTIONS_ORCHESTRATOR = {
 }
 
 def section_wanted(name, wanted):
-    if name in wanted:
+    # The 0.0.8.7 foundation leads every role's orientation (Owner, 2026-09-28).
+    if name.startswith("Foundation") or name in wanted:
         return True
     # Dynamic headings: the active-track title names its doc; MANDATORY names its command.
     if name.startswith("Active Track / Rung Summary") and role in ("da", "orchestrator"):
@@ -374,6 +375,12 @@ run_cold_start_spine_role_selftest() {
     fi
     if grep -E '## 8\. Time, decisions|### 0\.6 Specification Fidelity|## 9\. The drift detectors' >/dev/null <<<"$out"; then
       echo "FAIL cold_start_spine_role_${role}_forbidden_prose"
+      failures=$((failures + 1))
+    fi
+    # The foundation is the first thing every role reads, and it says how to read the rest.
+    if [[ "$(grep -m1 '^## ' <<<"$out")" != "## Foundation"* ]] \
+        || ! grep -F "anchor_query.sh --domain foundation" >/dev/null <<<"$out"; then
+      echo "FAIL cold_start_spine_role_${role}_foundation_not_first"
       failures=$((failures + 1))
     fi
   done

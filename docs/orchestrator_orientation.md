@@ -5,6 +5,12 @@
 > Operational orientation generated from live harness TSVs. Not a doctrine anchor summary.
 > Regenerate: `bash scripts/ci/gen_orientation.sh`
 
+## Foundation — SimThing is one closed recursive stem-cell kernel (0.0.8.7, Owner-pinned)
+
+**Binding on every agent in every role, before any simulation work (Owner, 2026-09-28).** Everything in simulation authority is a SimThing: one recursive germ from the SessionThing root to every leaf, whose participate / act / originate / receive anatomy, StemThing lanes, EML organ and RF/STEAD/PALMA/Gu-Yang Field Triad are intrinsic. All conflict enters one cycle and clears through resource flow; there is no combat engine, economy engine, AI planner, allocator service, or second clearing path beside it.
+
+Read the whole foundation first: `bash scripts/ci/anchor_query.sh --domain foundation` (webchat: every section pinned in `scripts/ci/foundation_anchors.tsv`). It is required reading on every path, every relay ACKs it, and work that departs from it is drift and a STOP.
+
 ## MANDATORY (ORCHESTRATOR burden): run `/clearance`, then respond to the state it emits
 
 Do NOT relay a DA-review / graduation handoff without first running the clearance router yourself for the
@@ -47,7 +53,7 @@ spot-audit or when a relay is genuinely suspect. See design 0.0.8.4.8 section 4C
 | active_track.txt | c8af5e3de55f93ee23dce220a71f9c71435e56fdd131d55ab1ca7a6e07da9a58 |
 | 0_0_8_8_Integrated_SimThing_Rehearsal.md | 28a17576bcef3534733019ed0cb89235a39e8b9f69d029981529dd8c06e5ccb7 |
 | relay_lint.sh | 8f807c43878b808634effa4c2709be70c88489d9f6553896381e12b5c32eaa6b |
-| doctrine_anchors.tsv | 7cf73159872de460c3b400affe95946911646b99bd64165446737834972e72d6 |
+| doctrine_anchors.tsv | aae4d60210448bdcb7140456b92e714477e45c95fe351ab9882d46b9865a1ef0 |
 | execution_status_taxonomy.tsv | fd2d405cc6c0816de3a0f094e4dacf2d0e5670e3efce2dd8bef3485d35f00a23 |
 | execution_status_mixed_posture.tsv | 1adf05f3ec5fd7b537efe29259d20649a2c6d3a0839590063e5308ff154e8f25 |
 | execution_status_non_execution.tsv | 214c1b557dfd3fc465f0171051e20281ff1dcf6c53128dbb29cba01524f9be02 |
