@@ -1,35 +1,46 @@
 //! rehearsal_lifecycle_interior_policy_overlay_0 — coverage witness for the
 //! Interior-Policy Composition Law's INSTALLED-OVERLAY authority (relay
-//! `5626653653`, completing DA ruling `5626045761`). The policy-bearing set
-//! must derive from EVERY canonical authored AllocatorWeight authority: an
-//! active installed overlay whose transform targets the flow property's
-//! `Named("weight")` sub-field classifies its host AND every affected
-//! SimThing — through the sealed tree's narrow observation-only query, never
-//! a raw walk.
+//! `5626653653`, completing DA ruling `5626045761`; the law completed by the DA
+//! ruling on the live Board `5879126789`). An active installed overlay that
+//! REPLACES the flow property's `Named("weight")` participation — a Set, a
+//! non-literal program, or a routed instruction — classifies its host AND every
+//! affected SimThing. A standing Multiply or Add policy classifies nothing: it
+//! reaches its host's whole subtree by tree-position inheritance, so it deforms
+//! the rolled-up total instead. All through the sealed tree's narrow
+//! observation-only query, never a raw walk.
 
 use simthing_core::{
-    ColumnIndex, Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource,
-    PropertyTransformDelta, SimProperty, SimPropertyId, SimThing, SimThingKind, SubFieldRole,
-    TransformOp,
+    Overlay, OverlayId, OverlayKind, OverlayLifecycle, OverlaySource, PropertyTransformDelta,
+    SimPropertyId, SimThing, SimThingId, SimThingKind, SubFieldRole, TransformOp,
 };
 use simthing_driver::{
     arena_allocation_sync::collect_weight_overlay_targets, ArenaRegistry, GpuArenaDescriptor,
 };
 use simthing_sim::SimRuntimeTree;
 
-fn weight_overlay(_id: u64, property: SimPropertyId, affects: Vec<simthing_core::SimThingId>) -> Overlay {
+fn weight_overlay(
+    kind: OverlayKind,
+    origin: SimThingId,
+    property: SimPropertyId,
+    affects: Vec<SimThingId>,
+    op: TransformOp,
+) -> Overlay {
     Overlay {
         id: OverlayId::new(),
-        kind: OverlayKind::Policy,
+        kind,
         source: OverlaySource::System,
-        origin: affects.first().copied().unwrap_or_else(|| SimThing::new(SimThingKind::World, 0).id),
+        origin,
         affects,
         transform: PropertyTransformDelta {
             property_id: property,
-            sub_field_deltas: vec![(SubFieldRole::Named("weight".into()), TransformOp::multiply(7.0))],
+            sub_field_deltas: vec![(SubFieldRole::Named("weight".into()), op)],
         },
         lifecycle: OverlayLifecycle::UntilDissolved,
     }
+}
+
+fn node(name: &str) -> SimThing {
+    SimThing::new(SimThingKind::Custom(name.into()), 0)
 }
 
 #[test]
@@ -38,35 +49,78 @@ fn installed_weight_overlay_classifies_host_and_affected() {
     let other = SimPropertyId(2);
 
     let mut root = SimThing::new(SimThingKind::World, 0);
-    let mut owner = SimThing::new(SimThingKind::Custom("owner".into()), 0);
-    let child = SimThing::new(SimThingKind::Custom("child".into()), 0);
-    let bystander = SimThing::new(SimThingKind::Custom("bystander".into()), 0);
-    let (owner_id, child_id, bystander_id) = (owner.id, child.id, bystander.id);
+    let mut set_host = node("set_host");
+    let set_child = node("set_child");
+    let mut scale_host = node("scale_host");
+    let scale_child = node("scale_child");
+    let mut route_origin = node("route_origin");
+    let route_target = node("route_target");
+    let bystander = node("bystander");
+    let ids = [
+        set_host.id,
+        set_child.id,
+        scale_host.id,
+        scale_child.id,
+        route_origin.id,
+        route_target.id,
+        bystander.id,
+    ];
+    let [set_host_id, set_child_id, scale_host_id, scale_child_id, origin_id, target_id, bystander_id] =
+        ids;
 
-    // Qualifying: active, flow property, Named("weight") role — on the owner,
-    // affecting the child too.
-    owner.overlays.push(weight_overlay(1, flow, vec![child_id]));
-    // Non-qualifying: wrong property.
-    owner.overlays.push(weight_overlay(2, other, vec![bystander_id]));
-    // Non-qualifying: flow property but a different sub-field role.
-    let mut amount_only = weight_overlay(3, flow, vec![bystander_id]);
-    amount_only.transform.sub_field_deltas = vec![(SubFieldRole::Amount, TransformOp::multiply(2.0))];
-    owner.overlays.push(amount_only);
+    // Replacing: a standing Set on the flow property's weight.
+    set_host.overlays.push(weight_overlay(
+        OverlayKind::Policy,
+        set_host_id,
+        flow,
+        vec![set_child_id],
+        TransformOp::set(2.0),
+    ));
+    // Deforming: standing Multiply and Add reach scale_host's subtree by inheritance.
+    for op in [TransformOp::multiply(7.0), TransformOp::add(1.0)] {
+        scale_host.overlays.push(weight_overlay(
+            OverlayKind::Policy,
+            scale_host_id,
+            flow,
+            vec![scale_child_id],
+            op,
+        ));
+    }
+    // Replacing: a routed instruction is not inherited below its target.
+    route_origin.overlays.push(weight_overlay(
+        OverlayKind::Instruction,
+        origin_id,
+        flow,
+        vec![target_id],
+        TransformOp::multiply(3.0),
+    ));
+    // Never classifying: a Set on another property, and a Set on another role.
+    set_host.overlays.push(weight_overlay(
+        OverlayKind::Policy,
+        set_host_id,
+        other,
+        vec![bystander_id],
+        TransformOp::set(5.0),
+    ));
+    let mut amount_only = weight_overlay(
+        OverlayKind::Policy,
+        set_host_id,
+        flow,
+        vec![bystander_id],
+        TransformOp::set(5.0),
+    );
+    amount_only.transform.sub_field_deltas = vec![(SubFieldRole::Amount, TransformOp::set(5.0))];
+    set_host.overlays.push(amount_only);
 
-    owner.add_child(child);
-    root.add_child(owner);
+    set_host.add_child(set_child);
+    scale_host.add_child(scale_child);
+    root.add_child(set_host);
+    root.add_child(scale_host);
+    root.add_child(route_origin);
+    root.add_child(route_target);
     root.add_child(bystander);
     let tree = SimRuntimeTree::admit(root);
 
-    let targets = tree.overlay_transform_targets(flow, &SubFieldRole::Named("weight".into()));
-    assert!(targets.contains(&owner_id), "host of the qualifying overlay classifies");
-    assert!(targets.contains(&child_id), "affected SimThing classifies");
-    assert!(
-        !targets.contains(&bystander_id),
-        "wrong-property and wrong-role overlays never classify"
-    );
-
-    // The sync-boundary map keys by the arena's flow property only.
     let mut registry = ArenaRegistry::default();
     registry.arenas.push(GpuArenaDescriptor {
         name: "food".into(),
@@ -81,13 +135,42 @@ fn installed_weight_overlay_classifies_host_and_affected() {
         reserved_orderband_depth: 0,
     });
     let map = collect_weight_overlay_targets(&tree, &registry);
-    let ids = map.get(&flow).expect("flow property classified");
-    assert!(ids.contains(&owner_id) && ids.contains(&child_id));
-    assert!(!map.contains_key(&other), "non-arena property never enters the map");
+    let replaced = map.get(&flow).expect("flow property classified");
+    assert!(
+        replaced.contains(&set_host_id) && replaced.contains(&set_child_id),
+        "a Set replaces the host's and the affected participation"
+    );
+    assert!(
+        replaced.contains(&origin_id) && replaced.contains(&target_id),
+        "a routed instruction replaces at its origin and target"
+    );
+    assert!(
+        !replaced.contains(&scale_host_id) && !replaced.contains(&scale_child_id),
+        "standing Multiply/Add policies deform the rolled-up total; they never pin a participant"
+    );
+    assert!(
+        !replaced.contains(&bystander_id),
+        "wrong-property and wrong-role overlays never classify"
+    );
+    assert!(
+        !map.contains_key(&other),
+        "non-arena property never enters the map"
+    );
 
-    // Registry sanity so `flow`/`ColumnIndex` stay honest admitted vocabulary.
-    let mut dims = simthing_core::DimensionRegistry::new();
-    let registered = dims.register(SimProperty::simple("rf", "stock", 0));
-    assert_eq!(registered, SimPropertyId(0));
-    let _ = ColumnIndex::from_raw_for_oracle_or_rehearsal(0);
+    // The query itself carries no law: an admitting predicate enumerates every
+    // active weight overlay, the scaling policies included.
+    let every =
+        tree.overlay_transform_targets(flow, &SubFieldRole::Named("weight".into()), &|_, _| true);
+    assert!(
+        [
+            set_host_id,
+            scale_host_id,
+            scale_child_id,
+            origin_id,
+            target_id
+        ]
+        .iter()
+        .all(|id| every.contains(id)),
+        "the observation-only query enumerates every active weight overlay"
+    );
 }
