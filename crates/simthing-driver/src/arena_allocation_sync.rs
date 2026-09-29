@@ -89,12 +89,14 @@ pub fn sync_resource_flow_accumulator(
     )
 }
 
-/// A standing literal Multiply/Add AllocatorWeight policy, at its host.
+/// A host's standing literal Multiply/Add AllocatorWeight policies, composed in
+/// its own stack order into one deformation `scale x total + offset`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct HostWeightPolicy {
-    /// Product of the host's own standing literal Multiply factors.
-    pub factor: f32,
-    /// The host also carries a standing literal Add.
+    pub scale: f32,
+    pub offset: f32,
+    /// The stack holds a literal Add, which an inheriting subtree would carry
+    /// once per participant instead of once.
     pub adds: bool,
     /// Ids physically contained beneath the host: the reach of its
     /// tree-position inheritance.
@@ -131,11 +133,17 @@ pub fn collect_weight_host_policies(
         let by_host: std::collections::BTreeMap<_, _> = hosts
             .into_iter()
             .map(|(host, ops)| {
+                let (scale, offset) =
+                    ops.iter().fold((1.0f32, 0.0f32), |(scale, offset), op| {
+                        match (op.as_multiply_literal(), op.as_add_literal()) {
+                            (Some(factor), _) => (scale * factor, offset * factor),
+                            (None, Some(amount)) => (scale, offset + amount),
+                            (None, None) => (scale, offset),
+                        }
+                    });
                 let policy = HostWeightPolicy {
-                    factor: ops
-                        .iter()
-                        .filter_map(|op| op.as_multiply_literal())
-                        .product(),
+                    scale,
+                    offset,
                     adds: ops.iter().any(|op| op.as_add_literal().is_some()),
                     physical_descendants: root.physical_descendants(host),
                 };
@@ -286,13 +294,13 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
                 }
             }
         }
-        // A standing Multiply policy whose host's RF children are not its
-        // physical descendants deforms the host's rolled-up total here, once;
-        // one that all of them inherit by tree position is already carried by
-        // that total. An Add at an RF interior would need an affine stage no
-        // admitted op provides, and a split reach is ambiguous: both refuse
-        // typed until a consumer rules them (live Board 5879126789).
-        let mut host_scales = std::collections::BTreeMap::new();
+        // A host whose RF children are not its physical descendants takes its
+        // standing Multiply/Add stack here, once, on its rolled-up total. A
+        // Multiply that every RF child inherits by tree position is already
+        // carried by that total. An inherited Add would land once per
+        // participant, and a split reach is ambiguous: both refuse typed
+        // (live Board 5879126789).
+        let mut host_deformations = std::collections::BTreeMap::new();
         if let Some(hosts) = weight_host_policies.get(&arena.flow_property_id) {
             for node in arena.iter_all() {
                 let slot = node.participant_slot.raw();
@@ -301,9 +309,6 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
                 };
                 if !node.is_interior() || authored_weight_slots.contains(&slot) {
                     continue;
-                }
-                if policy.adds {
-                    return Err(AllocationPlanError::InteriorAddWeightPolicy { slot }.into());
                 }
                 let reached = node
                     .children
@@ -315,9 +320,11 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
                     })
                     .count();
                 if reached == 0 {
-                    host_scales.insert(slot, policy.factor);
+                    host_deformations.insert(slot, (policy.scale, policy.offset));
                 } else if reached != node.children.len() {
                     return Err(AllocationPlanError::InteriorWeightPolicyReachSplit { slot }.into());
+                } else if policy.adds {
+                    return Err(AllocationPlanError::InheritedAddWeightPolicy { slot }.into());
                 }
             }
         }
@@ -337,7 +344,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
             observed_generation,
             allocation_generation,
             &authored_weight_slots,
-            &host_scales,
+            &host_deformations,
         )
         .map_err(|error| match error {
             AllocationPlanError::Hierarchy(error) => ResourceFlowSyncError::Hierarchy(error),

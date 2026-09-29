@@ -31,8 +31,8 @@ pub enum AllocationPlanError {
     NeutralPressure(#[from] crate::need_binding::NeutralPressureBindingError),
     #[error("more than one born Gu-Yang pressure product targets arena participant slot {slot}")]
     DuplicateImmediateFlowPressureTarget { slot: u32 },
-    #[error("a standing Add AllocatorWeight policy at RF interior participant slot {slot} is not admitted: composing it with the rolled-up total needs an affine stage no admitted op provides")]
-    InteriorAddWeightPolicy { slot: u32 },
+    #[error("the standing Add AllocatorWeight policy at RF interior participant slot {slot} is inherited by every RF child by tree position, so it would land once per participant instead of once on the rolled-up total")]
+    InheritedAddWeightPolicy { slot: u32 },
     #[error("the standing AllocatorWeight policy at RF interior participant slot {slot} reaches some but not all of its RF children by tree position")]
     InteriorWeightPolicyReachSplit { slot: u32 },
     #[error(transparent)]
@@ -107,11 +107,12 @@ pub fn plan_arena_allocation_with_pressure(
     )
 }
 
-/// [`plan_arena_allocation_with_pressure`] with standing Multiply policies
-/// scaling their hosts' rolled-up totals: `host_scales[slot] = factor` makes
-/// that interior participate upward at `factor x` its direct-child sum while its
-/// own child-share denominator stays the unscaled sum (DA ruling, live Board
-/// 5879126789). An empty map is the neutral plan, bit-identical.
+/// [`plan_arena_allocation_with_pressure`] with standing Multiply/Add policies
+/// deforming their hosts' rolled-up totals: `host_deformations[slot] =
+/// (scale, offset)` makes that interior participate upward at `scale x` its
+/// direct-child sum `+ offset`, while its own child-share denominator stays the
+/// plain sum (DA ruling, live Board 5879126789). An empty map is the neutral
+/// plan, bit-identical.
 #[allow(clippy::too_many_arguments)]
 pub fn plan_arena_allocation_with_policies(
     layout: &ArenaTreeLayout,
@@ -122,7 +123,7 @@ pub fn plan_arena_allocation_with_policies(
     observed_generation: GenerationStamp,
     allocation_generation: GenerationStamp,
     authored_weight_slots: &std::collections::BTreeSet<u32>,
-    host_scales: &std::collections::BTreeMap<u32, f32>,
+    host_deformations: &std::collections::BTreeMap<u32, (f32, f32)>,
 ) -> Result<ArenaAllocationPlan, AllocationPlanError> {
     let mut ops_cpu = Vec::new();
     let bands = layout.band_layout;
@@ -132,6 +133,18 @@ pub fn plan_arena_allocation_with_policies(
         for node in layout.iter_all() {
             for col in reset_columns(node.cols) {
                 ops_cpu.push(reset_op(node.participant_slot.raw(), col, bands.reset_band));
+            }
+            // A deformed host's weight opens each generation at its offset;
+            // its upsweep then adds the scaled sum onto it.
+            if let Some(&(_, offset)) = host_deformations.get(&node.participant_slot.raw()) {
+                ops_cpu.push(AccumulatorOp {
+                    source: SourceSpec::Constant(offset),
+                    ..reset_op(
+                        node.participant_slot.raw(),
+                        node.cols.weight_col,
+                        bands.reset_band,
+                    )
+                });
             }
         }
 
@@ -173,12 +186,13 @@ pub fn plan_arena_allocation_with_policies(
                 // -> disburse order per level; silent installation followed
                 // by erasure was the defect. Descendants are never recounted
                 // or scanned independently in either case.
-                if let Some(&factor) = host_scales.get(&parent.participant_slot.raw()) {
-                    // A standing Multiply policy that its RF children do not
+                if let Some(&(scale, _)) = host_deformations.get(&parent.participant_slot.raw()) {
+                    // A standing Multiply/Add stack that its RF children do not
                     // inherit deforms this host's rolled-up total once, here:
                     // the plain sum stays its own child-share denominator and
-                    // `factor x` that sum is its participation upward. Both
-                    // read only the children, so one band holds both writes.
+                    // `scale x` that sum lands on the offset the reset band
+                    // seeded, as its participation upward. Both read only the
+                    // children, so one band holds both writes.
                     ops_cpu.extend(sum_reduction_to_targets_ops(
                         parent,
                         parent.cols.weight_col,
@@ -194,7 +208,8 @@ pub fn plan_arena_allocation_with_policies(
                         )
                         .into_iter()
                         .map(|op| AccumulatorOp {
-                            scale: ScaleSpec::Constant(factor),
+                            scale: ScaleSpec::Constant(scale),
+                            consume: ConsumeMode::AddToTarget,
                             ..op
                         }),
                     );

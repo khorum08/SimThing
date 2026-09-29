@@ -4,20 +4,22 @@
 //! The recursive cycle reduces a subtree UP, applies the overlay modification,
 //! and disburses DOWN (0.0.8.7 P0; core §8.4.3's upward statistic); weight
 //! columns "default to Demand-proportional and are overlay-modifiable via
-//! existing Add/Multiply/Set OrderBands" (RF invariants). So a standing Multiply
-//! policy deforms its host's participation exactly once:
+//! existing Add/Multiply/Set OrderBands" (RF invariants). So a standing
+//! Multiply/Add stack deforms its host's participation exactly once:
 //!
 //! * at the host, on its rolled-up total, when the host's RF children are not
 //!   its physical descendants — an owner seat holds no spatial participants;
 //!   resource parentage is not containment (the shipped shape);
-//! * through tree-position inheritance when they all are.
+//! * through tree-position inheritance when they all are (Multiply only: an
+//!   inherited Add would land once per participant).
 //!
-//! A Set still replaces. Neutral trees are untouched. A standing Add at an RF
-//! interior, and a policy reaching only some of its RF children, refuse typed.
+//! A Set still replaces. Neutral trees are untouched. An inherited Add, and a
+//! policy reaching only some of its RF children, refuse typed.
 //!
-//! Shape: a root injecting `R` over two owner seats; Terran owns one site of
-//! four cohorts, Pirate two; every base weight is 1. Each owner's AllocatedFlow
-//! is the root's split.
+//! Shape: a root injecting `R` over two owner seats; the small seat owns one
+//! site of four cohorts, the large seat two; every base weight is 1, so the
+//! seats' plain totals are 4 and 8. Each seat's AllocatedFlow is the root's
+//! split.
 
 use simthing_core::{
     AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry, LogTier,
@@ -120,36 +122,38 @@ fn site(registry: &DimensionRegistry, pid: SimPropertyId) -> SimThing {
     site
 }
 
-/// Where an owner's sites live: beside the seat under the root, owned through a
+/// Where a seat's sites live: beside the seat under the root, owned through a
 /// resource-parent edge (the shipped shape), or physically inside the seat.
 #[derive(Clone, Copy)]
 enum Topology {
     Seat,
     Contained,
-    /// Pirate's first site physically inside the seat, its second by edge.
+    /// The large seat's first site physically inside it, its second by edge.
     Split,
 }
 
-/// Owner AllocatedFlow `[terran, pirate]` for generations 1 and 2, or the
-/// refusal the ordinary session raised at open.
+/// Seat AllocatedFlow `[small, large]` for generations 1 and 2, or the
+/// refusal the ordinary session raised at open. Each seat's policies stack in
+/// the given order.
 fn split(
     topology: Topology,
     root_flow: f32,
-    terran: Option<TransformOp>,
-    pirate: Option<TransformOp>,
+    small: &[TransformOp],
+    large: &[TransformOp],
 ) -> Result<[[f32; 2]; 2], String> {
     let mut registry = DimensionRegistry::new();
     let pid = property(&mut registry);
     let mut root = SimThing::new(SimThingKind::World, 0);
     author(&registry, pid, &mut root, root_flow);
     let mut ids = [None; 2];
-    for (index, (sites, policy)) in [(1, terran), (2, pirate)].into_iter().enumerate() {
-        let mut owner = SimThing::new(SimThingKind::Cohort, 0);
-        author(&registry, pid, &mut owner, 0.0);
-        if let Some(op) = policy {
-            owner.overlays.push(standing_policy(pid, owner.id, op));
+    for (index, (sites, policies)) in [(1, small), (2, large)].into_iter().enumerate() {
+        let mut seat = SimThing::new(SimThingKind::Cohort, 0);
+        author(&registry, pid, &mut seat, 0.0);
+        for op in policies {
+            seat.overlays
+                .push(standing_policy(pid, seat.id, op.clone()));
         }
-        ids[index] = Some(owner.id);
+        ids[index] = Some(seat.id);
         for number in 0..sites {
             let mut site = site(&registry, pid);
             let contained = match topology {
@@ -158,13 +162,13 @@ fn split(
                 Topology::Split => index == 1 && number == 0,
             };
             if contained {
-                owner.add_child(site);
+                seat.add_child(site);
             } else {
-                site.add_resource_parent_edge(NAMESPACE, NAME, owner.id, None);
+                site.add_resource_parent_edge(NAMESPACE, NAME, seat.id, None);
                 root.add_child(site);
             }
         }
-        root.add_child(owner);
+        root.add_child(seat);
     }
     let mut scenario = Scenario {
         name: "rf-interior-policy-composition".into(),
@@ -223,74 +227,133 @@ fn split(
     Ok(out)
 }
 
-fn assert_split(
-    case: &str,
-    actual: Result<[[f32; 2]; 2], String>,
-    expected: [f32; 2],
+struct Lawful {
+    case: &'static str,
+    topology: Topology,
+    root_flow: f32,
+    small: Vec<TransformOp>,
+    large: Vec<TransformOp>,
+    split: [f32; 2],
     generations: usize,
-) {
-    let actual = actual.unwrap_or_else(|error| panic!("{case}: session refused: {error}"));
-    for (generation, split) in actual.iter().take(generations).enumerate() {
-        assert!(
-            split.iter().zip(expected).all(|(got, want)| (got - want).abs() <= 1e-5),
-            "{case}: generation {}: owner split {split:?}, lawful {expected:?} (all generations: {actual:?})",
-            generation + 1
-        );
+}
+
+#[test]
+fn every_host_shape_deforms_its_rolled_up_total_once() {
+    use TransformOp as Op;
+    let cases = vec![
+        // The erased-aggregate law gave 1.6/2.4 whatever the subtrees needed.
+        Lawful {
+            case: "seat multiply: 4 x1 : 8 x1.5",
+            topology: Topology::Seat,
+            root_flow: 4.0,
+            small: vec![Op::multiply(1.0)],
+            large: vec![Op::multiply(1.5)],
+            split: [1.0, 3.0],
+            generations: 2,
+        },
+        Lawful {
+            case: "seat add: 4 : 8 + 4",
+            topology: Topology::Seat,
+            root_flow: 4.0,
+            small: vec![],
+            large: vec![Op::add(4.0)],
+            split: [1.0, 3.0],
+            generations: 2,
+        },
+        // The stack composes in its own order: 0.5 x 8 + 8 = 12, (8 + 8) x 0.5 = 8.
+        Lawful {
+            case: "seat stack, multiply then add",
+            topology: Topology::Seat,
+            root_flow: 6.0,
+            small: vec![],
+            large: vec![Op::multiply(0.5), Op::add(8.0)],
+            split: [1.5, 4.5],
+            generations: 2,
+        },
+        Lawful {
+            case: "seat stack, add then multiply",
+            topology: Topology::Seat,
+            root_flow: 6.0,
+            small: vec![],
+            large: vec![Op::add(8.0), Op::multiply(0.5)],
+            split: [2.0, 4.0],
+            generations: 2,
+        },
+        // Every large-seat cohort inherits x1.5, so its plain total is already
+        // 12; a second application at the seat would give 18 (0.73/3.27).
+        // Generation 1 only: the overlay pass re-applies a standing Multiply to
+        // the persistent cohort cells every tick, a separate defect held for
+        // its own ruling (it compounds leaf policies alike).
+        Lawful {
+            case: "contained multiply, carried once by inheritance",
+            topology: Topology::Contained,
+            root_flow: 4.0,
+            small: vec![Op::multiply(1.0)],
+            large: vec![Op::multiply(1.5)],
+            split: [1.0, 3.0],
+            generations: 1,
+        },
+        Lawful {
+            case: "seat set replaces the participation",
+            topology: Topology::Seat,
+            root_flow: 6.0,
+            small: vec![],
+            large: vec![Op::set(2.0)],
+            split: [4.0, 2.0],
+            generations: 2,
+        },
+        Lawful {
+            case: "neutral seats carry their totals",
+            topology: Topology::Seat,
+            root_flow: 6.0,
+            small: vec![],
+            large: vec![],
+            split: [2.0, 4.0],
+            generations: 2,
+        },
+    ];
+    let mut unlawful = Vec::new();
+    for case in cases {
+        match split(case.topology, case.root_flow, &case.small, &case.large) {
+            Err(error) => unlawful.push(format!("{}: session refused: {error}", case.case)),
+            Ok(actual) => {
+                for (generation, got) in actual.iter().take(case.generations).enumerate() {
+                    if got
+                        .iter()
+                        .zip(case.split)
+                        .any(|(got, want)| (got - want).abs() > 1e-5)
+                    {
+                        unlawful.push(format!(
+                            "{}: generation {}: split {got:?}, lawful {:?}",
+                            case.case,
+                            generation + 1,
+                            case.split
+                        ));
+                    }
+                }
+            }
+        }
     }
+    assert!(unlawful.is_empty(), "{unlawful:#?}");
 }
 
 #[test]
-fn seat_multiply_policy_scales_the_rolled_up_total() {
-    // Terran total 4 (x1); Pirate 1.5 x 8 = 12; the root's 4 splits 4:12 and stays
-    // there: the seat's weight is re-derived every generation, never compounded.
-    // The erased-aggregate law gave 1 : 1.5 whatever the subtrees needed.
-    let actual = split(
-        Topology::Seat,
-        4.0,
-        Some(TransformOp::multiply(1.0)),
-        Some(TransformOp::multiply(1.5)),
-    );
-    assert_split("seat multiply", actual, [1.0, 3.0], 2);
-}
-
-#[test]
-fn contained_multiply_policy_is_carried_once_by_inheritance() {
-    // Every Pirate cohort inherits x1.5, so the seat's plain total is already
-    // 12: a second application at the seat would give 1.5 x 12 = 18 (0.73/3.27).
-    // Generation 1 only: the overlay pass re-applies a standing Multiply to the
-    // persistent cohort cells every tick, a separate defect held for its own
-    // ruling (it compounds leaf policies alike, and is not this law's to fix).
-    let actual = split(
-        Topology::Contained,
-        4.0,
-        Some(TransformOp::multiply(1.0)),
-        Some(TransformOp::multiply(1.5)),
-    );
-    assert_split("contained multiply", actual, [1.0, 3.0], 1);
-}
-
-#[test]
-fn set_policy_still_replaces_the_seats_participation() {
-    // Pirate participates at exactly 2 whatever its subtree holds; Terran at 4.
-    let actual = split(Topology::Seat, 6.0, None, Some(TransformOp::set(2.0)));
-    assert_split("seat set", actual, [4.0, 2.0], 2);
-}
-
-#[test]
-fn neutral_seats_carry_their_subtree_totals() {
-    let actual = split(Topology::Seat, 6.0, None, None);
-    assert_split("neutral", actual, [2.0, 4.0], 2);
-}
-
-#[test]
-fn interior_add_policy_and_split_reach_refuse_typed() {
-    let refusal = split(Topology::Seat, 5.0, None, Some(TransformOp::add(1.0)))
-        .expect_err("a standing Add at an RF interior must refuse");
-    assert!(refusal.contains("InteriorAddWeightPolicy"), "{refusal}");
-    let refusal = split(Topology::Split, 4.0, None, Some(TransformOp::multiply(1.5)))
-        .expect_err("a policy reaching only some RF children must refuse");
-    assert!(
-        refusal.contains("InteriorWeightPolicyReachSplit"),
-        "{refusal}"
-    );
+fn ambiguous_interior_policies_refuse_typed() {
+    let cases = [
+        (
+            Topology::Contained,
+            TransformOp::add(1.0),
+            "InheritedAddWeightPolicy",
+        ),
+        (
+            Topology::Split,
+            TransformOp::multiply(1.5),
+            "InteriorWeightPolicyReachSplit",
+        ),
+    ];
+    for (topology, op, refusal) in cases {
+        let error = split(topology, 4.0, &[], &[op])
+            .expect_err("an ambiguous interior policy must refuse at open");
+        assert!(error.contains(refusal), "expected {refusal}: {error}");
+    }
 }
