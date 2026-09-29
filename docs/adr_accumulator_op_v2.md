@@ -101,8 +101,8 @@ enum CombineFn {
     LastByPriority,                     // for Set overlays
     IntegrateWithClamp { dt, vel_max, amount_min, amount_max },
     CrossingFormula { unit_cost },      // debt-band emission
-    MinAcrossInputs { max_units },      // conjunctive emit; optional per-generation unit
-                                        // ceiling on the ONE count that debits and credits
+    MinAcrossInputs,                    // conjunctive emit; a per-generation cap is one
+                                        // more input, a capacity budget (never a field)
     EvalEML { tree_id },                // Phase 5 EML; requires whitelist
 }
 

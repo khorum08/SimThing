@@ -65,7 +65,6 @@ pub struct CompiledResourceRecipe {
     pub output_coefficient: f32,
     pub order_band: u32,
     pub throttle_hint_max_per_tick: u32,
-    pub max_units_per_generation: Option<std::num::NonZeroU32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -360,7 +359,6 @@ fn compile_recipe(
         output_coefficient: recipe.output_coefficient,
         order_band: recipe.order_band,
         throttle_hint_max_per_tick: recipe.throttle_hint_max_per_tick,
-        max_units_per_generation: recipe.max_units_per_generation,
     })
 }
 
@@ -601,7 +599,6 @@ mod tests {
             output_coefficient: 1.0,
             order_band: 0,
             throttle_hint_max_per_tick: 1,
-            max_units_per_generation: None,
         };
         let compile = |recipes: Vec<ResourceRecipeSpec>| {
             compile_resource_economy(
