@@ -153,4 +153,15 @@ The spec, the driver, core and the kernel carry no cap at all:
   deleted under `authorized_deletions.tsv` (`5879126789-DA`), since the kernel no longer has the
   field.
 
-RESULTS_3A
+**Evidence** (NVIDIA 616.92, `--features simthing-gpu/eml-resource-profiling`):
+
+| step | result |
+|---|---|
+| old pin RED | the referee refused `0x2308_1112_d5c9_8f38`, observing `490e902413acc670` |
+| roll | both literals `0x490e_9024_13ac_c670` |
+| battery | parity 1/1 (`490e902413acc670`), score and bands 3/3, runtime 4/4 |
+| cap witnesses | workshop 8/8: uncapped G1 `[10, 8]`, cap 1 `[1, 1]` ×3, cap 2 `[2, 2]` ×3, alloy `[[0, 4], [2, 4]]`, structural products 5/5; clausething 2/2; c8c 2/2 |
+| full suites | core 32, kernel 55, spec 16, sim 25, gpu 7, driver 58 (1 ignored), workshop 16, clausething 47 (2 ignored), mapeditor 26 (run alone: after clausething in one batch it hits a local cache artifact before any test runs); 0 failed |
+| clean checkout | PASS: a fresh GitHub clone at the roll commit `eb0077e6` (autocrlf `false`, 0 dirty paths, 0 CRLF files) reproduces `490e902413acc670` |
+
+Pin chain: `…0xef92_b0f2_866c_ef5d` → `0x2308_1112_d5c9_8f38` (#2098) → `0x490e_9024_13ac_c670`.
