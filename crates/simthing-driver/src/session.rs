@@ -672,6 +672,10 @@ impl SimSession {
                 &self.proto.root,
                 &self.spec_state.arena_registry,
             );
+        let weight_host_policies = crate::arena_allocation_sync::collect_weight_host_policies(
+            &self.proto.root,
+            &self.spec_state.arena_registry,
+        );
         crate::arena_allocation_sync::sync_resource_flow_accumulator_with_pressure(
             &mut self.state,
             &self.proto.registry,
@@ -683,6 +687,7 @@ impl SimSession {
             observed_generation,
             allocation_generation,
             &weight_overlay_targets,
+            &weight_host_policies,
         )?;
         // Bound footprint: the identities of the admitted active instances,
         // resolved through the tick-zero snapshot's slot mapping — existing
@@ -1548,6 +1553,10 @@ impl SimSession {
                 &self.proto.root,
                 &self.spec_state.arena_registry,
             );
+        let weight_host_policies = crate::arena_allocation_sync::collect_weight_host_policies(
+            &self.proto.root,
+            &self.spec_state.arena_registry,
+        );
         crate::arena_allocation_sync::sync_resource_flow_accumulator_with_pressure(
             &mut self.state,
             &self.proto.registry,
@@ -1559,6 +1568,7 @@ impl SimSession {
             observed_generation,
             allocation_generation,
             &weight_overlay_targets,
+            &weight_host_policies,
         )?;
         Ok(())
     }
@@ -1597,6 +1607,10 @@ impl SimSession {
             ),
             false,
             &crate::arena_allocation_sync::collect_weight_overlay_targets(
+                &self.proto.root,
+                &self.spec_state.arena_registry,
+            ),
+            &crate::arena_allocation_sync::collect_weight_host_policies(
                 &self.proto.root,
                 &self.spec_state.arena_registry,
             ),

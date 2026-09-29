@@ -7,8 +7,9 @@
 //! hid beyond them for a whole track: #2065 created mass below depth 1 and the
 //! historical interior path destroyed it (repaired by #2076). This witness
 //! generates trees of depth 1..=5 carrying intrinsic sources AND sinks on the
-//! root, interiors and leaves, zero and non-zero weights, and Set/Add/Multiply
-//! weight policies on interiors, and judges every generation of the ORDINARY
+//! root, interiors and leaves, zero and non-zero weights, and the Set/Multiply
+//! weight policies the interior-policy law admits on interiors, and judges every
+//! generation of the ORDINARY
 //! resident session with the independent RF-1 structural check. Every
 //! participant's Balance is governed, so no terminal allocation leaves the
 //! arena: Σ intrinsic flow = Σ ΔBalance within the oracle's O(ε·n) bound.
@@ -153,12 +154,13 @@ fn weight_policy(pid: SimPropertyId, host: SimThingId, op: TransformOp) -> Overl
     }
 }
 
+/// Interior policies the completed interior-policy law admits (a standing Add at
+/// an RF interior refuses typed; live Board 5879126789).
 fn policy(selector: u8) -> Option<TransformOp> {
     match selector {
         0 => Some(TransformOp::multiply(2.0)),
         1 => Some(TransformOp::multiply(0.5)),
-        2 => Some(TransformOp::add(1.0)),
-        3 => Some(TransformOp::set(2.0)),
+        2 => Some(TransformOp::set(2.0)),
         _ => None,
     }
 }
@@ -208,7 +210,7 @@ fn grow(
         }
         if !child.children.is_empty() {
             participants[slot].is_leaf = false;
-            if let Some(op) = policy(rng.pick(&[0u8, 1, 2, 3, 4, 4, 4])) {
+            if let Some(op) = policy(rng.pick(&[0u8, 1, 2, 3, 3, 3])) {
                 child.overlays.push(weight_policy(pid, child.id, op));
                 *policies += 1;
             }
@@ -252,9 +254,10 @@ fn generated(seed: u64) -> Shape {
     }
 }
 
-/// The shipped 1.2 economy's shape: two owner interiors carrying Multiply weight
-/// policies (x1 and x1.5), one site each, and four cohorts per site (two +2
-/// generators, two -1 upkeeps), with and without a root injection.
+/// The shipped 1.2 economy's shape: two owner SEATS (physically childless, as
+/// shipped) carrying Multiply weight policies (x1 and x1.5), each owning one site
+/// through a resource-parent edge, and four cohorts per site (two +2 generators,
+/// two -1 upkeeps), with and without a root injection.
 fn owner_economy(root_flow: f32) -> Shape {
     let mut registry = DimensionRegistry::new();
     let pid = property(&mut registry);
@@ -295,7 +298,8 @@ fn owner_economy(root_flow: f32) -> Shape {
             });
             site.add_child(cohort);
         }
-        owner.add_child(site);
+        site.add_resource_parent_edge("any_shape", "stock", owner.id, None);
+        root.add_child(site);
         root.add_child(owner);
     }
     Shape {

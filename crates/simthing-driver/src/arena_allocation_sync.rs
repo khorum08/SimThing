@@ -4,7 +4,7 @@ use simthing_core::{DimensionRegistry, EmlExpressionRegistry, GenerationStamp, S
 use simthing_gpu::{build_governed_pairs, PackedAccumulatorUpload, WorldGpuState};
 
 use crate::arena_allocation_plan::{
-    append_residual_closure_ops, plan_arena_allocation, plan_arena_allocation_with_pressure,
+    append_residual_closure_ops, plan_arena_allocation, plan_arena_allocation_with_policies,
     AllocationPlanError, ArenaAllocationPlan,
 };
 use crate::arena_hierarchy::{
@@ -85,13 +85,79 @@ pub fn sync_resource_flow_accumulator(
         GenerationStamp::new(0),
         GenerationStamp::new(1),
         weight_overlay_targets,
+        &WeightHostPolicies::default(),
     )
 }
 
-/// Build the per-flow-property installed-overlay AllocatorWeight target map
-/// from the sealed runtime tree (relay 5626653653, completing DA ruling
-/// 5626045761). Observation-only ids from the tree's narrow query; the ONE
-/// canonical authority remains the installed overlay/program set itself.
+/// A standing literal Multiply/Add AllocatorWeight policy, at its host.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct HostWeightPolicy {
+    /// Product of the host's own standing literal Multiply factors.
+    pub factor: f32,
+    /// The host also carries a standing literal Add.
+    pub adds: bool,
+    /// Ids physically contained beneath the host: the reach of its
+    /// tree-position inheritance.
+    pub physical_descendants: std::collections::BTreeSet<simthing_core::SimThingId>,
+}
+
+/// Per flow property, every host of a standing literal Multiply/Add weight policy.
+pub type WeightHostPolicies = std::collections::BTreeMap<
+    simthing_core::SimPropertyId,
+    std::collections::BTreeMap<simthing_core::SimThingId, HostWeightPolicy>,
+>;
+
+/// Collect every standing literal Multiply/Add AllocatorWeight policy by host
+/// (DA ruling, live Board 5879126789). The recursive cycle reduces a subtree
+/// UP, applies the overlay modification, and disburses DOWN (0.0.8.7 P0), so a
+/// standing policy deforms its host's RF participation exactly once: through
+/// tree-position inheritance when the host's RF children are its physical
+/// descendants, and at the host, on its rolled-up total, when they are not — an
+/// owner seat holds no spatial participants, and resource parentage is not
+/// containment.
+pub fn collect_weight_host_policies(
+    root: &simthing_sim::SimRuntimeTree,
+    arena_registry: &ArenaRegistry,
+) -> WeightHostPolicies {
+    let role = simthing_core::SubFieldRole::Named("weight".into());
+    let standing_literal = |overlay: &simthing_core::Overlay, op: &simthing_core::TransformOp| {
+        !matches!(overlay.kind, simthing_core::OverlayKind::Instruction)
+            && (op.as_multiply_literal().is_some() || op.as_add_literal().is_some())
+    };
+    let mut map = WeightHostPolicies::new();
+    for arena in &arena_registry.arenas {
+        let hosts =
+            root.overlay_transforms_by_host(arena.flow_property_id, &role, &standing_literal);
+        let by_host: std::collections::BTreeMap<_, _> = hosts
+            .into_iter()
+            .map(|(host, ops)| {
+                let policy = HostWeightPolicy {
+                    factor: ops
+                        .iter()
+                        .filter_map(|op| op.as_multiply_literal())
+                        .product(),
+                    adds: ops.iter().any(|op| op.as_add_literal().is_some()),
+                    physical_descendants: root.physical_descendants(host),
+                };
+                (host, policy)
+            })
+            .collect();
+        if !by_host.is_empty() {
+            map.insert(arena.flow_property_id, by_host);
+        }
+    }
+    map
+}
+
+/// Build the per-flow-property map of participants whose AllocatorWeight
+/// participation an installed overlay REPLACES (relay 5626653653 and DA
+/// ruling 5626045761, completed by the DA ruling on the live Board
+/// 5879126789): a Set, a non-literal program, or a routed instruction keeps its
+/// host's and targets' own value upward. Standing literal Multiply/Add policies
+/// never replace; they deform the rolled-up total (see
+/// [`collect_weight_host_policies`]). Observation-only ids from the tree's
+/// narrow query; the ONE canonical authority remains the installed
+/// overlay/program set itself.
 pub fn collect_weight_overlay_targets(
     root: &simthing_sim::SimRuntimeTree,
     arena_registry: &ArenaRegistry,
@@ -100,9 +166,13 @@ pub fn collect_weight_overlay_targets(
     std::collections::BTreeSet<simthing_core::SimThingId>,
 > {
     let role = simthing_core::SubFieldRole::Named("weight".into());
+    let replaces = |overlay: &simthing_core::Overlay, op: &simthing_core::TransformOp| {
+        matches!(overlay.kind, simthing_core::OverlayKind::Instruction)
+            || (op.as_multiply_literal().is_none() && op.as_add_literal().is_none())
+    };
     let mut map = std::collections::BTreeMap::new();
     for arena in &arena_registry.arenas {
-        let ids = root.overlay_transform_targets(arena.flow_property_id, &role);
+        let ids = root.overlay_transform_targets(arena.flow_property_id, &role, &replaces);
         if !ids.is_empty() {
             map.insert(arena.flow_property_id, ids);
         }
@@ -127,6 +197,7 @@ pub fn sync_resource_flow_accumulator_with_pressure(
         simthing_core::SimPropertyId,
         std::collections::BTreeSet<simthing_core::SimThingId>,
     >,
+    weight_host_policies: &WeightHostPolicies,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     sync_resource_flow_accumulator_with_options(
         state,
@@ -140,6 +211,7 @@ pub fn sync_resource_flow_accumulator_with_pressure(
         allocation_generation,
         true,
         weight_overlay_targets,
+        weight_host_policies,
     )
 }
 
@@ -159,6 +231,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
         simthing_core::SimPropertyId,
         std::collections::BTreeSet<simthing_core::SimThingId>,
     >,
+    weight_host_policies: &WeightHostPolicies,
 ) -> Result<ResourceFlowSyncReport, ResourceFlowSyncError> {
     if arena_registry.arenas.is_empty() {
         state.clear_resource_flow_accumulator();
@@ -191,10 +264,12 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
     // historical plan.
     // Relay 5626653653 completion: the policy-bearing set derives from EVERY
     // canonical authored AllocatorWeight authority — the resolved need
-    // bindings AND active installed overlays targeting the flow property's
-    // AllocatorWeight sub-field (ids supplied per property by the sealed
-    // runtime tree's observation-only query). Classification only; the ONE
-    // authority remains the installed program/overlay set itself.
+    // bindings AND active installed overlays that REPLACE the flow property's
+    // AllocatorWeight participation (ids supplied per property by the sealed
+    // runtime tree's observation-only query). Standing Multiply/Add policies
+    // deform the rolled-up total instead (live Board 5879126789).
+    // Classification only; the ONE authority remains the installed
+    // program/overlay set itself.
     let authored_weight_slots_base: std::collections::BTreeSet<u32> =
         need_bindings.iter().map(|b| b.participant_slot).collect();
     let mut combined_cpu = Vec::new();
@@ -211,6 +286,41 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
                 }
             }
         }
+        // A standing Multiply policy whose host's RF children are not its
+        // physical descendants deforms the host's rolled-up total here, once;
+        // one that all of them inherit by tree position is already carried by
+        // that total. An Add at an RF interior would need an affine stage no
+        // admitted op provides, and a split reach is ambiguous: both refuse
+        // typed until a consumer rules them (live Board 5879126789).
+        let mut host_scales = std::collections::BTreeMap::new();
+        if let Some(hosts) = weight_host_policies.get(&arena.flow_property_id) {
+            for node in arena.iter_all() {
+                let slot = node.participant_slot.raw();
+                let Some(policy) = hosts.get(&node.hosted_simthing_id) else {
+                    continue;
+                };
+                if !node.is_interior() || authored_weight_slots.contains(&slot) {
+                    continue;
+                }
+                if policy.adds {
+                    return Err(AllocationPlanError::InteriorAddWeightPolicy { slot }.into());
+                }
+                let reached = node
+                    .children
+                    .iter()
+                    .filter(|child| {
+                        policy
+                            .physical_descendants
+                            .contains(&child.hosted_simthing_id)
+                    })
+                    .count();
+                if reached == 0 {
+                    host_scales.insert(slot, policy.factor);
+                } else if reached != node.children.len() {
+                    return Err(AllocationPlanError::InteriorWeightPolicyReachSplit { slot }.into());
+                }
+            }
+        }
         // ONE-INTEGRATION-AUTHORITY LAW (DA admission, relay 5690342946): the
         // per-arena plan carries NO governed integration — embedding the
         // registry-wide integration once per arena integrated every governed
@@ -218,7 +328,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
         // built-in residency-row-capacity arena made N >= 2 in every ordinary
         // session). The single registry-wide integration tail is appended
         // once, below, after every arena's settlement bands.
-        let mut alloc = plan_arena_allocation_with_pressure(
+        let mut alloc = plan_arena_allocation_with_policies(
             arena,
             &[],
             state.n_slots,
@@ -227,6 +337,7 @@ pub(crate) fn sync_resource_flow_accumulator_with_options(
             observed_generation,
             allocation_generation,
             &authored_weight_slots,
+            &host_scales,
         )
         .map_err(|error| match error {
             AllocationPlanError::Hierarchy(error) => ResourceFlowSyncError::Hierarchy(error),

@@ -31,6 +31,10 @@ pub enum AllocationPlanError {
     NeutralPressure(#[from] crate::need_binding::NeutralPressureBindingError),
     #[error("more than one born Gu-Yang pressure product targets arena participant slot {slot}")]
     DuplicateImmediateFlowPressureTarget { slot: u32 },
+    #[error("a standing Add AllocatorWeight policy at RF interior participant slot {slot} is not admitted: composing it with the rolled-up total needs an affine stage no admitted op provides")]
+    InteriorAddWeightPolicy { slot: u32 },
+    #[error("the standing AllocatorWeight policy at RF interior participant slot {slot} reaches some but not all of its RF children by tree position")]
+    InteriorWeightPolicyReachSplit { slot: u32 },
     #[error(transparent)]
     ExactApportionment(#[from] simthing_gpu::ResidentApportionmentError),
 }
@@ -90,6 +94,36 @@ pub fn plan_arena_allocation_with_pressure(
     allocation_generation: GenerationStamp,
     authored_weight_slots: &std::collections::BTreeSet<u32>,
 ) -> Result<ArenaAllocationPlan, AllocationPlanError> {
+    plan_arena_allocation_with_policies(
+        layout,
+        governed_pairs,
+        n_slots,
+        conserved_progress_bindings,
+        active_instances,
+        observed_generation,
+        allocation_generation,
+        authored_weight_slots,
+        &std::collections::BTreeMap::new(),
+    )
+}
+
+/// [`plan_arena_allocation_with_pressure`] with standing Multiply policies
+/// scaling their hosts' rolled-up totals: `host_scales[slot] = factor` makes
+/// that interior participate upward at `factor x` its direct-child sum while its
+/// own child-share denominator stays the unscaled sum (DA ruling, live Board
+/// 5879126789). An empty map is the neutral plan, bit-identical.
+#[allow(clippy::too_many_arguments)]
+pub fn plan_arena_allocation_with_policies(
+    layout: &ArenaTreeLayout,
+    governed_pairs: &[GovernedPair],
+    n_slots: u32,
+    conserved_progress_bindings: &[CompiledActionBandConservedProgressBinding],
+    active_instances: &[ActionBandActiveInstance],
+    observed_generation: GenerationStamp,
+    allocation_generation: GenerationStamp,
+    authored_weight_slots: &std::collections::BTreeSet<u32>,
+    host_scales: &std::collections::BTreeMap<u32, f32>,
+) -> Result<ArenaAllocationPlan, AllocationPlanError> {
     let mut ops_cpu = Vec::new();
     let bands = layout.band_layout;
     let d = layout.max_depth;
@@ -139,18 +173,45 @@ pub fn plan_arena_allocation_with_pressure(
                 // -> disburse order per level; silent installation followed
                 // by erasure was the defect. Descendants are never recounted
                 // or scanned independently in either case.
-                let mut aggregate_targets =
-                    vec![(parent.participant_slot, parent.cols.weight_sum_col)];
-                if !authored_weight_slots.contains(&parent.participant_slot.raw()) {
-                    aggregate_targets
-                        .insert(0, (parent.participant_slot, parent.cols.weight_col));
+                if let Some(&factor) = host_scales.get(&parent.participant_slot.raw()) {
+                    // A standing Multiply policy that its RF children do not
+                    // inherit deforms this host's rolled-up total once, here:
+                    // the plain sum stays its own child-share denominator and
+                    // `factor x` that sum is its participation upward. Both
+                    // read only the children, so one band holds both writes.
+                    ops_cpu.extend(sum_reduction_to_targets_ops(
+                        parent,
+                        parent.cols.weight_col,
+                        vec![(parent.participant_slot, parent.cols.weight_sum_col)],
+                        band,
+                    ));
+                    ops_cpu.extend(
+                        sum_reduction_to_targets_ops(
+                            parent,
+                            parent.cols.weight_col,
+                            vec![(parent.participant_slot, parent.cols.weight_col)],
+                            band,
+                        )
+                        .into_iter()
+                        .map(|op| AccumulatorOp {
+                            scale: ScaleSpec::Constant(factor),
+                            ..op
+                        }),
+                    );
+                } else {
+                    let mut aggregate_targets =
+                        vec![(parent.participant_slot, parent.cols.weight_sum_col)];
+                    if !authored_weight_slots.contains(&parent.participant_slot.raw()) {
+                        aggregate_targets
+                            .insert(0, (parent.participant_slot, parent.cols.weight_col));
+                    }
+                    ops_cpu.extend(sum_reduction_to_targets_ops(
+                        parent,
+                        parent.cols.weight_col,
+                        aggregate_targets,
+                        band,
+                    ));
                 }
-                ops_cpu.extend(sum_reduction_to_targets_ops(
-                    parent,
-                    parent.cols.weight_col,
-                    aggregate_targets,
-                    band,
-                ));
             }
         }
 
