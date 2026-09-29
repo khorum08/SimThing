@@ -12,8 +12,8 @@ use crate::spec::resource_flow::{
 };
 use crate::spec::script::PropertyKey;
 use simthing_core::{
-    AccumulatorRole, AccumulatorSpec, BalanceSpec, DimensionRegistry, NumCountSource,
-    SimPropertyId, SubFieldRole,
+    AccumulatorRole, AccumulatorSpec, BalanceSpec, ClampBehavior, DimensionRegistry,
+    NumCountSource, SimPropertyId, SubFieldRole,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -126,6 +126,12 @@ pub fn compile_resource_flow_admission(
             Some(key) => Some(resolve_property(registry, key)?),
         };
 
+        validate_conserved_cells_unclamped(
+            registry,
+            &arena.name,
+            flow_property_id,
+            balance_property_id,
+        )?;
         validate_wildcard(&arena.name, arena.wildcard_admission.as_ref())?;
         validate_fission_policy(&arena.name, arena.fission_policy)?;
         if arena.explicit_participants.is_empty() && arena.wildcard_admission.is_none() {
@@ -397,6 +403,78 @@ fn validate_balance_num_count_sources(registry: &DimensionRegistry) -> Result<()
                         referenced_property_id: property_id.0,
                     });
                 }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// A bound on a cell that carries an arena's conserved quantity destroys it when
+/// it binds: the governed integration truncates at the bound, so the Invariant
+/// Set's `Σ intrinsic flow = Σ ΔBalance` fails "for any input". The conserved
+/// cells are the arena's AllocatedFlow, every Balance that settles it, and each
+/// Balance's governing rate. A storage bound is a budget, never a clamp (DA
+/// ruling, live Board 5879126789). An IntrinsicFlow bound only shapes the
+/// authored source term, so it stays admitted.
+fn validate_conserved_cells_unclamped(
+    registry: &DimensionRegistry,
+    arena: &str,
+    flow_property_id: SimPropertyId,
+    balance_property_id: Option<SimPropertyId>,
+) -> Result<(), SpecError> {
+    for (index, prop) in registry.properties.iter().enumerate() {
+        let id = SimPropertyId(index as u32);
+        let allocates_here = |role: &Option<AccumulatorSpec>| {
+            matches!(
+                role,
+                Some(AccumulatorSpec { role: AccumulatorRole::AllocatedFlow { arena: bound }, .. })
+                    if bound == arena
+            )
+        };
+        let in_arena = id == flow_property_id
+            || Some(id) == balance_property_id
+            || prop
+                .layout
+                .sub_fields
+                .iter()
+                .any(|sf| allocates_here(&sf.accumulator_spec));
+        if !in_arena {
+            continue;
+        }
+        let governing: Vec<&SubFieldRole> = prop
+            .layout
+            .sub_fields
+            .iter()
+            .filter(|sf| {
+                matches!(
+                    sf.accumulator_spec,
+                    Some(AccumulatorSpec {
+                        role: AccumulatorRole::Balance(_),
+                        ..
+                    })
+                )
+            })
+            .filter_map(|sf| sf.governed_by.as_ref())
+            .collect();
+        for sf in &prop.layout.sub_fields {
+            let conserved = allocates_here(&sf.accumulator_spec)
+                || matches!(
+                    sf.accumulator_spec,
+                    Some(AccumulatorSpec {
+                        role: AccumulatorRole::Balance(_),
+                        ..
+                    })
+                )
+                || governing.contains(&&sf.role);
+            if conserved && sf.clamp != ClampBehavior::Unbounded {
+                return Err(SpecError::AdmissionRefused {
+                    law_id: "rf-conserved-cell-unclamped",
+                    element_path: format!(
+                        "resource_flow.arenas[name={arena:?}].properties[key={:?}].sub_fields[role={}].clamp",
+                        format!("{}::{}", prop.namespace, prop.name),
+                        format_role(&sf.role),
+                    ),
+                });
             }
         }
     }

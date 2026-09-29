@@ -1,8 +1,10 @@
-//! An authored sub-field bound reaches EXECUTION through the ordinary native
-//! path (DA, relay 5745626815). The shipped two-faction scenario is re-authored
-//! in a temp copy with a finite bound on its governed energy balance; the bound
-//! survives the canonical cache, and the existing governed integration saturates
-//! the cell at the ceiling instead of letting it rise.
+//! An authored sub-field bound reaches the ordinary native session (DA, relay
+//! 5745626815), except on a cell that carries an RF arena's conserved quantity
+//! (DA intervention 3(b), live Board 5879126789). There, a bound truncates the
+//! governed integration and destroys the flow the arena settled, so the
+//! Invariant Set's conservation "for any input" fails. A storage bound is a
+//! budget, never a clamp. The shipped two-faction scenario is re-authored in a
+//! temp copy with one bound per case.
 use simthing_core::{ClampBehavior, SubFieldRole};
 use simthing_driver::SimSession;
 use simthing_mapeditor::clause_scenario_ingest::{
@@ -14,47 +16,44 @@ use simthing_mapeditor::studio_live_session_bridge::{
 };
 use std::path::{Path, PathBuf};
 
-/// The shipped governed energy balance, unchanged except for the authored bound.
-const GOVERNED_BALANCE: &str =
+/// The shipped energy property's cells, each authored exactly once.
+const FLOW: &str = "sub_field = { role = flow accumulator = IntrinsicFlow }";
+const ALLOCATED: &str =
+    "sub_field = { role = Amount accumulator = AllocatedFlow { arena = meridian_energy } }";
+const WEIGHT: &str =
+    "sub_field = { role = weight default = 1 accumulator = AllocatorWeight { arena = meridian_energy } }";
+const RATE: &str = "sub_field = { role = balance_rate }";
+const BALANCE: &str =
     "sub_field = { role = balance governed_by = balance_rate accumulator = Balance }";
 
-fn source(clamp: &str) -> String {
+/// The shipped scenario with `clamp` appended inside one cell's block.
+fn source(cell: &str, clamp: &str) -> String {
     let text = std::fs::read_to_string(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios/stellaristhing_base.clause"),
     )
     .unwrap()
     .replace("\r\n", "\n");
-    assert_eq!(
-        text.matches(GOVERNED_BALANCE).count(),
-        1,
-        "shipped governed balance cell"
-    );
+    for shipped in [FLOW, ALLOCATED, WEIGHT, RATE, BALANCE] {
+        assert_eq!(text.matches(shipped).count(), 1, "shipped cell {shipped}");
+    }
     if clamp.is_empty() {
         return text;
     }
-    text.replace(
-        GOVERNED_BALANCE,
-        &GOVERNED_BALANCE.replace("accumulator = Balance }", &format!("accumulator = Balance {clamp} }}")),
-    )
+    let bounded = format!("{} {clamp} }}", cell.strip_suffix(" }").unwrap());
+    text.replace(cell, &bounded)
 }
 
-struct Live {
-    sim: SimSession,
-    cache: PathBuf,
-    _dir: tempfile::TempDir,
-}
-
-fn session_from(profile: &StudioAuthoredLiveProfile) -> SimSession {
+fn session_from(profile: &StudioAuthoredLiveProfile) -> Result<SimSession, String> {
     SimSession::open_from_spec(
-        driver_scenario_field_bearing_from_profile(profile).expect("field bearing"),
+        driver_scenario_field_bearing_from_profile(profile).map_err(|e| format!("{e:?}"))?,
         &field_bearing_game_mode(&profile.game_mode),
     )
-    .expect("ordinary session admission")
+    .map_err(|e| format!("{e:?}"))
 }
 
 /// The ordinary native path: parse -> hydrate -> profile -> session, plus the
 /// derived canonical cache written beside it.
-fn open(text: &str) -> Live {
+fn open(text: &str) -> (Result<SimSession, String>, PathBuf, tempfile::TempDir) {
     let dir = tempfile::tempdir().unwrap();
     let sources = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scenarios");
     for file in [
@@ -66,109 +65,105 @@ fn open(text: &str) -> Live {
     let source = dir.path().join("stellaristhing_base.clause");
     std::fs::write(&source, text).unwrap();
     let cache = dir.path().join("witness.simthing-scenario.json");
-    let (_, native) = load_clause_studio_session_from_path(
+    let session = load_clause_studio_session_from_path(
         &source,
         &ClauseScenarioIngestOptions::default(),
         &cache,
         None,
     )
-    .expect("native load");
-    let profile = native.authored_live_profile.as_ref().expect("live profile");
-    Live {
-        sim: session_from(profile),
-        cache,
-        _dir: dir,
-    }
+    .map_err(|e| format!("{e:?}"))
+    .and_then(|(_, native)| session_from(native.authored_live_profile.as_ref().unwrap()));
+    (session, cache, dir)
 }
 
-fn balance_clamp(sim: &SimSession) -> ClampBehavior {
+fn clamp_of(sim: &SimSession, role: &str) -> ClampBehavior {
     let registry = &sim.proto.registry;
-    let energy = registry.id_of("meridian", "energy").expect("energy property");
+    let energy = registry
+        .id_of("meridian", "energy")
+        .expect("energy property");
     registry
         .property(energy)
         .layout
         .sub_fields
         .iter()
-        .find(|sub| matches!(&sub.role, SubFieldRole::Named(name) if name == "balance"))
-        .expect("governed balance cell")
+        .find(|sub| match &sub.role {
+            SubFieldRole::Named(name) => name == role,
+            other => format!("{other:?}") == role,
+        })
+        .expect("energy cell")
         .clamp
         .clone()
 }
 
-/// Per-row settled balance for the governed energy cell.
-fn balances(sim: &SimSession) -> Vec<f32> {
-    let registry = &sim.proto.registry;
-    let energy = registry.id_of("meridian", "energy").expect("energy property");
-    let range = registry.column_range(energy);
-    let offset = registry
-        .property(energy)
-        .layout
-        .offset_of(&SubFieldRole::Named("balance".into()))
-        .expect("balance offset");
-    let col = range.start + offset.lane();
-    let n_dims = registry.total_columns as usize;
-    let values = sim.state.read_values();
-    values.chunks(n_dims).map(|row| row[col]).collect()
-}
-
-/// catches: an authored bound dropped between hydration and the live registry,
-/// lost across the canonical cache, or never reaching execution so a cell that
-/// would rise past its ceiling keeps rising.
+/// catches: a bound on a conserved RF cell (the arena's AllocatedFlow, the
+/// settling Balance, or its governing rate) admitted into execution, where it
+/// destroys settled flow; or the refusal over-reaching onto the property's
+/// non-conserved cells, dropping the bound between hydration and the live
+/// registry, or losing it across the canonical cache.
 #[test]
-fn an_authored_bound_survives_the_cache_and_saturates_in_execution() {
-    let bound = ClampBehavior::Bounded { min: 0.0, max: 1.0 };
-    let mut bounded = open(&source("clamp = Bounded { min = 0 max = 1 }"));
-    let mut control = open(&source(""));
-
-    assert_eq!(balance_clamp(&bounded.sim), bound, "live registry holds it");
-    assert_eq!(
-        balance_clamp(&control.sim),
-        ClampBehavior::Unbounded,
-        "omission is unchanged"
-    );
-
-    // The derived canonical cache is not a second authority.
-    let cached = load_studio_session_from_scenario_path(&bounded.cache, None).expect("cache load");
-    let rebound = session_from(cached.authored_live_profile.as_ref().unwrap());
-    assert_eq!(balance_clamp(&rebound), bound, "cache rebind holds it");
-
-    let mut early = (Vec::new(), Vec::new());
-    for generation in 1..=5 {
-        bounded.sim.step_once().expect("ordinary generation");
-        control.sim.step_once().expect("ordinary generation");
-        let (bounded_now, control_now) = (balances(&bounded.sim), balances(&control.sim));
+fn only_conserved_rf_cells_refuse_an_authored_bound() {
+    for (cell, role, clamp) in [
+        (
+            BALANCE,
+            "Named(balance)",
+            "clamp = Bounded { min = 0 max = 1 }",
+        ),
+        (BALANCE, "Named(balance)", "clamp = Floored { min = 0 }"),
+        (
+            RATE,
+            "Named(balance_rate)",
+            "clamp = Bounded { min = -1 max = 1 }",
+        ),
+        (ALLOCATED, "Amount", "clamp = Floored { min = 0 }"),
+    ] {
+        let (session, _, _dir) = open(&source(cell, clamp));
+        let refusal = session
+            .err()
+            .unwrap_or_else(|| panic!("{role} {clamp}: a conserved cell must refuse"));
         assert!(
-            bounded_now.iter().all(|value| *value <= 1.0),
-            "G{generation}: the ceiling holds every row"
+            refusal.contains("rf-conserved-cell-unclamped")
+                && refusal.contains(&format!("sub_fields[role={role}]")),
+            "{role} {clamp}: {refusal}"
         );
-        if generation == 2 {
-            early = (bounded_now, control_now);
-        }
     }
-    let (bounded_late, control_late) = (balances(&bounded.sim), balances(&control.sim));
 
-    // Rows the unbounded control carries PAST the ceiling by rising, not rows
-    // that merely start high: those are what saturation must hold.
-    let rising: Vec<usize> = (0..control_late.len())
-        .filter(|&slot| control_late[slot] > early.1[slot] + 0.1 && control_late[slot] > 1.0)
-        .collect();
-    println!(
-        "rising rows {rising:?}; control {:?} vs bounded {:?}",
-        rising.iter().map(|&s| control_late[s]).collect::<Vec<_>>(),
-        rising.iter().map(|&s| bounded_late[s]).collect::<Vec<_>>()
-    );
-    assert!(
-        !rising.is_empty(),
-        "the control must carry at least one row past the ceiling by rising"
-    );
-    for slot in rising {
+    for (cell, role, clamp, expected) in [
+        (
+            WEIGHT,
+            "weight",
+            "clamp = Bounded { min = 0 max = 5 }",
+            ClampBehavior::Bounded { min: 0.0, max: 5.0 },
+        ),
+        (
+            FLOW,
+            "flow",
+            "clamp = Floored { min = 0 }",
+            ClampBehavior::Floored { min: 0.0 },
+        ),
+        (
+            BALANCE,
+            "balance",
+            "clamp = Unbounded",
+            ClampBehavior::Unbounded,
+        ),
+        (BALANCE, "balance", "", ClampBehavior::Unbounded),
+    ] {
+        let (session, cache, _dir) = open(&source(cell, clamp));
+        let mut sim =
+            session.unwrap_or_else(|error| panic!("{role} {clamp:?} is admitted: {error}"));
         assert_eq!(
-            bounded_late[slot], 1.0,
-            "row {slot} saturates exactly at its ceiling"
+            clamp_of(&sim, role),
+            expected,
+            "{role}: the live registry holds it"
         );
-        assert!(
-            early.0[slot] < 1.0 || early.1[slot] >= 1.0,
-            "row {slot} reached the ceiling by rising under the bound too"
+        let cached = load_studio_session_from_scenario_path(&cache, None).expect("cache load");
+        let rebound = session_from(cached.authored_live_profile.as_ref().unwrap())
+            .expect("the cache rebinds the admitted bound");
+        assert_eq!(
+            clamp_of(&rebound, role),
+            expected,
+            "{role}: the cache holds it"
         );
+        sim.step_once().expect("an ordinary generation");
     }
 }

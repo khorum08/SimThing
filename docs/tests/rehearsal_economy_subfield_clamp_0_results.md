@@ -1,5 +1,9 @@
 # Native sub-field clamp projection (authored finite bounds)
 
+**Status: the projection stands. A bound on a CONSERVED RF cell now refuses at admission (DA
+intervention 3(b) of the 0.0.8.8 drift audit, live Board `5879126789`; see the last section). The
+fence below became law.**
+
 DA increment per Orchestration relay `5745626815` (Astra return `5745459860` accepted as a truthful
 authoring STOP on 2.2 `0088-ECONOMY-FLEET-0`; #2075 remains OPEN/DRAFT). No 2.2 semantic verdict.
 Model 2 remains CLOSED. Parser admission is NOT a bounded-storage proof: saturation, headroom and
@@ -95,3 +99,45 @@ exactly. Authoring a bound therefore does NOT by itself make bounded storage law
 path. #2075 must either bound a cell outside the conserved path, or carry explicit
 saturation/overflow/recovery accounting that reconciles the difference. That accounting is the 2.2
 obligation this increment unblocks, not one it discharges.
+
+## The fence became law: conserved RF cells refuse a bound
+
+The drift audit judged the fence above against the 0.0.8.7 foundation. The Invariant Set says
+conservation holds "for any input", and StemThing law 3 says a cap is a budget. A bound on a cell
+that carries an arena's conserved quantity truncates the governed integration and destroys the flow
+the arena settled. So it is not bounded storage; it is a leak. Admission now refuses it at the one RF
+door, `compile_resource_flow_admission`, which every authored and derived arena passes through:
+`SpecError::AdmissionRefused { law_id: "rf-conserved-cell-unclamped", element_path }`.
+
+**The conserved cells.** A property belongs to an arena when it is the arena's flow or balance
+property, or when it binds `AllocatedFlow` to that arena. In such a property the conserved cells are:
+- the arena's `AllocatedFlow`;
+- every `Balance`, which settles it;
+- each Balance's governing rate.
+
+An `IntrinsicFlow` bound only shapes the authored source term, and an `AllocatorWeight` bound touches
+no conserved quantity, so both stay admitted. The built-in residency-capacity arena and every shipped
+scenario author no bound, so nothing shipped changes. Storage bounds for 2.2 are budgets (intervention
+5).
+
+**The witness inverts.** `native_subfield_clamp_session_0` re-authors the shipped two-faction bundle
+once per case.
+
+| case | outcome |
+|---|---|
+| balance `Bounded { 0, 1 }` | refuses typed at ordinary admission |
+| balance `Floored { 0 }` | refuses typed at ordinary admission |
+| balance_rate `Bounded { -1, 1 }` | refuses typed at ordinary admission |
+| allocated `Floored { 0 }` | refuses typed at ordinary admission |
+| weight `Bounded { 0, 5 }` | admitted; the live registry and the cache rebind hold it; a generation runs |
+| flow `Floored { 0 }` | admitted; the live registry and the cache rebind hold it; a generation runs |
+| balance `Unbounded` (explicit) | admitted; a generation runs |
+| omission | admitted; a generation runs |
+
+The saturation test it replaces is deleted under `authorized_deletions.tsv` (`5879126789-DA`). The
+hydration projection (`native_subfield_clamp_0`) is unchanged.
+
+**Evidence** (NVIDIA 616.92, `--features simthing-gpu/eml-resource-profiling`):
+- **Witness 1/1:** 4 refusals and 4 admissions, with cache rebind.
+- **Seal untouched:** no sealed component changes. The parity referee passes 1/1 against the current pin, observing `490e902413acc670`, so there is no roll.
+- **Full suites, 0 failed:** spec 16, driver 58 (1 ignored), workshop 16, mapeditor 25, clausething 47 (2 ignored).
