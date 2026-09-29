@@ -104,6 +104,9 @@ pub struct HydratedProductionBuilding {
     pub throttle_hint_max_per_tick: u32,
     /// AUTHORITATIVE per-generation recipe-unit ceiling (relay 5735839909);
     /// the throttle hint above stays a hint. Absent = every affordable unit.
+    /// It lowers to a budget, never an op field (live Board 5879126789): a
+    /// capacity quantity at the building's location, refilled each generation
+    /// by a standing Set and spent as one more recipe input at unit cost 1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_units_per_generation: Option<NonZeroU32>,
 }
@@ -1655,6 +1658,9 @@ fn lower_field_economy(
             &building.output_resource,
             "quantity",
         ));
+        if let Some(units) = building.max_units_per_generation {
+            properties.push(capacity_property(&parsed.namespace, building, units));
+        }
     }
     for coupling in &parsed.flow_couplings {
         properties.push(located_resource_property(
@@ -1700,9 +1706,19 @@ fn lower_field_economy(
         .production_buildings
         .iter()
         .map(|building| {
+            let mut inputs = lower_recipe_inputs(&parsed.namespace, building)?;
+            if building.max_units_per_generation.is_some() {
+                inputs.push(RecipeInputSpec {
+                    property: capacity_key(&parsed.namespace, building),
+                    role: SubFieldRole::Amount,
+                    unit_cost: 1.0,
+                    host_entity: Some(building.location.clone()),
+                    host_span_token: None,
+                });
+            }
             Ok(ResourceRecipeSpec {
                 id: format!("{}_recipe_{}", parsed.id, building.id),
-                inputs: lower_recipe_inputs(&parsed.namespace, building)?,
+                inputs,
                 target: located_resource_key(
                     &parsed.namespace,
                     &building.location,
@@ -1715,7 +1731,6 @@ fn lower_field_economy(
                 output_coefficient: building.output_coefficient,
                 order_band: 0,
                 throttle_hint_max_per_tick: building.throttle_hint_max_per_tick,
-                max_units_per_generation: building.max_units_per_generation,
             })
         })
         .collect::<Result<_, HydrateError>>()?;
@@ -1775,7 +1790,6 @@ fn lower_field_economy(
                 output_coefficient: coupling.output_coefficient,
                 order_band: coupling.order_band,
                 throttle_hint_max_per_tick: 1,
-                max_units_per_generation: None,
             }),
     );
 
@@ -1872,7 +1886,7 @@ fn lower_field_economy(
                 &quantity.resource,
                 "quantity",
             )),
-            quantity.amount,
+            TransformOp::add(quantity.amount),
             &quantity.location,
             OverlayKind::Infrastructure,
         )
@@ -1887,10 +1901,22 @@ fn lower_field_economy(
                 presence_stem(presence),
                 &presence.resource,
             )),
-            presence.amount,
+            TransformOp::add(presence.amount),
             &presence.location,
             OverlayKind::Crisis,
         )
+    }));
+    overlays.extend(parsed.production_buildings.iter().filter_map(|building| {
+        let units = building.max_units_per_generation?;
+        Some(location_overlay(
+            &parsed.id,
+            "capacity",
+            &building.id,
+            &property_ref(&capacity_key(&parsed.namespace, building)),
+            TransformOp::set(units.get() as f32),
+            &building.location,
+            OverlayKind::Policy,
+        ))
     }));
     overlays.extend(
         parsed
@@ -1974,6 +2000,32 @@ fn located_resource_property(
     resource_property(namespace, &format!("{location}_{resource}"), suffix)
 }
 
+/// A capped building's per-generation budget: its Amount opens at the cap, so
+/// the first generation is capped too, and a standing Set refills it.
+fn capacity_property(
+    namespace: &str,
+    building: &HydratedProductionBuilding,
+    units: NonZeroU32,
+) -> PropertySpec {
+    let mut property = located_resource_property(
+        namespace,
+        &building.location,
+        &format!("{}_capacity", building.id),
+        "units",
+    );
+    property.display_name = format!("{} capacity", building.id);
+    property.description = format!(
+        "production_building `{}` per-generation unit budget",
+        building.id
+    );
+    for sub_field in &mut property.sub_fields {
+        if sub_field.role == SubFieldRole::Amount {
+            sub_field.default = units.get() as f32;
+        }
+    }
+    property
+}
+
 fn owner_resource_property(
     namespace: &str,
     owner: &str,
@@ -2055,6 +2107,15 @@ fn located_resource_key(
     resource_key(namespace, &format!("{location}_{resource}"), suffix)
 }
 
+fn capacity_key(namespace: &str, building: &HydratedProductionBuilding) -> PropertyKey {
+    located_resource_key(
+        namespace,
+        &building.location,
+        &format!("{}_capacity", building.id),
+        "units",
+    )
+}
+
 fn owner_resource_key(namespace: &str, owner: &str, resource: &str, suffix: &str) -> PropertyKey {
     resource_key(namespace, &format!("{owner}_{resource}"), suffix)
 }
@@ -2072,7 +2133,7 @@ fn location_overlay(
     kind: &str,
     id: &str,
     targets_property: &str,
-    amount: f32,
+    transform: TransformOp,
     location: &str,
     overlay_kind: OverlayKind,
 ) -> OverlaySpec {
@@ -2080,7 +2141,7 @@ fn location_overlay(
         id: format!("{economy_id}_{kind}_location_{id}"),
         display_name: id.to_string(),
         targets_property: targets_property.to_string(),
-        sub_field_deltas: vec![(SubFieldRole::Amount, TransformOp::add(amount))],
+        sub_field_deltas: vec![(SubFieldRole::Amount, transform)],
         lifecycle: OverlayLifecycle::UntilDissolved,
         kind: overlay_kind,
         source: OverlaySource::System,

@@ -191,7 +191,7 @@ pub fn execute_ops_cpu_with_emissions(
         }
         let write_value = gather_and_combine(values, op, n_dims)?;
         let write_value = clamp_transfer(values, op, write_value, n_dims)?;
-        let target_value = if matches!(op.combine, CombineFn::MinAcrossInputs { .. }) {
+        let target_value = if matches!(op.combine, CombineFn::MinAcrossInputs) {
             apply_scale(write_value, &op.scale)
         } else {
             write_value
@@ -379,7 +379,7 @@ fn gather_and_combine(
                 "Sum without SlotRange or InputList",
             )),
         },
-        CombineFn::MinAcrossInputs { max_units } => {
+        CombineFn::MinAcrossInputs => {
             let SourceSpec::ConjunctiveCrossing { inputs } = &op.source else {
                 return Err(CpuOracleError::Unsupported(
                     "MinAcrossInputs without ConjunctiveCrossing",
@@ -396,8 +396,7 @@ fn gather_and_combine(
             if inputs.is_empty() {
                 Ok(0.0)
             } else {
-                let units = amount.max(0.0).floor();
-                Ok(max_units.map_or(units, |cap| units.min(cap.get() as f32)))
+                Ok(amount.max(0.0).floor())
             }
         }
         _ => Err(CpuOracleError::Unsupported("combine")),
@@ -427,7 +426,7 @@ fn apply_targets(
             ConsumeMode::ScaleTarget => values[i] *= write_value,
             ConsumeMode::ResetTarget => values[i] = write_value,
             _ => match op.combine {
-                CombineFn::Identity | CombineFn::Sum | CombineFn::MinAcrossInputs { .. } => {
+                CombineFn::Identity | CombineFn::Sum | CombineFn::MinAcrossInputs => {
                     if matches!(
                         op.consume,
                         ConsumeMode::SubtractFromSource | ConsumeMode::SubtractFromAllInputs
