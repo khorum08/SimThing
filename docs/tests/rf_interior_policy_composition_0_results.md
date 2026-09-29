@@ -135,6 +135,20 @@ sealed components. This is the twentieth roll.
   - `QUALIFIED_RECORD_FINGERPRINT` in `simthing-workshop/tests/resident_clearing_parity_0.rs`.
 - **Battery** on NVIDIA 616.92, `--features simthing-gpu/eml-resource-profiling`:
 
-BATTERY_TABLE
+| step | result |
+|---|---|
+| parity referee | 1/1, `RESIDENT-CLEARING-QUALIFICATION-FINGERPRINT: 23081112d5c98f38` |
+| score and bands | 3/3 |
+| runtime (ABI, child-share, planner and temporal-15.2 mutants) | 4/4 |
+| witnesses (composition 2, conservation 2, frozen referee 1) | 5/5 |
+| full suites | sim 26, gpu 7, driver 58 (1 ignored), workshop 16, clausething 47 (2 ignored), mapeditor 25; 0 failed |
 
-CLEAN_CHECKOUT_PROOF
+The full suites include every test that loads the two shipped policy scenarios: 8 files, among them
+the 1.1 witness `rehearsal_ingress_native_rf`. mapeditor was run on its own: after clausething in one
+batch it hits a local rlib-format cache artifact before any test runs.
+
+**Clean-checkout proof: PASS.** The proof used a fresh clone from GitHub at the roll commit
+`5ef4e080`; later commits touch docs only.
+- autocrlf is `false`, with 0 dirty paths and 0 CRLF files.
+- Both literals read `0x2308_1112_d5c9_8f38`.
+- The parity referee passes 1/1, observing `23081112d5c98f38`.
